@@ -423,7 +423,7 @@ function questionCard(day,q,idx,onAnswered){
     const v=el('div','verdict '+(state.progress.items[key].status==='correct'?'g':'b'));
     v.textContent = state.progress.items[key].status==='correct'?'✓ Correct':'✗ Not quite';
     ex.append(v);
-    ex.append(el('div',null,'')).append(richText(q.explain));
+    const exbody=el('div');exbody.append(richText(q.explain));ex.append(exbody);
     card.append(ex);
   };
 
@@ -519,7 +519,7 @@ function renderToday(){
   top.append(stk);
   const sb=el('div'); sb.style.flex='1';
   sb.append(el('div','eyebrow',c.short+' · '+cp.pct+'% complete'));
-  const pb=el('div','progbar');pb.append(el('i')).style.width=cp.pct+'%';pb.style.marginTop='6px';sb.append(pb);
+  const pb=el('div','progbar');const pbi=el('i');pbi.style.width=cp.pct+'%';pb.append(pbi);pb.style.marginTop='6px';sb.append(pb);
   const sc=el('div','sync '+(state.syncMode==='cloud'?'on':'local'));sc.id='syncBadge';sc.style.marginTop='8px';
   sc.append(el('span','d'));sc.append(el('span','t',state.syncMode==='cloud'?'Synced to your account':'Saved on this device'));
   sb.append(sc);
@@ -596,7 +596,7 @@ function openDay(dayNum){
   const mt=el('div','qmeta');mt.append(pillFor(d.course));mt.append(el('span','eyebrow','Day '+d.day+' of '+c.days.length));head.append(mt);
   head.append(el('h2',null,d.title));head.style.marginBottom='4px';
   const ob=el('div','muted');ob.style.marginTop='6px';ob.append(el('span','faint','Exam objective — '));ob.append(document.createTextNode(d.objective));head.append(ob);
-  const p=dayProgress(d);const pb=el('div','progbar');pb.style.marginTop='12px';pb.append(el('i')).style.width=p.pct+'%';head.append(pb);
+  const p=dayProgress(d);const pb=el('div','progbar');pb.style.marginTop='12px';const pbi=el('i');pbi.style.width=p.pct+'%';pb.append(pbi);head.append(pb);
   app.append(head);
 
   if(d.questions.length){
@@ -738,7 +738,7 @@ function renderQuizRun(){
   info.append(el('span','eyebrow','Question '+(qz.idx+1)+' / '+total));
   info.append(el('span','mono faint','score '+qz.correct));
   bar.append(info);
-  const pb=el('div','progbar');pb.style.marginTop='6px';pb.append(el('i')).style.width=(qz.idx/total*100)+'%';bar.append(pb);
+  const pb=el('div','progbar');pb.style.marginTop='6px';const pbi=el('i');pbi.style.width=(qz.idx/total*100)+'%';pb.append(pbi);bar.append(pb);
   app.append(bar);
   const [day,q,idx]=qz.items[qz.idx];
   qz.answered=false;
@@ -809,7 +809,7 @@ function renderExamRun(){
   const done=Object.values(ex.checks).filter(Boolean).length;
   const sc=el('div');sc.style.textAlign='right';
   sc.append(el('div','eyebrow','Tasks passed'));
-  sc.append(el('div','flame',done+' / '+ex.items.length)).style.fontSize='26px';
+  const scf=el('div','flame',done+' / '+ex.items.length);scf.style.fontSize='26px';sc.append(scf);
   trow.append(sc);bar.append(trow);
   const endb=el('button','btn sm','Finish & score');endb.style.marginTop='10px';endb.onclick=finishExam;bar.append(endb);
   app.append(bar);
@@ -858,7 +858,7 @@ function finishExam(){
   const pct=Math.round(done/ex.items.length*100);
   const card=el('div','hero');card.style.textAlign='center';
   card.append(el('div','eyebrow',rhcsa?'Simulated score (300 scale)':'Tasks passed'));
-  card.append(el('div','flame',rhcsa?score+'':pct+'%')).style.fontSize='48px';
+  const cf=el('div','flame',rhcsa?score+'':pct+'%');cf.style.fontSize='48px';card.append(cf);
   const pass=rhcsa?score>=210:pct>=80;
   const v=el('div','verdict '+(pass?'g':'b'));v.style.fontSize='16px';v.style.justifyContent='center';
   v.textContent=pass?(rhcsa?'✓ PASS (≥210 needed)':'✓ Strong (aim ≥80%)'):(rhcsa?'✗ Below 210 — keep going':'✗ Below 80% — keep going');card.append(v);
