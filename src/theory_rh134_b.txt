@@ -1,0 +1,145 @@
+#D 29
+## Disks, partitions and partition tables
+A physical disk (like `/dev/vdb`) is usually divided into **partitions** (`/dev/vdb1`, `/dev/vdb2`). A **partition table** at the start of the disk records where each partition begins and ends. Modern systems use the **GPT** (GUID Partition Table) format, which replaced the old MBR and supports large disks and many partitions.
+- `lsblk` shows disks and partitions as a tree — always start here to see the layout.
+
+## Creating GPT partitions with parted
+`parted` edits partition tables. Two commands you must know:
+- `parted /dev/vdb mklabel gpt` writes a **new, empty** GPT table. **Warning:** this erases every existing partition — only run it on a blank disk.
+- `parted /dev/vdb mkpart data xfs 1MiB 1025MiB` creates a partition. On GPT the first argument is a **name**, then a filesystem hint, then the start and end. Always use **MiB** units and start the first partition at 1MiB so it is properly **aligned** and leaves room for the GPT header.
+- `parted /dev/vdb print` shows the table; add `unit MiB print free` to see free space so you know where to start the next one.
+After creating a partition, run `udevadm settle` so the device file (`/dev/vdb1`) appears before you format it.
+
+## Making and mounting a filesystem
+Creating a partition does not make it usable — you must put a **filesystem** on it and mount it:
+- `mkfs.xfs /dev/vdb1` formats it as XFS (RHEL's default). `blkid /dev/vdb1` then shows its **UUID**.
+- `mount /dev/vdb1 /mnt/data` mounts it for now.
+
+## Mounting permanently with /etc/fstab
+For a mount to survive reboots, add a line to `/etc/fstab` with **six fields**:
+```
+device        mountpoint   type   options    dump  fsck
+UUID=1b2c...  /mnt/data    xfs    defaults   0     0
+```
+Use `UUID=` (or `LABEL=`) rather than `/dev/vdb1`, because device names can change between boots but the UUID does not. After editing fstab, **always test** with `systemctl daemon-reload` then `mount -a` (which mounts everything not yet mounted) before you reboot — a broken fstab line drops the boot into emergency mode. Run `findmnt --verify` for a deeper check.
+
+#D 30
+## What swap is
+**Swap** is disk space the kernel uses as overflow when physical RAM fills up — inactive memory pages are moved to swap so RAM is freed for active work. It is not a replacement for RAM, but it prevents out-of-memory crashes. Swap can live on a **partition**, a **logical volume**, or a **file**.
+
+## Adding a swap partition
+The process mirrors making a filesystem, but with swap-specific tools:
+- Create the partition with a swap hint: `parted /dev/vdb mkpart swap1 linux-swap 1025MiB 1537MiB`, then `udevadm settle`.
+- `mkswap /dev/vdb2` initialises it as swap (and prints a new UUID).
+- `swapon /dev/vdb2` turns it on now; `swapoff /dev/vdb2` turns it off.
+
+## Activating swap at boot
+Add a line to `/etc/fstab` — the mount-point field is `none` (or `swap`) and the type is `swap`:
+```
+UUID=<uuid>  none  swap  defaults  0 0
+```
+Test it without rebooting using `swapon -a` (which activates all swap listed in fstab); `mount -a` ignores swap entries, so this separate step matters.
+
+## Checking swap and priorities
+- `swapon --show` (or `swapon -s`, or `cat /proc/swaps`) lists active swap areas; `free -h` shows total swap alongside RAM.
+- If you have several swap areas, give one priority with the `pri=N` option in fstab (higher numbers are used first): `UUID=... none swap pri=10 0 0`.
+"Add swap non-destructively" — a common exam phrase — means add new swap using free space **without** deleting or disturbing existing partitions or swap.
+
+#D 31
+## Why LVM exists
+Plain partitions are rigid — resizing them is awkward. **LVM** (Logical Volume Manager) adds a flexible layer so you can grow, shrink and combine storage easily. It has three levels:
+- **Physical Volumes (PV)** — the raw partitions or disks you hand to LVM.
+- **Volume Group (VG)** — a pool made by combining one or more PVs.
+- **Logical Volumes (LV)** — the usable "virtual partitions" you carve out of the VG, format and mount.
+Space in a VG is measured in fixed chunks called **physical extents** (PE), 4 MiB by default.
+
+## Building an LVM stack step by step
+The commands follow the three levels in order:
+- `pvcreate /dev/vdb1` marks a partition as a physical volume. Check with `pvs`.
+- `vgcreate vgdata /dev/vdb1` creates a volume group from it. Add `-s 16M` to set a custom extent size. Check with `vgs` or `vgdisplay`.
+- `lvcreate -n lvdata -L 500M vgdata` creates a 500 MiB logical volume named lvdata. Use `-L` for a size, or `-l 60` for a number of **extents**, or `-l 100%FREE` to use all remaining space. Check with `lvs`.
+- Then treat the LV like any partition: `mkfs.xfs /dev/vgdata/lvdata`, make a mount point, and add it to `/etc/fstab`.
+
+## Naming and sizing
+A logical volume can be reached by two equivalent paths: `/dev/vgdata/lvdata` and `/dev/mapper/vgdata-lvdata` — both work in fstab, and because LV names are stable they are as reliable as a UUID. When a task gives extents and an extent size, size = extents × extent size (e.g. 60 extents × 16 MiB = 960 MiB). `-L` rounds up to a whole number of extents.
+
+## Inspecting LVM
+The short summaries are `pvs`, `vgs`, `lvs`; the detailed versions are `pvdisplay`, `vgdisplay`, `lvdisplay`. `vgdisplay` shows the "PE Size" (extent size) and how many free extents remain.
+
+#D 32
+## Growing a logical volume
+The big advantage of LVM is easy resizing. Growing an LV is a **two-part** job: enlarge the LV, then enlarge the filesystem on it. The safe way does both at once:
+- `lvextend -r -L +200M /dev/vgdata/lvdata` grows the LV by 200 MiB **and** (thanks to `-r`, "resize filesystem") grows the filesystem to match. Without `-r` you would have to run the filesystem grow tool separately.
+- `-L +200M` **adds** 200 MiB; `-L 1G` **sets** the total to 1 GiB. Read the task: "grow by" is relative (`+`), "resize to" is absolute.
+
+## Growing the filesystem manually
+If you extend the LV without `-r`, `df -h` still shows the old size until you grow the filesystem:
+- **XFS**: `xfs_growfs /mnt/data` — note it takes the **mount point**, and XFS grows only while mounted.
+- **ext4**: `resize2fs /dev/vgdata/lvdata` — takes the **device**.
+Important limitation: **XFS can only grow, never shrink.** ext4 can shrink (while unmounted). To make XFS smaller you must back up, recreate it smaller, and restore.
+
+## When the volume group is full
+If the VG has no free space, you cannot grow an LV until you add capacity:
+- `vgextend vgdata /dev/vdc1` adds another physical volume to the group (run `pvcreate` on it first if needed).
+- To remove a PV, first move its data off with `pvmove /dev/vdb1`, then `vgreduce vgdata /dev/vdb1`, then `pvremove /dev/vdb1`.
+To tear an LVM stack down cleanly, always work top-down: unmount, remove the fstab line, `lvremove`, `vgremove`, `pvremove`.
+
+#D 33
+## Choosing a filesystem
+RHEL supports several filesystems, and the exam expects you to create and mount each:
+- **XFS** — RHEL's default; robust and fast; can only grow.
+- **ext4** — the long-standing Linux default; can grow **and** shrink.
+- **VFAT** — the FAT filesystem for compatibility with other systems (USB sticks, EFI). It stores **no** Linux ownership or permissions.
+The tools: `mkfs.xfs` (from xfsprogs), `mkfs.ext4` (from e2fsprogs), and `mkfs.vfat` (from dosfstools). Add `-f` to overwrite an existing filesystem.
+
+## Labels and UUIDs
+A **label** is a friendly name you can mount by, as an alternative to the UUID:
+- XFS: set with `xfs_admin -L DATA /dev/vdb1` (unmounted) or at creation `mkfs.xfs -L DATA`.
+- ext4: `e2label /dev/vdb2 BACKUP` or `tune2fs -L`.
+- VFAT: `fatlabel /dev/vdb5 WINDATA`, or at creation `mkfs.vfat -n WINDATA`. Note VFAT's label option is `-n`, while XFS/ext4 use `-L`.
+Then mount by `LABEL=DATA` in fstab instead of the UUID.
+
+## VFAT and mount options
+Because VFAT has no concept of Linux ownership, you assign it at mount time with options: `mount -o uid=2000,gid=2000 /dev/vdb5 /mnt/usb`. In fstab: `UUID=1A2B-3C4D /mnt/usb vfat uid=2000,gid=2000 0 0` (VFAT UUIDs are short, like `1A2B-3C4D`).
+
+## Useful mount options and inspection
+- `nofail` lets the boot continue even if that device is missing (good for removable or network disks); `noauto` means "do not mount at boot at all"; `ro`/`rw` for read-only/read-write; remount live with `mount -o remount,ro /mnt/data`.
+- Inspect: `xfs_info /mnt/data` for XFS geometry; `tune2fs -l /dev/...` for ext4; `findmnt -o TARGET,OPTIONS /mnt/data` to see how something is mounted.
+
+#D 34
+## What NFS is
+**NFS** (Network File System) lets a server **share** (export) a directory over the network so client machines can **mount** it and use it as if it were local. It is the standard way to share files between Linux systems. The client tools come from the **nfs-utils** package.
+
+## Mounting an NFS share on the client
+- `mount -t nfs node2:/shares/docs /mnt/docs` mounts the export now (the mount point must exist). The syntax is `server:/exported/path`.
+- `showmount -e node2` lists what a server exports (needs the server's supporting services reachable).
+- RHEL defaults to **NFSv4**; force a version with `-o nfsvers=4.2` or `-o vers=3` if a task asks.
+- `findmnt -t nfs4` shows mounted NFS filesystems and their options.
+
+## Mounting NFS at boot
+Add it to `/etc/fstab` with the type `nfs` and the `_netdev` option (which tells the system to wait for the network before mounting):
+```
+node2:/shares/docs  /mnt/docs  nfs  defaults,_netdev  0 0
+```
+The dump and fsck fields are `0 0` because there is nothing local to check. Test with `mount -a` and confirm with `findmnt /mnt/docs`.
+
+## The server side (for context)
+On the server, exports are defined in `/etc/exports`, one line each: `/shares/docs 192.168.122.0/24(rw,sync)`. Apply changes with `exportfs -rv`, run the `nfs-server` service, and open the firewall for the `nfs` service (plus `rpc-bind` and `mountd` if clients use `showmount`). Understanding the server helps you troubleshoot a failing client mount — a hang usually means a firewall or export problem.
+
+#D 35
+## What autofs does
+Mounting every network share in `/etc/fstab` means they are all mounted at boot and stay mounted, even when unused. **autofs** mounts a share **on demand** — only when someone accesses it — and unmounts it automatically after a period of inactivity. This is ideal for home directories and shares that are not always needed. It is provided by the **autofs** package and service.
+
+## The master map and the mount maps
+autofs configuration has two layers:
+- The **master map** entries live in files under `/etc/auto.master.d/` ending in `.autofs`. Each line links a **base directory** to a **mount map** file, e.g. `/shares  /etc/auto.shares`.
+- The **mount map** (e.g. `/etc/auto.shares`) lists the actual mounts: `work  -rw,sync  node2:/shares/work`. Here `work` becomes a subdirectory of the base directory, so this mounts at `/shares/work` the first time it is accessed.
+You do **not** create the subdirectories yourself — autofs manages the base directory entirely. Enable it with `systemctl enable --now autofs`; after editing maps, `systemctl reload autofs`.
+
+## Indirect, direct and wildcard maps
+- The example above is an **indirect map**: keys become subdirectories under one base. `ls /shares` shows nothing until you actually access `/shares/work`.
+- A **direct map** uses `/-` as the base in the master map, and each key is a full path: `/mnt/docs  -ro  node2:/shares/docs`.
+- A **wildcard map** uses `*` and `&` to serve any key automatically — perfect for home directories: `*  -rw,sync  node2:/rhome/&` mounts `node2:/rhome/<name>` whenever `/rhome/<name>` is accessed. The `&` is replaced by whatever key was requested.
+
+## Automounted home directories
+A very common exam task combines a user with no local home and an autofs wildcard map, so the user's home is fetched from an NFS server on login. Create the user with `useradd -M` (no local home) and a matching home path, add the master and wildcard map entries, and confirm with `su - user` (which triggers the mount) and `findmnt`.

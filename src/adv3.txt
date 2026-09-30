@@ -1,0 +1,472 @@
+#D 63|RH134|Networking: advanced NetworkManager|Manage profiles, multiple addresses, routes and device behaviour with nmcli.
+Q Where does NetworkManager on RHEL 9/10 store connection profiles by default?
++ /etc/NetworkManager/system-connections/ as .nmconnection keyfiles
+- /etc/sysconfig/network-scripts/ifcfg-*
+- /etc/network/interfaces
+- /etc/netplan/
+E The old ifcfg format still works but keyfiles are the default; run `nmcli con reload` after hand-editing.
+Q What does the `+` prefix do in `nmcli con mod eth0 +ipv4.addresses 10.0.0.5/24`?
++ Appends to the list property without removing existing values
+- Replaces the whole list
+- Removes that address
+- Sets it only temporarily
+E Use `-` to remove one item; no prefix replaces the entire list.
+Q A change made with `nmcli con mod` takes effect when you:
++ Reactivate the connection (nmcli con up <name>)
+- Reboot only
+- Restart sshd
+- Save the file
+E Editing over SSH and changing the IP drops your session; use the console.
+Q Which property makes a connection come up automatically at boot?
++ connection.autoconnect yes
+- ipv4.method auto
+- connection.startup on
+- device.autostart yes
+E Check it with `nmcli -f connection.autoconnect con show <name>`.
+Q How do you add a static route "reach 192.168.50.0/24 via 192.168.1.254" to a profile?
++ nmcli con mod eth0 +ipv4.routes "192.168.50.0/24 192.168.1.254"
+- ip route add only
+- nmcli route add eth0 192.168.50.0/24
+- nmcli con mod eth0 gateway 192.168.50.0
+E This route persists in the profile, unlike a bare `ip route add`.
+Q What does `ipv4.route-metric` control?
++ The priority of this connection's routes (lower wins) when multiple paths exist
+- The MTU
+- The DNS order
+- The DHCP lease time
+E Useful when a host has two uplinks and you prefer one.
+C Show all connection profiles NetworkManager knows about.
+A nmcli con show
+A nmcli connection show
+E `nmcli device status` shows devices and which profile each uses.
+C Add a second IPv4 address 10.0.0.5/24 to the profile "eth0" without removing the first.
+A nmcli con mod eth0 +ipv4.addresses 10.0.0.5/24
+E Apply it with `nmcli con up eth0`.
+C Create a brand-new static connection profile "lab" on device eth1.
+A nmcli con add con-name lab type ethernet ifname eth1 ipv4.addresses 192.168.99.10/24 ipv4.method manual
+E Add `ipv4.gateway` and `ipv4.dns` as the task requires.
+C Reload connection files after editing a keyfile by hand.
+A nmcli con reload
+E Then `nmcli con up <name>` to apply.
+T Multi-homed host (exam-plus)
+S Give one interface two IPv4 addresses, a static route to a remote subnet, and make it all persist and autoconnect. Verify after a reboot.
+X nmcli con mod eth0 +ipv4.addresses 10.0.0.5/24
+X nmcli con mod eth0 +ipv4.routes "192.168.50.0/24 192.168.1.254"
+X nmcli con mod eth0 connection.autoconnect yes
+X nmcli con up eth0
+V ip -br a; ip route | grep 192.168.50; reboot and re-check
+T Switch between two profiles on one NIC
+S Create a static profile and keep the DHCP one; switch between them and confirm the active address each time.
+X nmcli con add con-name static-lab type ethernet ifname eth0 ipv4.addresses 172.16.0.10/24 ipv4.method manual
+X nmcli con up static-lab && ip -br a
+X nmcli con up "System eth0" && ip -br a
+V nmcli con show --active shows which profile is live each time
+T Prefer one uplink with route metrics
+S On a host with two connections, set route metrics so one is preferred, and confirm the default route uses it.
+X nmcli con mod primary ipv4.route-metric 100
+X nmcli con mod backup ipv4.route-metric 200
+X nmcli con up primary; nmcli con up backup
+V ip route shows the default via the lower-metric (primary) connection
+T Inspect a profile in detail
+S Show all IPv4 settings of a connection and the DNS it applies.
+X nmcli -f ipv4 con show eth0
+X nmcli dev show eth0 | grep -i dns
+X cat /etc/resolv.conf
+V you can read the profile's addresses, gateway, routes and DNS
+
+#D 64|RH134|Networking: link aggregation (bonding)|Combine NICs into a bond for redundancy or throughput.
+Q What is network bonding?
++ Combining two or more NICs into one logical interface for redundancy or bandwidth
+- Splitting one NIC into many
+- A firewall feature
+- A DNS technique
+E On RHEL 9/10 use bonding; the older "teaming" (teamd) was removed.
+Q Which bond mode gives simple failover with one active NIC at a time?
++ active-backup (mode 1)
+- balance-rr (mode 0)
+- 802.3ad (mode 4)
+- broadcast (mode 3)
+E active-backup needs no special switch support; 802.3ad (LACP) needs a configured switch.
+Q What does the miimon bond option do?
++ Sets how often (ms) to check link state for failover
+- Sets the IP address
+- Sets the MTU
+- Sets the DNS server
+E e.g. miimon=100 checks every 100 ms.
+Q In a bond, the member interfaces are called:
++ Ports (formerly "slaves"), controlled by the bond (the "controller")
+- Bridges
+- VLANs
+- Zones
+E Each port is its own connection profile with the bond as its controller/master.
+Q Which file shows a bond's live status and active port?
++ /proc/net/bonding/bond0
+- /etc/bond0.conf
+- /sys/bond0
+- /var/log/bond0
+E It lists the mode, each port's link state, and the currently active port.
+Q Why use active-backup mode for a server with two switches?
++ It survives a switch or cable failure with no special switch config
+- It doubles throughput automatically
+- It encrypts traffic
+- It is required for DNS
+E Redundancy without LACP; throughput bonding (802.3ad) needs switch support.
+C Create a bond interface bond0 in active-backup mode with miimon 100.
+A nmcli con add type bond con-name bond0 ifname bond0 bond.options "mode=active-backup,miimon=100"
+E Give it an IP with `ipv4.addresses`/`ipv4.method manual` as the task requires.
+C Add the NIC eth1 as a port of bond0.
+A nmcli con add type ethernet con-name bond0-port1 ifname eth1 master bond0
+E Repeat for eth2 as bond0-port2; the ports have no IP of their own.
+C Show the live status and active port of bond0.
+A cat /proc/net/bonding/bond0
+E Also `nmcli device status` shows the bond and its ports.
+T Build a redundant bond (exam-plus)
+S Create bond0 (active-backup, miimon=100) with a static IP, add two NICs as ports, bring it up, and verify failover status.
+X nmcli con add type bond con-name bond0 ifname bond0 bond.options "mode=active-backup,miimon=100" ipv4.addresses 192.168.100.20/24 ipv4.method manual
+X nmcli con add type ethernet con-name bond0-p1 ifname eth1 master bond0
+X nmcli con add type ethernet con-name bond0-p2 ifname eth2 master bond0
+X nmcli con up bond0
+X cat /proc/net/bonding/bond0
+V ip -br a shows bond0 with the IP; the bonding file lists two ports and one active
+T Test bond failover
+S Bring down the currently active port and confirm the bond fails over to the other, keeping connectivity.
+X grep -i 'Currently Active' /proc/net/bonding/bond0
+X nmcli con down bond0-p1
+X cat /proc/net/bonding/bond0      # active port switched to p2
+X ping -c3 192.168.100.1
+V connectivity survives; the active port changed
+T Persist and reboot-test the bond
+S Ensure the bond and both ports autoconnect and survive a reboot.
+X nmcli -f connection.autoconnect con show bond0
+X nmcli con mod bond0 connection.autoconnect yes
+X reboot
+V after reboot: ip -br a shows bond0 up with two ports
+T Inspect bond configuration
+S Show the bond's options and each port's controller relationship.
+X nmcli -f bond.options con show bond0
+X nmcli -f connection.master,connection.slave-type con show bond0-p1
+V you can read the mode/miimon and confirm the ports belong to bond0
+
+#D 65|RH134|Networking: advanced firewalld|Use zones, rich rules, masquerading and port forwarding.
+Q A firewalld "zone" represents:
++ A trust level with its own rules, bound to interfaces or source addresses
+- A DNS domain
+- A subnet mask
+- A VLAN
+E Common zones: public, trusted, drop, internal, dmz.
+Q What does a rich rule let you do that a simple service/port rule cannot?
++ Match on source address, log, rate-limit, and accept/reject/drop with fine control
+- Only open a port
+- Only close a port
+- Change the default zone
+E Rich rules combine source, service/port, action and logging in one rule.
+Q What does `firewall-cmd --add-masquerade` enable?
++ Source NAT, so traffic from an internal network is translated to the host's address
+- A new zone
+- Port 80 only
+- DNS forwarding
+E Needed when the host routes traffic for a private network to the internet.
+Q A firewalld port-forward rule sends traffic arriving on one port to:
++ Another port (and optionally another host) — e.g. 80 -> 8080
+- The default gateway
+- The DNS server
+- Nowhere
+E Use `--add-forward-port=port=80:proto=tcp:toport=8080`.
+Q Which command permanently rejects SSH only from 192.168.50.0/24?
++ firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.50.0/24" service name="ssh" reject'
+- firewall-cmd --remove-service=ssh
+- firewall-cmd --add-port=22/tcp
+- firewall-cmd --block ssh
+E `man firewalld.richlanguage` has copyable examples for the exam.
+Q What is the difference between "reject" and "drop" in a rule?
++ reject replies that the connection is refused; drop silently discards it
+- They are identical
+- drop replies; reject is silent
+- reject is faster
+E drop makes the host appear offline to that source.
+C Add a rich rule that logs and drops all traffic from 10.0.0.66.
+A firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.66" log prefix="DROP66 " level="info" drop'
+E Reload after; check /var/log/messages or the journal for the log prefix.
+C Enable masquerading (source NAT) in the current zone permanently.
+A firewall-cmd --permanent --add-masquerade
+E Then `firewall-cmd --reload`.
+C Forward incoming TCP port 80 to port 8080 on this host.
+A firewall-cmd --permanent --add-forward-port=port=80:proto=tcp:toport=8080
+E Requires masquerade for forwarding to another host.
+C Put the source 192.168.10.0/24 into the trusted zone permanently.
+A firewall-cmd --permanent --zone=trusted --add-source=192.168.10.0/24
+E `--get-active-zones` shows which sources/interfaces map to which zone.
+T Zone-based access control (exam-plus)
+S Put your management subnet in the "internal" zone with ssh allowed, keep "public" for everything else with only http, and verify.
+X firewall-cmd --permanent --zone=internal --add-source=192.168.10.0/24 --add-service=ssh
+X firewall-cmd --permanent --zone=public --add-service=http
+X firewall-cmd --reload
+X firewall-cmd --get-active-zones
+V firewall-cmd --zone=internal --list-all and --zone=public --list-all match the intent
+T Rich rule with logging
+S Reject SSH from one subnet with a logged rich rule, test from that subnet, and read the log.
+X firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.50.0/24" service name="ssh" log prefix="SSH-REJ " level="info" reject'
+X firewall-cmd --reload
+X # from a host in 192.168.50.0/24:  ssh <this-host>   -> refused
+X journalctl | grep 'SSH-REJ' | tail
+V the connection is rejected and logged
+T Port forwarding
+S Make the host accept web traffic on port 80 but serve it from a service on 8080, using firewalld.
+X firewall-cmd --permanent --add-masquerade
+X firewall-cmd --permanent --add-forward-port=port=80:proto=tcp:toport=8080
+X firewall-cmd --reload
+X # run something listening on 8080, then:
+X curl -s http://localhost:80 | head
+V traffic to :80 is served by the :8080 service
+T Save runtime rules and audit
+S Add a couple of runtime-only rules, make them permanent, and produce a full audit of every zone.
+X firewall-cmd --add-service=https        # runtime only
+X firewall-cmd --runtime-to-permanent
+X firewall-cmd --list-all-zones | less
+V the https rule persists and you have a full zone audit
+
+#D 66|RH134|Networking: nftables|Understand and write basic nftables rulesets (the modern firewall backend).
+Q What is nftables?
++ The modern Linux packet-filtering framework that replaces iptables (and backs firewalld)
+- A DNS server
+- A routing daemon
+- A container tool
+E On RHEL, firewalld uses the nftables backend by default.
+Q In nftables, the top-level container of chains is a:
++ Table (with a family such as inet, ip, ip6)
+- Zone
+- Bridge
+- Socket
+E A table holds chains; chains hold rules.
+Q A base chain must declare its:
++ Type, hook (input/forward/output), and priority
+- IP address
+- DNS server
+- MTU
+E e.g. `type filter hook input priority 0; policy drop;`
+Q Which command shows the entire active nftables ruleset?
++ nft list ruleset
+- nft show all
+- nft dump
+- nftables --list
+E Save it to /etc/nftables.conf to make it persistent via the nftables service.
+Q How do you make an nftables ruleset load at boot on RHEL?
++ Put it in /etc/nftables.conf (or an included file) and enable nftables.service
+- Add it to /etc/fstab
+- Put it in crontab
+- Nothing; it is automatic
+E `systemctl enable --now nftables` loads /etc/sysconfig/nftables.conf includes.
+Q Why generally NOT mix raw nftables rules with firewalld on the same host?
++ firewalld manages its own nftables rules; hand rules can conflict or be overwritten
+- nftables is slower
+- It is illegal
+- They never conflict
+E Pick one manager per host; for the RHCSA, firewalld is the expected tool.
+C Show the complete active nftables ruleset.
+A nft list ruleset
+E With firewalld running, you will see the firewalld-generated tables here.
+C Create a new table named filter in the inet family.
+A nft add table inet filter
+E inet covers both IPv4 and IPv6.
+C Add an input base chain that drops by default to the inet filter table.
+A nft add chain inet filter input '{ type filter hook input priority 0; policy drop; }'
+E Then add accept rules for loopback, established traffic and SSH.
+C List the ruleset of just the inet filter table.
+A nft list table inet filter
+E Useful to review one table without the whole ruleset.
+T Build a minimal nftables firewall (lab, non-firewalld host)
+S On a test host NOT using firewalld, build a small ruleset: default-drop input, allow loopback, established, and SSH; then verify.
+X nft add table inet filter
+X nft add chain inet filter input '{ type filter hook input priority 0; policy drop; }'
+X nft add rule inet filter input iif lo accept
+X nft add rule inet filter input ct state established,related accept
+X nft add rule inet filter input tcp dport 22 accept
+X nft list ruleset
+V you can still SSH in and other ports are dropped
+T Persist an nftables ruleset
+S Save your working ruleset to /etc/nftables.conf and enable it at boot.
+X nft list ruleset > /etc/nftables.conf
+X # ensure the file starts with: #!/usr/sbin/nft -f  and  flush ruleset
+X systemctl enable --now nftables
+X systemctl reboot
+V after reboot: nft list ruleset shows your rules
+T See what firewalld generates
+S On a firewalld host, view the nftables rules firewalld created, to understand the relationship.
+X systemctl is-active firewalld
+X nft list ruleset | head -40
+X firewall-cmd --list-all
+V you can see firewalld's rules expressed as nftables
+T Add and delete a rule by handle
+S Add a rule, list with handles, then delete that specific rule by its handle.
+X nft add rule inet filter input tcp dport 8080 accept
+X nft -a list table inet filter        # shows # handle N
+X nft delete rule inet filter input handle <N>
+V the 8080 rule is gone; the rest remain
+
+#D 67|RH134|Networking: bridges, VLANs and routing|Create bridges and VLAN interfaces and manage static routing.
+Q A software bridge (br0) is commonly used to:
++ Connect virtual machines/containers to the physical network as if on the same switch
+- Encrypt traffic
+- Replace DNS
+- Speed up disks
+E VMs attach to the bridge and appear on the LAN directly.
+Q A VLAN interface (eth0.10) lets one physical NIC:
++ Carry multiple isolated networks tagged with 802.1Q VLAN IDs
+- Double its speed
+- Act as a router only
+- Run DHCP
+E The switch port must be a trunk allowing that VLAN.
+Q Which nmcli command creates VLAN 10 on device eth0?
++ nmcli con add type vlan con-name vlan10 ifname eth0.10 dev eth0 id 10
+- nmcli con add type ethernet vlan 10
+- nmcli vlan add eth0 10
+- nmcli con mod eth0 vlan 10
+E The interface name convention is device.vlanid (eth0.10).
+Q A static route added with `ip route add` (not via nmcli) is:
++ Lost on reboot / connection restart unless stored in the profile
+- Permanent
+- Encrypted
+- Applied to all hosts
+E Persist routes with `nmcli con mod ... +ipv4.routes`.
+Q Policy routing with `ip rule` lets you:
++ Choose a routing table based on source address or other selectors
+- Encrypt packets
+- Change the hostname
+- Filter ports
+E Advanced multi-uplink setups use multiple routing tables plus ip rule.
+Q To let a Linux host forward packets between networks you must:
++ Enable IP forwarding (net.ipv4.ip_forward=1) persistently
+- Add a DNS record
+- Open port 53
+- Disable SELinux
+E Set it in /etc/sysctl.d/ and apply with `sysctl --system`.
+C Create a bridge br0 with nmcli.
+A nmcli con add type bridge con-name br0 ifname br0
+E Then attach a NIC: `nmcli con add type ethernet con-name br0-port ifname eth1 master br0`.
+C Create VLAN 20 on eth0 with a static IP.
+A nmcli con add type vlan con-name vlan20 ifname eth0.20 dev eth0 id 20 ipv4.addresses 192.168.20.5/24 ipv4.method manual
+E Bring it up with `nmcli con up vlan20`.
+C Enable IPv4 forwarding right now (runtime).
+A sysctl -w net.ipv4.ip_forward=1
+E Persist it in /etc/sysctl.d/99-forward.conf with `net.ipv4.ip_forward=1`.
+C Add a persistent static route to 10.10.0.0/16 via 192.168.1.254 on profile eth0.
+A nmcli con mod eth0 +ipv4.routes "10.10.0.0/16 192.168.1.254"
+E Apply with `nmcli con up eth0`; verify with `ip route`.
+T Create a bridge for VMs (exam-plus)
+S Build br0, attach a physical NIC to it, give the bridge a static IP, and confirm it carries the IP instead of the NIC.
+X nmcli con add type bridge con-name br0 ifname br0 ipv4.addresses 192.168.1.30/24 ipv4.gateway 192.168.1.1 ipv4.method manual
+X nmcli con add type ethernet con-name br0-port ifname eth1 master br0
+X nmcli con up br0
+X ip -br a
+V br0 holds the IP; eth1 is a port of the bridge; connectivity works
+T VLAN interface
+S Create VLAN 30 on eth0 with its own subnet and verify tagging works to the gateway.
+X nmcli con add type vlan con-name vlan30 ifname eth0.30 dev eth0 id 30 ipv4.addresses 192.168.30.5/24 ipv4.method manual
+X nmcli con up vlan30
+X ip -d link show eth0.30 | grep -i vlan
+X ping -c2 192.168.30.1
+V the vlan interface exists, is tagged 30, and reaches its gateway
+T Turn a host into a router
+S Enable persistent IP forwarding and add the routes so a host bridges two subnets, then confirm forwarding is on.
+X echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/99-forward.conf
+X sysctl --system
+X sysctl net.ipv4.ip_forward
+X firewall-cmd --permanent --add-masquerade && firewall-cmd --reload
+V net.ipv4.ip_forward = 1 and traffic can route between the two attached subnets
+T Persistent static routing
+S Add two persistent routes to a profile and confirm they appear in the routing table after reactivation.
+X nmcli con mod eth0 +ipv4.routes "10.10.0.0/16 192.168.1.254"
+X nmcli con mod eth0 +ipv4.routes "172.16.0.0/12 192.168.1.253"
+X nmcli con up eth0
+X ip route | grep -E '10.10|172.16'
+V both routes are present and survive a reboot
+
+#D 68|RH134|Networking: troubleshooting and diagnostics|Diagnose connectivity, ports, DNS and performance methodically.
+Q What is a sound order for troubleshooting "I can't reach a server"?
++ Link -> IP/route -> gateway -> DNS -> the remote port/service
+- DNS first, always
+- Reboot first
+- Reinstall the NIC driver
+E Work up the stack: is the link up, do I have an IP and route, can I reach the gateway, does the name resolve, is the port open?
+Q Which command shows listening TCP/UDP ports with the owning process?
++ ss -tulpn
+- netstat -r
+- ip route
+- dig
+E t=TCP, u=UDP, l=listening, p=process, n=numeric.
+Q `ping` succeeds to an IP but a website fails by name. The likely problem is:
++ DNS resolution
+- The cable
+- The default route
+- The firewall on your host
+E Test with `dig <name>` or `getent hosts <name>`.
+Q Which tool combines traceroute and ping to show per-hop loss over time?
++ mtr
+- ss
+- ethtool
+- nmcli
+E mtr is excellent for spotting a flaky hop.
+Q `ethtool eth0` is used to check:
++ Link speed, duplex and whether the link is detected on a NIC
+- DNS servers
+- Firewall rules
+- Routes
+E A half-duplex or down link explains many "slow/no network" issues.
+Q Where do you look for NetworkManager errors during troubleshooting?
++ journalctl -u NetworkManager
+- /var/log/dns
+- /etc/hosts
+- dmesg only
+E Add `-b` for this boot, `-f` to follow live while you reactivate a connection.
+Q `getent hosts server1` is useful because it:
++ Resolves a name using the system's full nsswitch order (files + DNS), like real apps do
+- Only queries DNS
+- Only reads /etc/hosts
+- Pings the host
+E It reflects what applications actually see, unlike a raw DNS query.
+C Show all interfaces, their state and IPs in one short line each.
+A ip -br a
+A ip -br addr
+E `ip -br link` shows just link state; great for a quick health check.
+C Show the routing table including the default gateway.
+A ip route
+A ip route show
+E The default route line (`default via ...`) is the gateway.
+C Test whether TCP port 443 is open on a remote host without extra tools.
+A nc -zv 192.168.1.50 443
+A timeout 3 bash -c 'echo > /dev/tcp/192.168.1.50/443 && echo open'
+E `nc -z` scans without sending data; authorized targets only.
+C Follow NetworkManager's log live while you reactivate a connection.
+A journalctl -u NetworkManager -f
+E In another terminal run `nmcli con up <name>` and watch the messages.
+T Methodical connectivity triage (exam-plus)
+S A host cannot reach an internal server by name. Work the stack: check link, IP/route, gateway, DNS, then the remote port, and identify the failing layer.
+X ip -br a; ip -br link            # link + IP
+X ip route                          # default route present?
+X ping -c2 $(ip route | awk '/default/{print $3}')   # gateway reachable?
+X getent hosts server1              # does the name resolve?
+X nc -zv server1 22                 # is the service port open?
+V you can state which layer is broken and the fix
+T DNS troubleshooting
+S Diagnose a name that will not resolve: check the resolver, query directly, and confirm the search domain.
+X cat /etc/resolv.conf
+X dig server1.example.com +short
+X getent hosts server1.example.com
+X nmcli dev show | grep -i dns
+V you can tell whether it is a resolver, record, or search-domain problem
+T Port and service check
+S Find what is listening locally, then verify a remote host's port is reachable from here.
+X ss -tulpn
+X ss -tulpn | grep :443
+X nc -zv 192.168.1.50 443
+V you know which local ports listen and whether the remote port is open
+T Capture and read traffic for a stubborn issue
+S On an authorized host, capture a few packets of a failing connection to see where it stops.
+X sudo tcpdump -i eth0 -n host 192.168.1.50 and port 443 -c 20
+X # look for SYN with no SYN-ACK (blocked/no service) vs RST (refused)
+V you can interpret the handshake to locate the failure
+T Link-layer check
+S Confirm a NIC's link, speed and duplex, and review recent driver/link messages.
+X ethtool eth0 | grep -Ei 'speed|duplex|link detected'
+X journalctl -k | grep -i eth0 | tail
+V you can confirm the physical link is healthy or spot a flapping NIC

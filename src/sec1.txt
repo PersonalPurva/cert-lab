@@ -1,0 +1,328 @@
+#D 1|1 Concepts|The CIA triad and security goals|Compare and contrast the core security concepts that every other topic builds on.
+Q What does the "C" in the CIA triad stand for?
++ Confidentiality — data is seen only by those authorized
+- Control
+- Compliance
+- Continuity
+E CIA = Confidentiality, Integrity, Availability. It is the foundation of every security decision.
+Q Encrypting a hard drive primarily protects which part of the CIA triad?
++ Confidentiality
+- Integrity
+- Availability
+- Authentication
+E Encryption stops unauthorized reading. Hashing protects integrity; backups and redundancy protect availability.
+Q A hash value is used to verify that a file has not changed. Which goal is this?
++ Integrity
+- Confidentiality
+- Availability
+- Non-repudiation
+E If the hash still matches, the data is intact. A changed byte changes the hash.
+Q Which concept ensures a sender cannot later deny sending a message?
++ Non-repudiation
+- Confidentiality
+- Availability
+- Authorization
+E Digital signatures provide non-repudiation because only the sender holds the private key.
+Q A DDoS attack most directly threatens which security goal?
++ Availability
+- Confidentiality
+- Integrity
+- Authentication
+E Flooding a service so real users cannot reach it is an availability attack.
+Q What is the difference between authentication and authorization?
++ Authentication proves who you are; authorization decides what you may do
+- They are the same
+- Authorization proves identity; authentication grants access
+- Authentication is only for administrators
+E You authenticate (log in), then the system authorizes (checks permissions).
+Q Which term describes the assurance that a system or data is available when needed?
++ Availability
+- Integrity
+- Confidentiality
+- Accounting
+E Achieved with redundancy, backups, failover and DDoS protection.
+Q In AAA, what does the third A (Accounting) provide?
++ A record of what a user did, for auditing
+- Faster authentication
+- Automatic authorization
+- Anti-malware
+E Authentication, Authorization, Accounting — logs and audit trails are the accounting piece.
+C On Linux, generate a SHA-256 hash of the file report.pdf to check its integrity.
+A sha256sum report.pdf
+E Compare the value later; a single changed bit produces a completely different hash.
+T Prove integrity with hashing
+S Create a file, hash it, change one character, and hash it again to see the value change completely.
+X echo "salary: 50000" > payroll.txt
+X sha256sum payroll.txt
+X sed -i 's/50000/90000/' payroll.txt
+X sha256sum payroll.txt
+V the two hashes are completely different
+T Map controls to the CIA triad
+S For each control, write down which CIA goal it mainly serves: full-disk encryption, RAID, a load balancer, a digital signature, a firewall rule blocking a port, a daily backup.
+H One control can serve more than one goal, but pick the primary.
+X # encryption -> Confidentiality
+X # RAID / load balancer / backup -> Availability
+X # digital signature / file hash -> Integrity (and signatures add non-repudiation)
+V you can justify each mapping in one sentence
+T Spot the goal being attacked
+S For each scenario name the CIA goal harmed: (a) ransomware encrypts your files, (b) an attacker reads your email, (c) a hacker alters a bank balance.
+X # (a) Availability (you can't reach your data) -- and Confidentiality if copied
+X # (b) Confidentiality
+X # (c) Integrity
+V you can explain each choice
+
+#D 2|1 Concepts|Security control types|Categorise controls by type (technical, managerial, operational, physical) and function (preventive, detective, corrective, etc.).
+Q A firewall is which control TYPE?
++ Technical (also called logical)
+- Managerial
+- Physical
+- Operational
+E Technical controls are enforced by technology. A security policy is managerial; a guard is physical.
+Q A written security policy is which control type?
++ Managerial (administrative)
+- Technical
+- Physical
+- Compensating
+E Managerial controls are the policies and procedures that direct the security program.
+Q Security guards, fences and locks are which control type?
++ Physical
+- Technical
+- Managerial
+- Detective
+E Physical controls protect the tangible world — buildings, hardware, people.
+Q A backup is which control FUNCTION?
++ Corrective — it restores after an incident
+- Preventive
+- Deterrent
+- Detective
+E Corrective controls fix or recover. Backups let you recover from ransomware or hardware failure.
+Q Motion-sensor lights and warning signs are which control function?
++ Deterrent — they discourage an attacker from trying
+- Preventive
+- Corrective
+- Detective
+E A deterrent influences behaviour; a preventive control actually blocks the action.
+Q Which control function is an intrusion DETECTION system (IDS)?
++ Detective
+- Preventive
+- Corrective
+- Deterrent
+E An IDS alerts you that something happened. An IPS that blocks it is preventive.
+Q What is a compensating control?
++ An alternative control used when the primary control is not feasible
+- A control that pays for damages
+- A physical control only
+- A control that replaces all others permanently
+E Example: if you cannot patch a legacy server, you isolate it on its own VLAN as a compensating control.
+Q A door lock is which control function?
++ Preventive
+- Detective
+- Corrective
+- Compensating
+E It prevents unauthorized entry. A camera that records entry would be detective.
+T Classify controls two ways
+S For each item give both its TYPE and its FUNCTION: antivirus software, a CCTV camera, an incident-response plan, a bollard, encryption, a re-imaging procedure.
+X # antivirus -> Technical / Preventive (and Detective)
+X # CCTV -> Physical / Detective (Deterrent when visible)
+X # IR plan -> Managerial / Corrective
+X # bollard -> Physical / Preventive (Deterrent)
+X # encryption -> Technical / Preventive
+X # re-imaging -> Operational / Corrective
+V you can defend each pair
+T Choose a compensating control
+S A vendor app requires an outdated TLS version you cannot fix. List three compensating controls to reduce the risk.
+X # isolate the server on its own VLAN with strict firewall rules
+X # put it behind a reverse proxy that terminates modern TLS
+X # increase monitoring/logging and restrict who can reach it
+V each control reduces exposure without changing the app
+
+#D 3|1 Concepts|Change management and zero trust|Explain the importance of change management and the zero-trust model.
+Q Why does security care about change management?
++ Unplanned or untracked changes are a top cause of outages and new vulnerabilities
+- It slows attackers down directly
+- It replaces the need for backups
+- It is only about software licensing
+E Formal change control means changes are reviewed, approved, tested and reversible.
+Q What is a "rollback plan" in change management?
++ A documented way to undo a change if it causes problems
+- A plan to attack a rolled-out system
+- A backup schedule
+- A list of approved vendors
+E Never deploy a change you cannot back out of.
+Q In the zero-trust model, what is the core principle?
++ Never trust, always verify — every request is authenticated and authorized regardless of location
+- Trust everything inside the firewall
+- Trust remote users more than local users
+- Encrypt nothing internally
+E Zero trust removes the idea of a trusted internal network.
+Q In zero-trust terms, what is the Policy Enforcement Point (PEP)?
++ The component that actually allows or blocks the request
+- The database of user passwords
+- The place policies are written
+- The VPN concentrator
+E The Policy Decision Point (PDP) decides; the PEP enforces the decision.
+Q What does "least privilege" mean?
++ Give each user or process only the access it needs to do its job
+- Give admins access to everything
+- Remove all access by default forever
+- Only apply to service accounts
+E It limits the damage a compromised account can do.
+Q What is microsegmentation?
++ Dividing the network into small zones so a breach in one cannot spread freely
+- Making network cables shorter
+- Splitting a hard disk into partitions
+- Using smaller subnets for Wi-Fi only
+E It supports zero trust by limiting lateral movement.
+Q Why is a "maintenance window" used?
++ To make disruptive changes at a planned low-impact time with approvals in place
+- To let attackers in safely
+- To avoid documenting changes
+- To disable logging temporarily
+E Changes outside approved windows are a red flag.
+C On Linux, show the last changes made to a Git-tracked config repo (change history).
+A git log --oneline
+A git log
+E Version control is a simple, powerful change-management tool for configs.
+T Design a change request
+S Write a one-page change request to upgrade a production web server's TLS: include purpose, risk, backout/rollback plan, test plan, and approval step.
+X # Purpose: enable TLS 1.3, disable TLS 1.0/1.1
+X # Risk: old clients may fail; mitigation: notify + test
+X # Rollback: keep old config file, restore + restart on failure
+X # Test: staging server first, then curl -v to confirm TLS 1.3
+X # Approval: change advisory board sign-off, maintenance window
+V the request could actually be approved and reversed
+T Apply least privilege
+S On a Linux box, find a service running as root that should not, and describe how to run it as a dedicated low-privilege user instead.
+X ps -eo user,comm | sort | uniq -c | sort -rn | head
+X # create a service account:  useradd -r -s /sbin/nologin appsvc
+X # set the unit's User=appsvc and restrict its file permissions
+V the service no longer needs root
+
+#D 4|2 Threats|Threat actors and motivations|Compare threat actors, their attributes and motivations.
+Q Which threat actor typically has the most resources and patience?
++ Nation-state (APT)
+- Script kiddie
+- Hacktivist
+- Insider by accident
+E Advanced Persistent Threats are well-funded and pursue long-term goals like espionage.
+Q A "script kiddie" is best described as:
++ An unskilled attacker using tools written by others
+- A government cyber unit
+- A malicious insider
+- An ethical hacker
+E Low skill, low resources, but still dangerous with off-the-shelf tools.
+Q What primarily motivates a hacktivist?
++ A political or social cause
+- Financial gain only
+- Nation-state espionage
+- Nothing; it is random
+E Hacktivists deface sites or leak data to make a statement.
+Q Which term describes a trusted employee who intentionally causes harm?
++ Malicious insider
+- Script kiddie
+- APT
+- Shadow IT
+E Insiders are dangerous because they already have access and knowledge.
+Q What is "shadow IT"?
++ Hardware or software used inside an organization without IT approval
+- A hacking group
+- A backup data center
+- Malware that hides in shadows
+E Shadow IT (like an unapproved cloud app) creates unmanaged risk.
+Q Which attacker attribute describes whether they are inside or outside the organization?
++ Internal vs external
+- Sophistication
+- Funding
+- Intent
+E Actor attributes include internal/external, resources/funding, and level of sophistication.
+Q An organized crime group's usual motivation is:
++ Financial gain
+- Political protest
+- Curiosity
+- Improving security
+E They run ransomware and fraud operations for money.
+Q What is threat intelligence used for?
++ Understanding likely attackers and their techniques to prepare defenses
+- Attacking competitors
+- Replacing firewalls
+- Encrypting backups
+E Feeds and reports (e.g., MITRE ATT&CK) map real-world adversary behavior.
+T Build a threat-actor profile
+S For your own scenario (a small online shop), list the two most likely threat actors, their motivation, capability, and one control that raises their cost.
+X # e.g. organized crime -> money -> ransomware -> offline backups + MFA
+X # e.g. script kiddie -> notoriety -> automated scans -> patching + WAF
+V each actor has a matching control
+T Explore MITRE ATT&CK
+S Open attack.mitre.org and pick one technique (e.g., Phishing). Note its ID, one detection idea, and one mitigation.
+H You can browse it read-only; no account needed.
+X # e.g. T1566 Phishing -> detect: email gateway + user reports
+X #                    -> mitigate: user training, link rewriting, MFA
+V you can name a real technique ID and a defense
+
+#D 5|2 Threats|Social engineering|Explain common social-engineering techniques and why they work.
+Q What is phishing?
++ Fraudulent messages that trick users into revealing data or clicking malicious links
+- A network scanning tool
+- A type of firewall
+- Encryption of email
+E Phishing is the most common initial attack vector.
+Q "Spear phishing" differs from phishing because it is:
++ Targeted at a specific person or organization with personalized detail
+- Sent to millions randomly
+- Only done by phone
+- Always harmless
+E Whaling is spear phishing aimed at executives ("big fish").
+Q An attacker calls pretending to be IT support to get a password. This is:
++ Vishing (voice phishing)
+- Smishing
+- Tailgating
+- Watering hole
+E Smishing uses SMS; vishing uses voice calls.
+Q Following an employee through a secure door without badging in is:
++ Tailgating
+- Phishing
+- Pretexting
+- Shoulder surfing
+E A physical social-engineering attack. Mantraps and turnstiles reduce it.
+Q What is "pretexting"?
++ Inventing a believable scenario to gain trust and information
+- Sending malware
+- Guessing passwords
+- Physical theft
+E "I'm from the bank's fraud team..." is a pretext.
+Q Which principle explains why urgency works in scams ("Act now or your account closes")?
++ Urgency/scarcity pressure that bypasses careful thinking
+- Least privilege
+- Non-repudiation
+- Defense in depth
+E Attackers exploit authority, urgency, familiarity, and fear.
+Q A "watering hole" attack means:
++ Compromising a website the target group is known to visit
+- Poisoning a water supply
+- Flooding a network
+- Stealing a laptop
+E The attacker waits for victims at a site they trust.
+Q What is the best single defense against social engineering?
++ Security-awareness training combined with verification procedures
+- A faster firewall
+- Longer passwords only
+- Disabling email
+E People are the target, so people must be trained and given a way to verify.
+T Analyze a phishing email
+S Take a suspicious email (real or sample) and list five red flags an analyst would flag.
+X # mismatched sender domain, generic greeting, urgent threat,
+X # link text not matching the real URL (hover to check),
+X # unexpected attachment, spelling errors, request for credentials
+V you found at least five indicators
+T Inspect a link safely
+S Without clicking, reveal where a shortened or masked link really points, using the terminal.
+H curl -sI follows headers; use -L to see redirects, but stop before loading content.
+X curl -sI "https://example.com/login" | head
+X # or expand a shortener:  curl -sI https://bit.ly/xxxx | grep -i location
+V you can state the real destination host
+T Report-and-verify drill
+S Write the 3-step procedure a user should follow when they suspect a phishing message.
+X # 1. Do not click or reply
+X # 2. Report it (phishing button / security@company)
+X # 3. Verify any request through a known official channel
+V the steps stop the attack and preserve evidence

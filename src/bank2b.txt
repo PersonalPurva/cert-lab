@@ -1,0 +1,336 @@
+#D 18|RH124|RPM and DNF packages|Install and remove RPM software packages; query the RPM database.
+C Find which installed package owns the file /etc/ssh/sshd_config.
+A rpm -qf /etc/ssh/sshd_config
+A dnf provides /etc/ssh/sshd_config
+E `rpm -qf` only looks at installed packages; `dnf provides` also searches repositories.
+C List the configuration files that belong to the chrony package.
+A rpm -qc chrony
+E -qc lists config files, -qd docs, -ql all files, -qi package info.
+C Find which package provides the semanage command, even if it is not installed yet.
+A dnf provides semanage
+A dnf provides */semanage
+A dnf provides '*/semanage'
+A dnf whatprovides semanage
+A yum provides semanage
+E The answer is policycoreutils-python-utils. You will need it for SELinux tasks.
+Q What is the advantage of `dnf install ./pkg.rpm` over `rpm -ivh pkg.rpm`?
++ dnf also installs the dependencies from the enabled repositories
+- rpm cannot install local files
+- dnf skips the signature check
+- There is no difference
+E rpm only reports missing dependencies and stops.
+C List every installed package with "http" in its name.
+A rpm -qa | grep http
+A rpm -qa '*http*'
+A dnf list installed | grep http
+E rpm -qa prints every installed package.
+Q What does `dnf history undo 12` do?
++ Reverses the changes made by transaction 12
+- Deletes history entry 12
+- Repeats transaction 12
+- Shows the details of transaction 12
+E `dnf history` lists transactions and `dnf history info 12` shows one.
+C Install the package group "Development Tools".
+A dnf group install "Development Tools"
+A dnf group install 'Development Tools'
+A dnf groupinstall "Development Tools"
+A yum groupinstall "Development Tools"
+E `dnf group list` shows the available groups.
+Q What happens to the running kernel when `dnf update` installs a newer kernel?
++ The new kernel is added next to the old ones and used after a reboot
+- The old kernel is removed immediately
+- The system reboots automatically
+- Kernels are never updated by dnf
+E Kernels are "install-only" packages, so you can boot an older one from GRUB if the new one fails.
+C Remove the httpd package.
+A dnf remove httpd
+A dnf erase httpd
+A yum remove httpd
+E dnf also removes packages that depend on httpd. Read the list before confirming.
+T Query the RPM database
+S Answer with rpm commands only: which package owns /usr/bin/ls, which files does openssh-server install, where are its config files, and when was it installed?
+X rpm -qf /usr/bin/ls
+X rpm -ql openssh-server
+X rpm -qc openssh-server
+X rpm -qi openssh-server | grep -i 'install date'
+V rpm -q openssh-server
+T Install from a local RPM file
+S Download the tree package as an .rpm file into /root/rpms without installing it. Inspect the file, then install it from the local file.
+X mkdir -p /root/rpms && cd /root/rpms
+X dnf download tree
+X rpm -qip tree-*.rpm
+X rpm -qlp tree-*.rpm
+X dnf install -y ./tree-*.rpm
+V rpm -q tree && tree -L 1 /etc | head
+T Use dnf history
+S Install the packages zsh and tmux in one transaction, find that transaction in the history, then undo it.
+X dnf install -y zsh tmux
+X dnf history
+X dnf history info last
+X dnf history undo last -y
+V rpm -q zsh tmux
+T Work with package groups
+S List the available groups, show what "Development Tools" contains, and install it.
+X dnf group list
+X dnf group info "Development Tools"
+X dnf group install -y "Development Tools"
+V rpm -q gcc make
+
+#D 19|RH124|Repositories and Flatpak|Configure access to RPM repositories and Flatpak repositories; install and remove Flatpak packages.
+Q Where do DNF repository definitions go?
++ /etc/yum.repos.d/ in files ending in .repo
+- /etc/dnf/repos/
+- /etc/dnf/dnf.conf only
+- /var/lib/dnf/repos/
+E Every file in /etc/yum.repos.d/ ending in `.repo` is read. The file name does not matter.
+Q Which set of lines is enough for a working repository section?
++ [id], name, baseurl, enabled=1 and gpgcheck (0 or 1 with a gpgkey)
+- [id] and enabled=1 only
+- name and mirrorlist only
+- baseurl and priority only
+E A typo in baseurl is the most common exam mistake. Test with `dnf repolist` and install a package.
+C Add a repository for http://repo.lab.example.com/BaseOS with dnf config-manager.
+A dnf config-manager --add-repo http://repo.lab.example.com/BaseOS
+A dnf config-manager --add-repo=http://repo.lab.example.com/BaseOS
+E It writes a new .repo file. If the task asks for gpgcheck=0, edit the file afterwards.
+C List the enabled repositories.
+A dnf repolist
+A dnf repolist enabled
+A yum repolist
+E `dnf repolist all` includes the disabled ones.
+Q What is the baseurl for a BaseOS repository on a DVD mounted at /mnt/iso?
++ file:///mnt/iso/BaseOS
+- /mnt/iso/BaseOS
+- iso:///mnt/iso/BaseOS
+- file://mnt/iso/BaseOS
+E `file://` plus the absolute path `/mnt/iso/...` gives three slashes.
+C Add the Flathub remote only if it is not already configured.
+A flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+A flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+E In the exam, use the remote name and URL the task gives you.
+C List the configured Flatpak remotes.
+A flatpak remotes
+A flatpak remote-list
+E `flatpak remote-ls <remote>` lists the apps a remote offers.
+C Install the app org.gnome.Calculator from the flathub remote.
+A flatpak install flathub org.gnome.Calculator
+A flatpak install -y flathub org.gnome.Calculator
+E `flatpak list` shows installed apps; `flatpak run <app-id>` starts one.
+Q Where does `flatpak install` put apps if you do not pass --user?
++ System-wide, for all users (needs admin rights)
+- Only in your home directory
+- In /opt/flatpak for root only
+- In /tmp until the next reboot
+E `--user` installs just for you, under ~/.local/share/flatpak.
+C Uninstall the org.gnome.Calculator Flatpak app.
+A flatpak uninstall org.gnome.Calculator
+A flatpak uninstall -y org.gnome.Calculator
+E `flatpak uninstall --unused` removes runtimes that no app needs any more.
+T Local repository from the RHEL ISO
+S Attach the RHEL 10 ISO to your VM. Mount it permanently at /mnt/iso and create /etc/yum.repos.d/local.repo with BaseOS and AppStream repositories from it. Install httpd from it to prove it works.
+X mkdir /mnt/iso
+X echo '/dev/sr0  /mnt/iso  iso9660  ro,defaults  0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+X vim /etc/yum.repos.d/local.repo
+X # [BaseOS]
+X # name=BaseOS
+X # baseurl=file:///mnt/iso/BaseOS
+X # enabled=1
+X # gpgcheck=0
+X #
+X # [AppStream]
+X # name=AppStream
+X # baseurl=file:///mnt/iso/AppStream
+X # enabled=1
+X # gpgcheck=0
+X dnf clean all
+V dnf repolist
+V dnf install -y httpd
+T Network repositories (exam style)
+S On node2, publish the ISO over HTTP by linking /mnt/iso into /var/www/html/rhel10. Then on node1, configure repos BaseOS and AppStream pointing to http://node2/rhel10/BaseOS and http://node2/rhel10/AppStream.
+X # node2:
+X dnf install -y httpd && systemctl enable --now httpd
+X mkdir -p /var/www/html/rhel10 && mount --bind /mnt/iso /var/www/html/rhel10
+X firewall-cmd --permanent --add-service=http && firewall-cmd --reload
+X # node1:
+X vim /etc/yum.repos.d/exam.repo
+X # [BaseOS]
+X # name=BaseOS
+X # baseurl=http://node2/rhel10/BaseOS
+X # enabled=1
+X # gpgcheck=0
+X # (same block for [AppStream] with /AppStream)
+V dnf repolist && dnf install -y tree
+T Flatpak end to end
+S Install the flatpak package, add the Flathub remote, search for a calculator app, install it system-wide, list installed apps, and uninstall it. (Needs internet on the VM.)
+X dnf install -y flatpak
+X flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+X flatpak search calculator
+X flatpak install -y flathub org.gnome.Calculator
+X flatpak list
+X flatpak uninstall -y org.gnome.Calculator
+V flatpak remotes
+T Enable and disable repositories
+S Disable the AppStream repo, see that httpd can no longer be found, then enable it again. Also try a single command that ignores it only once.
+X dnf config-manager --set-disabled AppStream
+X dnf info httpd
+X dnf config-manager --set-enabled AppStream
+X dnf --disablerepo=AppStream info httpd
+V dnf repolist all
+
+#D 20|RH124|Archives and secure file transfer|Archive, compress, unpack and uncompress files with tar, gzip and bzip2; securely transfer files between systems.
+C Create the gzip-compressed archive /root/etc.tar.gz of /etc.
+A tar -czf /root/etc.tar.gz /etc
+A tar czf /root/etc.tar.gz /etc
+A tar -czvf /root/etc.tar.gz /etc
+A tar -zcf /root/etc.tar.gz /etc
+A tar -zcvf /root/etc.tar.gz /etc
+E c = create, z = gzip, f = file name, v = list files as they are added.
+C Create the bzip2-compressed archive /root/local.tar.bz2 of /usr/local.
+A tar -cjf /root/local.tar.bz2 /usr/local
+A tar cjf /root/local.tar.bz2 /usr/local
+A tar -cjvf /root/local.tar.bz2 /usr/local
+A tar -jcf /root/local.tar.bz2 /usr/local
+A tar -jcvf /root/local.tar.bz2 /usr/local
+E j = bzip2. The bzip2 package must be installed.
+Q Which tar option compresses with xz?
++ -J
+- -x
+- -X
+- -z
+E Summary: -z gzip (.gz), -j bzip2 (.bz2), -J xz (.xz).
+C List the contents of /root/etc.tar.gz without extracting it.
+A tar -tzf /root/etc.tar.gz
+A tar -tf /root/etc.tar.gz
+A tar tf /root/etc.tar.gz
+A tar -tvf /root/etc.tar.gz
+A tar -tzvf /root/etc.tar.gz
+E Modern tar detects the compression when reading, so -z is optional here.
+C Extract /root/etc.tar.gz into the existing directory /tmp/restore.
+A tar -xzf /root/etc.tar.gz -C /tmp/restore
+A tar -xf /root/etc.tar.gz -C /tmp/restore
+A tar xf /root/etc.tar.gz -C /tmp/restore
+A tar -xvf /root/etc.tar.gz -C /tmp/restore
+A tar -xzvf /root/etc.tar.gz -C /tmp/restore
+E `-C` changes to that directory before extracting.
+Q tar prints "Removing leading '/' from member names". What does that mean?
++ Paths are stored relative, so extracting never overwrites the original location by accident
+- The archive is damaged
+- Files in / were skipped
+- You must run tar as root
+E When you extract, the files go under your current directory (or the -C directory).
+C Copy /etc/hosts into /tmp on serverb, logging in as root over SSH.
+A scp /etc/hosts root@serverb:/tmp
+A scp /etc/hosts root@serverb:/tmp/
+E Reverse the arguments to copy from the remote host. Add `-r` for directories.
+Q What does a trailing slash on the source mean in `rsync -av /var/www/ serverb:/backup/www`?
++ The contents of /var/www are copied into /backup/www, not the www directory itself
+- It is ignored
+- Only hidden files are copied
+- rsync deletes files on the target
+E Without the slash you get /backup/www/www.
+Q What does `gzip notes.txt` do?
++ Replaces notes.txt with the compressed notes.txt.gz
+- Creates notes.txt.gz and keeps notes.txt
+- Creates a tar archive
+- Compresses the whole directory
+E Use `gunzip notes.txt.gz` to reverse it, or `gzip -k` to keep the original.
+T Compare compression types
+S Archive /etc three times, with gzip, bzip2 and xz, into /root/backups. Compare the sizes and check each file's type.
+X mkdir -p /root/backups
+X tar -czf /root/backups/etc.tar.gz /etc
+X tar -cjf /root/backups/etc.tar.bz2 /etc
+X tar -cJf /root/backups/etc.tar.xz /etc
+X ls -lh /root/backups
+V file /root/backups/*
+T Backup archive (exam classic)
+S Create /root/backup.tar.bz2 containing /usr/local, compressed with bzip2. Confirm it is valid and lists the expected files.
+X tar -cjf /root/backup.tar.bz2 /usr/local
+V file /root/backup.tar.bz2
+V tar -tjf /root/backup.tar.bz2 | head
+T Restore a single file
+S From /root/backups/etc.tar.gz, restore only etc/hosts into /tmp/restore, and compare it with the live file.
+X mkdir -p /tmp/restore
+X tar -xzf /root/backups/etc.tar.gz -C /tmp/restore etc/hosts
+V diff /tmp/restore/etc/hosts /etc/hosts && echo identical
+T Move files between nodes
+S Copy /root/backup.tar.bz2 from node1 to /tmp on node2 with scp. Sync /etc/yum.repos.d/ from node1 into /root/repos-copy on node2 with rsync. Use sftp to download /etc/hostname from node2.
+X scp /root/backup.tar.bz2 root@node2:/tmp/
+X rsync -av /etc/yum.repos.d/ root@node2:/root/repos-copy/
+X sftp root@node2      # then: get /etc/hostname   and   bye
+V ssh root@node2 'ls -l /tmp/backup.tar.bz2 /root/repos-copy'
+
+#D 21|RH124|Accessing file systems and users on consoles|Mount and inspect file systems; log in and switch users in multi-user targets.
+C List all block devices with their filesystem types and UUIDs.
+A lsblk -f
+A lsblk --fs
+E `lsblk` alone shows sizes and mount points.
+C Show free space on mounted filesystems in human-readable units, including the filesystem type.
+A df -hT
+A df -Th
+E `df` reports filesystems; `du` reports what files use.
+C Show the total disk space used by /var/log.
+A du -sh /var/log
+E -s summary, -h human-readable. `du -h --max-depth=1 /var` lists subdirectories.
+C Mount /dev/vdb1 on /mnt/data for now (not permanently).
+A mount /dev/vdb1 /mnt/data
+E For a permanent mount, add a line to /etc/fstab.
+Q `umount /mnt/data` says "target is busy". What is the usual cause?
++ A process, maybe your own shell, is using files or has its working directory there
+- The filesystem is damaged
+- The disk is full
+- Only root can unmount
+E `cd` out of it, then find other users with `lsof /mnt/data` or `fuser -vm /mnt/data`.
+C Show the UUID of /dev/vdb1.
+A blkid /dev/vdb1
+A lsblk -f /dev/vdb1
+A lsblk -no UUID /dev/vdb1
+E Use the UUID in /etc/fstab. It does not change if disks are renamed.
+Q On a text-only system in multi-user.target, how do you reach a second login console?
++ Press Ctrl+Alt+F2 (F2 to F6 give more consoles)
+- Press Ctrl+Shift+T
+- Run `console 2`
+- Consoles only exist in graphical.target
+E In a VM, send the key combination from the VM window's menu.
+Q Which command shows who is logged in and what each person is running?
++ w
+- id
+- last -x
+- whoami
+E `who` is shorter, `last` shows past logins.
+Q What is the difference between `sudo -i` and `su -`?
++ sudo -i asks for your own password and needs sudo rights; su - asks for root's password
+- They are identical
+- su - only works for regular users
+- sudo -i does not give a login shell
+E Both give a root login shell. Type `exit` to return to your own user.
+T Explore storage usage
+S Show all disks and partitions, see which filesystems are mounted and how full they are, and save the 5 largest directories under /var to /root/var-usage.txt.
+X lsblk -f
+X df -hT
+X du -h --max-depth=1 /var 2>/dev/null | sort -rh | head -6 > /root/var-usage.txt
+V cat /root/var-usage.txt
+T Mount an ISO image
+S Download or copy an ISO file (the RHEL ISO works) and mount it read-only through a loop device at /mnt/image. Browse it, then unmount it.
+X mkdir -p /mnt/image
+X mount -o loop,ro /path/to/file.iso /mnt/image
+X ls /mnt/image
+X umount /mnt/image
+V findmnt /mnt/image || echo unmounted
+T Busy mount point
+S Mount something at /mnt/image, cd into it from a second terminal, and try to unmount it. Find the process that blocks it, fix it, and unmount.
+X umount /mnt/image          # target is busy
+X fuser -vm /mnt/image
+X lsof /mnt/image
+X # leave the directory in the other terminal (cd ~), then:
+X umount /mnt/image
+V findmnt /mnt/image || echo unmounted
+T Log in and switch users on text consoles
+S Switch the system to multi-user.target for now. Log in as harry on tty2, become root with su -, check who is logged in, then return to graphical.target if you have a desktop.
+X systemctl isolate multi-user.target
+X # Ctrl+Alt+F2, log in as harry
+X su -
+X w
+X exit
+X systemctl isolate graphical.target
+V systemctl get-default

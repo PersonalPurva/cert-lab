@@ -1,0 +1,152 @@
+#D 1
+## What the shell is
+When you open a terminal on Linux you are talking to a **shell** — a program that reads the commands you type, asks the kernel to run them, and shows you the result. The default shell on RHEL is **bash** (the Bourne-Again SHell). Everything you do on the RHCSA exam happens through this text interface, so being fast and confident here is the foundation for the whole exam.
+A command line usually has three parts: the **command** (the program to run), its **options** (flags that change how it behaves, like `-l`), and its **arguments** (what it acts on, like a filename). For example in `ls -l /etc`, `ls` is the command, `-l` is an option, and `/etc` is the argument.
+
+## Reading the prompt
+Before every command the shell prints a **prompt**. On RHEL it looks like `[student@servera ~]$`. Read it carefully because it tells you a lot:
+- `student` is the user you are logged in as.
+- `servera` is the hostname of the machine.
+- `~` is your current directory (`~` means your home directory).
+- The final symbol is the most important: `$` means you are a **normal user**, while `#` means you are **root** (the all-powerful administrator). Always glance at this before running admin commands.
+
+## Finding help without the internet
+The exam has **no internet**, so knowing the built-in documentation is essential. Three sources cover almost everything:
+- **man pages** — `man command` opens the manual for a command. Inside, it uses the `less` pager: press Space to page down, `/word` to search, `n` for the next match, and `q` to quit.
+- **man sections** — the manual is split into numbered sections. Section 1 is user commands, section 5 is file formats (like `/etc/fstab`), and section 8 is admin commands. If a name exists in more than one section, pick the one you need: `man 5 passwd` shows the file format, `man 1 passwd` the command.
+- **`--help` and /usr/share/doc** — most commands accept `--help` for a quick summary, and installed packages drop examples and READMEs into `/usr/share/doc/<package>`.
+If you do not know a command's name, search the descriptions with `man -k keyword` (also called `apropos`). If it says "nothing appropriate", build the index once as root with `mandb`.
+
+## Working faster with history and shortcuts
+Bash remembers the commands you type. This saves huge amounts of time:
+- `history` lists past commands; `!42` reruns command number 42; `!!` reruns the previous command (handy as `sudo !!`); `!$` reuses the last argument of the previous command.
+- **Ctrl+R** starts a reverse search — type part of an old command and bash finds it; press Enter to run it.
+- **Tab completion** finishes filenames and command names for you; press Tab twice to see all matches.
+- `type name` tells you whether a name is a shell builtin, an alias, or a program on disk.
+
+#D 2
+## The Filesystem Hierarchy Standard
+Linux organises everything under a single root directory called `/`. There are no drive letters like on Windows — even other disks appear as folders inside this one tree. The layout follows the **Filesystem Hierarchy Standard (FHS)**, so the same directories mean the same thing on any RHEL system. Knowing where things live saves you from hunting during the exam:
+- `/etc` — system-wide **configuration** files.
+- `/home` — regular users' home directories; `/root` is root's home.
+- `/var` — **variable** data that changes as the system runs: logs in `/var/log`, spools, caches.
+- `/usr` — installed software (`/usr/bin`, `/usr/sbin`, libraries, `/usr/share/doc`).
+- `/boot` — the kernel and boot loader files.
+- `/tmp` — temporary files, wiped periodically.
+- `/dev` — device files; `/proc` and `/sys` — live kernel/hardware information.
+
+## Absolute vs relative paths
+A **path** is how you name a file's location. An **absolute path** starts from the root and always begins with `/`, for example `/home/student/notes.txt` — it works no matter where you currently are. A **relative path** is measured from your current directory, for example `notes.txt` or `../reports/q1.txt`. Two special names help you move around: `.` means "the current directory" and `..` means "the parent directory". `~` is a shortcut for your own home directory.
+
+## Moving around and looking
+A few commands are your eyes and feet on the system:
+- `pwd` prints the directory you are standing in ("print working directory").
+- `cd` changes directory: `cd /etc` (absolute), `cd ..` (up one), `cd ~` or just `cd` (home), and `cd -` toggles back to the previous directory.
+- `ls` lists contents. The flags do the work: `-l` gives a detailed long listing, `-a` shows hidden dotfiles, `-h` shows human-readable sizes, `-t` sorts by time, `-R` recurses into subdirectories. You will use `ls -lah` constantly.
+
+## Creating, copying, moving and deleting
+These verbs manage files and directories:
+- `mkdir` makes directories; `mkdir -p a/b/c` builds a whole nested path at once.
+- `touch file` creates an empty file (or updates a file's timestamp).
+- `cp source dest` copies; add `-r` to copy a whole directory tree, and `-a` (archive) to also preserve permissions, ownership and timestamps.
+- `mv` moves a file, or **renames** it if the target is in the same directory.
+- `rm` deletes files — there is **no recycle bin**, it is gone. `rm -r` removes a directory and everything in it, and `rm -f` forces with no prompt. `rm -rf` is powerful and dangerous, so double-check the path.
+Two conveniences save typing: **brace expansion** like `touch file{1..5}.txt` creates file1 through file5, and **globbing** with wildcards where `*` matches any characters, `?` matches exactly one, and `[abc]` matches one character from a set.
+
+#D 3
+## Inodes: the real identity of a file
+Every file on a Linux filesystem is really an **inode** — a numbered record holding the file's data location, permissions, owner, size and timestamps. The **name** you see in a directory is just a label that points to an inode. This idea explains how links work. See the inode number with `ls -i` or `stat`.
+
+## Hard links
+A **hard link** is an additional name pointing at the *same inode*. Both names are equal — neither is "the original" — and the file's data survives until the **last** name is removed. Because a hard link is just another directory entry for the same inode, it cannot cross to another filesystem and cannot point to a directory. The second column of `ls -l` shows the **link count**: how many names point to that inode. Create one with `ln target linkname` (no `-s`).
+
+## Symbolic (soft) links
+A **symbolic link** is different: it is a tiny special file that stores a *path* to another file, like a shortcut. Because it stores a path, it **can** cross filesystems and **can** point to directories — but if the target is deleted or moved, the link is left **dangling** (broken) and `ls -l` shows it in red. Create one with `ln -s target linkname`, and remember the order is always target first, then the link name.
+
+## Finding files with find
+`find` is the most powerful search tool because it walks the filesystem live and can test many properties and then act on the matches. The pattern is `find <where> <tests> <action>`:
+- Tests: `-name '*.conf'`, `-type f` (files) or `-type d` (directories), `-size +100M` (bigger than 100 MiB), `-mtime -1` (changed in the last day), `-user natasha`, `-perm -4000` (SUID bit set).
+- Action: by default it prints matches; `-ls` shows details; `-exec cmd {} \;` runs a command on each match, where `{}` becomes the matched path and `\;` ends the command.
+A very common exam pattern is copying every file owned by a user: `find / -user harry -type f -exec cp -a {} /root/harry/ \; 2>/dev/null`. The `2>/dev/null` hides "Permission denied" errors from directories you cannot read.
+`locate name` is a faster name search using a prebuilt database, but the database can be stale — refresh it with `updatedb`.
+
+#D 4
+## The three standard streams
+Every Linux program automatically has three data streams, each with a number (a "file descriptor"):
+- **stdin** (0) — standard input, where the program reads from (normally the keyboard).
+- **stdout** (1) — standard output, where normal results go (normally the screen).
+- **stderr** (2) — standard error, where error messages go (also the screen by default, but a *separate* stream).
+Keeping output and errors separate is what makes redirection powerful.
+
+## Redirecting output and input
+**Redirection** sends a stream to a file instead of the screen (or reads it from a file):
+- `command > file` sends stdout to a file, **overwriting** it. `command >> file` **appends** instead.
+- `command 2> file` sends only stderr to a file. `command 2>> file` appends errors.
+- `command > out 2>&1` sends stdout to `out`, then sends stderr to "wherever stdout now points" — so both go to `out`. Order matters here. The shorthand `command &> file` does the same.
+- `command < file` feeds a file into the program's stdin.
+- `/dev/null` is the "black hole": anything sent there is discarded, so `2>/dev/null` throws away errors.
+
+## Pipes: connecting programs
+A **pipe** `|` connects the **stdout** of one command to the **stdin** of the next, letting you build a chain where each tool does one job. For example `ls -l /etc | grep conf | wc -l` lists `/etc`, keeps only lines containing "conf", and counts them. Errors are not sent through a normal pipe unless you first merge them with `2>&1`.
+
+## tee: output to a file and the screen
+Sometimes you want to *save* output and still *see* it. `tee` copies its input to a file **and** to stdout at the same time: `ls -l /etc | tee list.txt` shows the listing and writes it to `list.txt`. Use `tee -a` to append. A key exam habit: only produce exactly what a task asks for — do not add `sort` or other changes unless the task says so, because the grader checks the actual file.
+
+#D 5
+## Reading files without opening an editor
+Often you just want to *look* at a file:
+- `cat file` dumps the whole file to the screen (and can join files: `cat a b > c`).
+- `less file` shows it one screen at a time — Space pages down, `b` pages back, `/word` searches, `q` quits. It is the same pager `man` uses.
+- `head file` shows the first 10 lines (`head -n 20` for 20); `tail` shows the last 10. **`tail -f file` follows a file live** as new lines are added — essential for watching logs such as `tail -f /var/log/secure`.
+
+## echo and viewing variables
+`echo` prints text or the value of a variable: `echo "Hello"`, `echo $PATH`. Combined with redirection it is a quick way to create or append to files: `echo "a line" >> notes.txt`. Variables in bash are written `$NAME`; double quotes `"$NAME"` expand the variable while keeping spaces intact, whereas single quotes `'$NAME'` treat it literally.
+
+## Editing with nano (the easy editor)
+`nano` is a beginner-friendly terminal editor. The important shortcuts are shown at the bottom of the screen: **Ctrl+O** writes (saves) the file, **Ctrl+X** exits. It is fine for quick edits.
+
+## Editing with vim (the exam standard)
+`vim` is the editor to know for the exam because it is always installed. It is **modal**, meaning keys do different things depending on the mode:
+- **Normal (command) mode** is where you start — keys move and edit. `dd` cuts a line, `yy` copies a line, `p` pastes, `u` undoes, `Ctrl+R` redoes, `gg` jumps to the top, `G` to the bottom, `:set nu` shows line numbers.
+- **Insert mode** is for typing text — press `i` to insert before the cursor, `a` to append after it, or `o` to open a new line below. Press **Esc** to return to normal mode.
+- **Command-line mode** starts with `:` — `:w` writes, `:q` quits, `:wq` (or `ZZ`) writes and quits, `:q!` quits without saving, and `:%s/old/new/g` replaces every "old" with "new" in the whole file.
+If you only learn one thing: press **Esc**, then type `:wq` to save and quit, or `:q!` to bail out. Running `vimtutor` once (about 30 minutes) teaches everything you need.
+
+#D 6
+## What grep does
+`grep` searches text for lines matching a pattern and prints those lines. It is the workhorse of log analysis and config inspection. The basic form is `grep pattern file`, and it also reads from a pipe: `command | grep pattern`. Useful options:
+- `-i` ignores case, `-v` inverts the match (lines that do **not** match), `-c` counts matching lines, `-n` shows line numbers, `-w` matches whole words only, `-r` searches recursively through a directory, and `-l` prints only the names of matching files.
+
+## Regular expressions
+A **regular expression** (regex) is a pattern language that makes grep powerful. The core pieces:
+- `^` anchors to the **start** of a line, `$` anchors to the **end**. So `^root` matches lines starting with root, and `bash$` matches lines ending with bash. `^$` matches an empty line.
+- `.` matches any single character; escape it as `\.` to mean a literal dot.
+- `*` means "zero or more of the previous item".
+- With **extended** regex (`grep -E`), you also get `|` (or), `+` (one or more), `?` (optional), and `{n}` (repeat) without needing backslashes. For example `grep -E 'cat|dog'` matches lines containing cat or dog.
+
+## Common real-world patterns
+A few patterns come up again and again:
+- Show what a config file really sets, ignoring comments and blank lines: `grep -Ev '^#|^$' /etc/ssh/sshd_config`.
+- List the users who use the bash shell from `/etc/passwd`: `grep '/bin/bash$' /etc/passwd`.
+- Count failed SSH logins in the security log: `grep -c 'Failed password' /var/log/secure`.
+Combine grep with `cut -d: -f1` to keep just the first colon-separated field (like the username in `/etc/passwd`).
+
+#D 7
+## Users, UIDs and the account files
+Every person or service on the system is a **user account** identified by a number called a **UID**. Three files define accounts:
+- `/etc/passwd` holds one line per user with seven colon-separated fields: `name:x:UID:GID:comment:home:shell`. The password field is just `x` because the real hash lives elsewhere.
+- `/etc/shadow` holds the encrypted password hashes and password-aging information; it is readable only by root.
+- `/etc/group` defines groups.
+On RHEL, **root** is UID 0, system accounts use UIDs 1–999, and the first regular user gets UID **1000** (the range comes from `/etc/login.defs`).
+
+## Groups and the user private group scheme
+A **group** lets you give a set of users the same access. Each user has one **primary group** (used for files they create) and any number of **supplementary groups**. RHEL uses the **user private group** scheme: creating user `harry` also creates a group called `harry` as his primary group. This keeps each user's files private by default while still allowing shared groups for teamwork.
+
+## Creating and modifying accounts
+The core commands:
+- `useradd harry` creates a user (with `-u` to set the UID, `-s` to set the login shell, `-G` to add supplementary groups, `-c` for a comment/full name).
+- `passwd harry` sets or changes a password; `echo 'secret' | passwd --stdin harry` sets it non-interactively (handy in scripts and the exam).
+- `usermod` changes an existing account. The most important rule: to **add** a supplementary group without wiping the others, always use `usermod -aG groupname user` — the `-a` means "append". Leaving out `-a` **replaces** the whole supplementary list.
+- `userdel -r harry` deletes the account **and** its home directory; without `-r` the home directory is left behind.
+- `groupadd`, `groupmod` and `groupdel` manage groups; `id harry` and `getent passwd harry` show what an account looks like.
+A shell of `/sbin/nologin` gives an account that cannot log in interactively — used for service accounts.

@@ -1,0 +1,492 @@
+#D 57|RH134|Containers: images and registries|Find, inspect and retrieve container images with podman and skopeo.
+Q What is Podman?
++ A daemonless tool to run and manage OCI containers, largely drop-in compatible with Docker
+- A hypervisor for virtual machines
+- A package manager
+- A systemd replacement
+E Podman needs no background daemon and can run rootless, which the RHCSA exam favors.
+Q Which file controls which registries Podman searches for unqualified image names?
++ /etc/containers/registries.conf
+- /etc/docker/daemon.json
+- /etc/podman.conf
+- ~/.registries
+E The unqualified-search-registries list decides where a bare name like "nginx" is looked up.
+Q What does `skopeo inspect docker://registry.access.redhat.com/ubi9/ubi` do?
++ Shows an image's metadata (layers, labels, digest) WITHOUT pulling it
+- Pulls and runs the image
+- Deletes the image
+- Builds the image
+E skopeo works on remote images directly, so you can inspect before downloading.
+Q A fully qualified image name looks like:
++ registry.access.redhat.com/ubi9/ubi:latest
+- ubi
+- ubi9-latest
+- /images/ubi9
+E It is registry/namespace/name:tag. Using the full name avoids ambiguity.
+Q Where does a rootless user's pulled images get stored?
++ Under ~/.local/share/containers/storage
+- /var/lib/docker
+- /etc/containers
+- /tmp
+E Rootful storage is /var/lib/containers/storage; each rootless user has their own.
+Q What does an image "tag" represent?
++ A specific version/label of an image (e.g. :latest, :9.3)
+- The image owner
+- The registry name
+- The container ID
+E Pin a real version tag for reproducibility; :latest can change under you.
+C Search the configured registries for images named "ubi9".
+A podman search ubi9
+A podman search registry.access.redhat.com/ubi9
+E Results depend on your registries.conf search list.
+C Pull the Red Hat UBI 9 base image.
+A podman pull registry.access.redhat.com/ubi9/ubi
+E Confirm afterward with `podman images`.
+C List the container images stored locally.
+A podman images
+A podman image ls
+E Shows repository, tag, image ID, and size.
+C Inspect a remote image's metadata without downloading it.
+A skopeo inspect docker://registry.access.redhat.com/ubi9/ubi
+E Add `--config` to see the runtime config; great for checking before a pull.
+T Configure a registry and pull (exam-style)
+S Make registry.access.redhat.com a searchable registry, search for ubi9, pull the ubi image, and confirm it is stored locally.
+X grep -n unqualified-search-registries /etc/containers/registries.conf
+X # ensure "registry.access.redhat.com" is in the list (edit if needed)
+X podman search ubi9 | head
+X podman pull registry.access.redhat.com/ubi9/ubi
+V podman images | grep ubi9
+T Inspect an image before and after pulling
+S Compare inspecting an image remotely with skopeo versus locally with podman.
+X skopeo inspect docker://registry.access.redhat.com/ubi9/ubi | head -30
+X podman pull registry.access.redhat.com/ubi9/ubi
+X podman inspect registry.access.redhat.com/ubi9/ubi | head -30
+V you can read the image's labels and digest both ways
+T Log in to a registry
+S Log in to a container registry with your credentials, then confirm the stored login.
+X podman login registry.redhat.io
+X # enter username + token/password
+X cat ${XDG_RUNTIME_DIR}/containers/auth.json 2>/dev/null | head
+V podman login --get-login registry.redhat.io shows your user
+T Copy an image between locations with skopeo
+S Use skopeo to copy an image into local container storage without running it.
+X skopeo copy docker://registry.access.redhat.com/ubi9/ubi containers-storage:ubi9-local
+X podman images | grep ubi9-local
+V the image appears in local storage under the new name
+
+#D 58|RH134|Containers: running and managing|Run, list, stop, start, inspect and remove containers.
+Q Which command runs a container in the background and names it?
++ podman run -d --name web <image>
+- podman start web
+- podman create web
+- podman exec web
+E -d detaches (daemon-like); --name gives it a stable name.
+Q What does `podman ps` show by default?
++ Only currently running containers
+- All containers, running or stopped
+- Only images
+- Only pods
+E Add -a to include stopped containers.
+Q How do you get an interactive shell inside a running container named web?
++ podman exec -it web bash
+- podman run web bash
+- podman attach web sh
+- podman shell web
+E -i keeps stdin open, -t allocates a terminal.
+Q What does `-p 8080:80` do in podman run?
++ Maps host port 8080 to container port 80
+- Runs 8080 containers
+- Limits CPU to 80%
+- Sets a timeout
+E Reach the service at http://host:8080.
+Q Which command shows a container's logs?
++ podman logs web
+- podman cat web
+- podman journal web
+- podman ps web
+E Add -f to follow the logs live.
+Q A stopped container still exists until you:
++ Remove it with podman rm (or run with --rm to auto-remove on exit)
+- Reboot
+- Delete the image
+- Stop it again
+E `podman ps -a` lists stopped containers taking up space.
+Q What does `podman inspect web` provide?
++ Detailed JSON about the container (mounts, network, env, state)
+- Only the logs
+- Only the image name
+- A shell
+E Filter with `--format '{{.State.Status}}'` for one field.
+C Run an nginx container in the background named web, mapping host port 8080 to 80.
+A podman run -d --name web -p 8080:80 nginx
+A podman run -d --name web -p 8080:80 docker.io/library/nginx
+E Test it with `curl http://localhost:8080`.
+C List all containers including stopped ones.
+A podman ps -a
+A podman ps --all
+E Running-only is just `podman ps`.
+C Stop the running container named web.
+A podman stop web
+E Start it again with `podman start web`; restart with `podman restart web`.
+C Remove the container named web (it must be stopped first, or use force).
+A podman rm web
+A podman rm -f web
+E -f stops and removes in one step.
+T Full container lifecycle (exam-style)
+S Run a named nginx container with a port mapping, verify it serves, exec in to look around, read its logs, stop it, start it, then remove it.
+X podman run -d --name web -p 8080:80 nginx
+X curl -s http://localhost:8080 | head -3
+X podman exec -it web bash -c 'ls /usr/share/nginx/html'
+X podman logs web | tail
+X podman stop web && podman start web
+X podman rm -f web
+V podman ps -a shows no "web" container remaining
+T Run a one-shot command in a container
+S Run a UBI container that prints the OS release, then removes itself automatically.
+X podman run --rm registry.access.redhat.com/ubi9/ubi cat /etc/os-release
+V the command output appears and `podman ps -a` shows no leftover container
+T Set environment and inspect it
+S Run a container with a custom environment variable and confirm it is set inside.
+X podman run -d --name envtest -e GREETING=hello registry.access.redhat.com/ubi9/ubi sleep 300
+X podman exec envtest printenv GREETING
+X podman inspect envtest --format '{{.Config.Env}}'
+V the container sees GREETING=hello
+T Interactive container
+S Start an interactive UBI container, create a file inside it, exit, and observe the container has stopped.
+X podman run -it --name shelltest registry.access.redhat.com/ubi9/ubi bash
+X # inside: echo hi > /tmp/note.txt ; cat /tmp/note.txt ; exit
+X podman ps -a | grep shelltest      # Exited
+V you understand the container stops when its main process exits
+
+#D 59|RH134|Containers: persistent storage and environment|Attach host storage to containers with correct SELinux labels.
+Q Why does data written inside a container usually disappear when the container is removed?
++ The container's writable layer is ephemeral; only mounted volumes persist
+- Podman encrypts it
+- The disk is read-only
+- SELinux deletes it
+E Persistent data must live on a mounted host directory or named volume.
+Q Which podman option bind-mounts a host directory into a container?
++ -v /host/path:/container/path
+- -m /host:/container
+- --disk /host:/container
+- -p /host:/container
+E -p is for ports; -v (or --volume) is for storage.
+Q On an SELinux-enforcing host, what does the :Z suffix on a volume do?
++ Relabels the host directory with a private container context so the container can access it
+- Makes it read-only
+- Encrypts it
+- Shares it publicly
+E Without :Z (or :z), SELinux typically denies the container access to the host files.
+Q The difference between :z and :Z on a volume is:
++ :z labels it shared among containers; :Z labels it private to one container
+- :z is read-only, :Z is read-write
+- They are identical
+- :Z disables SELinux
+E Use :Z when only one container should use the directory.
+Q A "named volume" (podman volume create) differs from a bind mount because it:
++ Is managed by Podman under its storage, not a specific host path you choose
+- Cannot persist data
+- Is always read-only
+- Requires root
+E Bind mounts point at an exact host directory; named volumes are Podman-managed.
+Q Which permanent SELinux type should a host directory served by a container have?
++ container_file_t
+- httpd_sys_content_t
+- default_t
+- admin_home_t
+E Set it with semanage fcontext + restorecon so it survives a relabel (better than relying on :Z alone).
+C Run a container mounting host /srv/web into /usr/share/nginx/html with a private SELinux relabel.
+A podman run -d --name web -p 8080:80 -v /srv/web:/usr/share/nginx/html:Z nginx
+E :Z relabels /srv/web to container_file_t for this container.
+C Create a Podman-managed named volume called appdata.
+A podman volume create appdata
+E Inspect it with `podman volume inspect appdata`; list with `podman volume ls`.
+C Permanently label the host directory /srv/web for container use.
+A semanage fcontext -a -t container_file_t '/srv/web(/.*)?'
+E Then apply it with `restorecon -Rv /srv/web`.
+T Persistent web content (exam-style)
+S Serve content from host /srv/web through an nginx container so the page survives removing and recreating the container.
+X mkdir -p /srv/web && echo "Hello from the host" > /srv/web/index.html
+X semanage fcontext -a -t container_file_t '/srv/web(/.*)?' && restorecon -Rv /srv/web
+X podman run -d --name web -p 8080:80 -v /srv/web:/usr/share/nginx/html:Z nginx
+X curl -s http://localhost:8080
+X podman rm -f web
+X podman run -d --name web2 -p 8080:80 -v /srv/web:/usr/share/nginx/html:Z nginx
+V curl http://localhost:8080 still shows "Hello from the host"
+T Use a named volume
+S Create a named volume, mount it in a container, write data, remove the container, and confirm the data persists in a new container.
+X podman volume create appdata
+X podman run --rm -v appdata:/data registry.access.redhat.com/ubi9/ubi bash -c 'echo persisted > /data/file.txt'
+X podman run --rm -v appdata:/data registry.access.redhat.com/ubi9/ubi cat /data/file.txt
+V the second container reads "persisted" written by the first
+T Prove the SELinux label matters
+S Mount a host dir WITHOUT :Z and observe the denial, then fix it with the label.
+X mkdir -p /srv/nolabel && echo test > /srv/nolabel/index.html
+X podman run -d --name bad -p 8081:80 -v /srv/nolabel:/usr/share/nginx/html nginx
+X curl -s http://localhost:8081 | head        # likely 403 / denied
+X ausearch -m AVC -ts recent | tail
+X podman rm -f bad
+X podman run -d --name good -p 8081:80 -v /srv/nolabel:/usr/share/nginx/html:Z nginx
+V curl http://localhost:8081 now serves the file
+T Inspect a container's mounts
+S Run a container with a bind mount and use inspect to confirm the mount source, destination and mode.
+X podman run -d --name m -v /srv/web:/data:Z registry.access.redhat.com/ubi9/ubi sleep 300
+X podman inspect m --format '{{range .Mounts}}{{.Source}} -> {{.Destination}} ({{.Mode}}){{end}}'
+V you can read the mount details from inspect
+
+#D 60|RH134|Containers: building images from a Containerfile|Write a Containerfile and build a custom image with podman build.
+Q What is a Containerfile?
++ A text file of instructions (FROM, RUN, COPY, CMD...) that defines how to build an image
+- A running container
+- A storage volume
+- A registry config
+E It is the same format as a Dockerfile; Podman reads either name.
+Q The first instruction in a Containerfile is normally:
++ FROM <base image>
+- RUN
+- CMD
+- COPY
+E FROM sets the base image every later layer builds on.
+Q What is the difference between CMD and ENTRYPOINT?
++ ENTRYPOINT sets the fixed executable; CMD sets default arguments that are easy to override
+- They are identical
+- CMD runs at build time
+- ENTRYPOINT copies files
+E A common pattern is ENTRYPOINT for the program and CMD for default args.
+Q RUN vs CMD in a Containerfile:
++ RUN executes during the BUILD (creating a layer); CMD runs when the container STARTS
+- Both run at build time
+- Both run at start time
+- RUN runs at start, CMD at build
+E Use RUN to install software; use CMD/ENTRYPOINT to define the runtime process.
+Q Which instruction copies files from your build context into the image?
++ COPY
+- ADD only for URLs
+- MOVE
+- IMPORT
+E COPY src dest; ADD can also fetch URLs/untar, but COPY is preferred for clarity.
+Q What does `podman build -t myapp:1.0 .` do?
++ Builds an image tagged myapp:1.0 from the Containerfile in the current directory
+- Runs a container
+- Pushes to a registry
+- Deletes an image
+E The trailing "." is the build context directory.
+C Build an image tagged webapp:1.0 from the Containerfile in the current directory.
+A podman build -t webapp:1.0 .
+A podman build -t webapp:1.0 -f Containerfile .
+E Confirm with `podman images | grep webapp`.
+C Show the history/layers of the image webapp:1.0.
+A podman history webapp:1.0
+E Each Containerfile instruction that changes the filesystem creates a layer.
+Q Which instruction sets an environment variable baked into the image?
++ ENV KEY=value
+- SET KEY=value
+- EXPORT KEY=value
+- VAR KEY=value
+E ENV values are present at both later build steps and runtime.
+T Build a custom web image (exam-style)
+S Write a Containerfile based on UBI that installs a tiny web server or copies an index page, then build and run it.
+X mkdir -p ~/build && cd ~/build
+X echo "<h1>Purva's container</h1>" > index.html
+X cat > Containerfile <<'EOF'
+X FROM registry.access.redhat.com/ubi9/ubi
+X RUN dnf install -y httpd && dnf clean all
+X COPY index.html /var/www/html/index.html
+X EXPOSE 80
+X CMD ["/usr/sbin/httpd","-DFOREGROUND"]
+X EOF
+X podman build -t webapp:1.0 .
+X podman run -d --name mysite -p 8080:80 webapp:1.0
+V curl -s http://localhost:8080 shows "Purva's container"
+T Understand build layers
+S Build an image, then use history and inspect to see its layers and configured command.
+X cd ~/build && podman build -t webapp:1.0 .
+X podman history webapp:1.0
+X podman inspect webapp:1.0 --format '{{.Config.Cmd}}'
+V you can list the layers and the default command
+T ENV and CMD in practice
+S Write a small Containerfile that sets an ENV variable and a CMD that prints it, then build and run to confirm.
+X mkdir -p ~/envbuild && cd ~/envbuild
+X cat > Containerfile <<'EOF'
+X FROM registry.access.redhat.com/ubi9/ubi
+X ENV WHO=Purva
+X CMD echo "Hello $WHO"
+X EOF
+X podman build -t hello:1.0 .
+X podman run --rm hello:1.0
+V the container prints "Hello Purva"
+T Tag and re-tag an image
+S Build an image, add a second tag, and push (or save) it.
+X cd ~/build && podman build -t webapp:1.0 .
+X podman tag webapp:1.0 webapp:latest
+X podman images | grep webapp
+X podman save -o /root/webapp.tar webapp:1.0
+V both tags exist and the image is saved to a tarball
+
+#D 61|RH134|Containers: running as a systemd service|Configure a rootless container to start automatically at boot with Quadlet.
+Q On RHEL 10, the current recommended way to run a container under systemd is:
++ A Quadlet unit (a .container file) that systemd generates a service from
+- Editing /etc/rc.local
+- podman generate systemd (now the older method)
+- A cron @reboot job
+E Quadlet files live in ~/.config/containers/systemd/ (rootless) or /etc/containers/systemd/ (rootful).
+Q For a ROOTLESS container service to keep running after the user logs out (and start at boot), you must:
++ Enable lingering for that user with loginctl enable-linger <user>
+- Run it as root
+- Add it to /etc/fstab
+- Disable SELinux
+E Without linger, user services stop when the user's last session ends.
+Q A Quadlet file named webapp.container produces a systemd service called:
++ webapp.service
+- webapp.container.service
+- container-webapp
+- webapp.timer
+E systemctl --user start webapp.service starts it; the name matches the file's base name.
+Q Which command must you run after creating or editing a Quadlet unit?
++ systemctl --user daemon-reload (rootless) so systemd regenerates the service
+- podman restart
+- semanage reload
+- firewall-cmd --reload
+E For rootful units in /etc/containers/systemd/, use `systemctl daemon-reload`.
+Q In a Quadlet [Container] section, which key maps a host port to the container?
++ PublishPort=8080:80
+- Ports=8080:80
+- Expose=8080
+- Map=8080:80
+E Other common keys: Image=, Volume=, Environment=.
+Q The older `podman generate systemd --new --name web --files` command:
++ Generates a systemd unit file for an existing container (still seen on RHEL 9)
+- Builds an image
+- Starts a pod
+- Removes a service
+E RHEL 10 favors Quadlet, but knowing generate systemd is still useful.
+C Enable lingering for the current user so rootless services run at boot.
+A loginctl enable-linger $(whoami)
+A loginctl enable-linger $USER
+E Check with `loginctl show-user $USER | grep Linger`.
+C Reload the user systemd manager after adding a Quadlet unit.
+A systemctl --user daemon-reload
+E Then `systemctl --user start <name>.service`.
+C Enable and start a rootless user service named webapp now.
+A systemctl --user enable --now webapp.service
+E For Quadlet-generated services, `enable` may be implicit via [Install]; start is what matters.
+T Rootless container as a service with Quadlet (exam-style)
+S As a regular user, create a Quadlet unit that runs an nginx container on port 8080, enable lingering, and make it start at boot.
+X loginctl enable-linger $USER
+X mkdir -p ~/.config/containers/systemd
+X cat > ~/.config/containers/systemd/webapp.container <<'EOF'
+X [Container]
+X Image=docker.io/library/nginx:latest
+X PublishPort=8080:80
+X [Install]
+X WantedBy=default.target
+X EOF
+X systemctl --user daemon-reload
+X systemctl --user start webapp.service
+V systemctl --user status webapp.service is active; curl http://localhost:8080 works; survives reboot
+T Persistent storage in a Quadlet unit
+S Extend your Quadlet unit to serve content from host ~/webroot with the correct SELinux label.
+X mkdir -p ~/webroot && echo "quadlet page" > ~/webroot/index.html
+X # add to the [Container] section:  Volume=%h/webroot:/usr/share/nginx/html:Z
+X systemctl --user daemon-reload && systemctl --user restart webapp.service
+V curl http://localhost:8080 shows "quadlet page" and it persists across restarts
+T Legacy method: generate systemd
+S For an existing running container, generate a systemd unit the older way and enable it as a user service.
+X podman run -d --name legacyweb -p 8081:80 nginx
+X mkdir -p ~/.config/systemd/user
+X podman generate systemd --new --name legacyweb --files
+X mv container-legacyweb.service ~/.config/systemd/user/
+X systemctl --user daemon-reload && systemctl --user enable --now container-legacyweb.service
+V systemctl --user is-active container-legacyweb.service is active
+T Verify a service survives reboot
+S Confirm your rootless container service comes back after a reboot (thanks to linger).
+X loginctl show-user $USER | grep Linger      # Linger=yes
+X systemctl --user is-enabled webapp.service 2>/dev/null || echo "started via Quadlet"
+X sudo reboot
+X # after login:
+X systemctl --user status webapp.service
+V the container is running again after the reboot without you starting it
+
+#D 62|RH134|Containers: management, pods and troubleshooting|Consolidate container skills: pods, auto-update, cleanup and troubleshooting.
+Q What is a Podman "pod"?
++ A group of containers that share networking (like a Kubernetes pod)
+- A storage volume
+- A registry
+- A single image
+E Containers in a pod reach each other on localhost and share published ports.
+Q Which command removes all stopped containers, unused images and networks to reclaim space?
++ podman system prune
+- podman clean
+- podman gc
+- podman rm --old
+E Add -a to also remove unused images; it prompts before deleting.
+Q `podman stats` shows:
++ Live CPU, memory and I/O usage per container
+- The image layers
+- The logs
+- The registries
+E Useful for spotting a runaway container.
+Q How do you copy a file from a running container to the host?
++ podman cp web:/etc/nginx/nginx.conf ./nginx.conf
+- podman get web /etc/nginx/nginx.conf
+- podman pull web:/etc
+- podman export web
+E `podman cp` works in both directions, like docker cp.
+Q A container keeps exiting immediately. The best first troubleshooting step is:
++ Check its logs with podman logs <name>
+- Reboot the host
+- Delete the image
+- Disable SELinux
+E The logs usually show the crash reason (bad config, missing file, permission).
+Q `podman inspect` with `--format` is used to:
++ Extract a specific field (like the IP or state) from a container's JSON
+- Edit the container
+- Restart it
+- Build an image
+E e.g. `--format '{{.NetworkSettings.IPAddress}}'`.
+Q What does `podman auto-update` do (with a label on the container)?
++ Checks the registry and restarts the container if a newer image is available
+- Updates the host OS
+- Rebuilds all images
+- Deletes old containers
+E It pairs with a systemd timer for hands-off image updates.
+C Create a pod named webpod that publishes host port 8080.
+A podman pod create --name webpod -p 8080:80
+E Then run containers with `--pod webpod`.
+C Show live resource usage for all running containers.
+A podman stats
+A podman stats --no-stream
+E --no-stream prints one snapshot instead of a live view.
+C Copy /etc/os-release out of the running container "web" to the current directory.
+A podman cp web:/etc/os-release ./os-release
+E Works while the container is running or stopped.
+T Build a two-container pod (exam-plus)
+S Create a pod publishing port 8080, run a web container inside it, and confirm it is reachable and that both share the pod's network.
+X podman pod create --name webpod -p 8080:80
+X podman run -d --pod webpod --name web nginx
+X podman pod ps
+X curl -s http://localhost:8080 | head -3
+V podman ps shows the container in webpod and the site responds
+T Troubleshoot a crashing container
+S Deliberately run a container with a bad command, read the logs to find why it exits, then fix it.
+X podman run -d --name broken registry.access.redhat.com/ubi9/ubi /bin/nosuchcommand
+X podman ps -a | grep broken        # Exited (127)
+X podman logs broken                # shows "no such file or directory"
+X podman rm broken
+X podman run -d --name fixed registry.access.redhat.com/ubi9/ubi sleep 300
+V podman ps shows "fixed" running; you diagnosed the failure from logs
+T Clean up container resources
+S List everything using space, then prune stopped containers and unused images safely.
+X podman ps -a; podman images; podman volume ls
+X podman container prune -f
+X podman image prune -a -f
+X podman system df
+V podman system df shows reclaimed space
+T Extract and edit a config from a container
+S Copy a config file out of a running container, inspect the container's IP, and copy an edited file back in.
+X podman run -d --name web nginx
+X podman cp web:/etc/nginx/nginx.conf ./nginx.conf
+X podman inspect web --format '{{.NetworkSettings.IPAddress}}'
+X # edit nginx.conf locally, then:
+X podman cp ./nginx.conf web:/etc/nginx/nginx.conf
+V the file is copied both ways and you retrieved the container IP

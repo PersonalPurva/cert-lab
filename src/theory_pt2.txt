@@ -1,0 +1,101 @@
+#D 8
+## The purpose of exploitation
+In a pen test, exploitation exists to **demonstrate the real impact** of a vulnerability within the authorised scope — not to cause maximum damage. You produce a **proof of concept (PoC)** that turns a theoretical finding into a confirmed one, then document it and clean up. The professional mindset is "do no harm": prove the risk with the lowest-impact method, and always confirm the target is in scope before firing an exploit.
+
+## Metasploit basics
+**Metasploit** is a framework that organises exploits and payloads:
+- An **exploit** module abuses a specific vulnerability; a **payload** is the code that runs on the target afterward (for example a shell).
+- A **reverse shell** connects *from* the target back to the tester's listener (useful when the target can't accept inbound connections); a **bind shell** does the opposite.
+- Payloads can be **staged** (delivered in stages, smaller initially) or **stageless** (self-contained).
+`search`, `use`, `set RHOSTS`, and `run` are the typical flow; always read a module's description and impact first.
+
+## Doing it responsibly
+Before running any exploit, understand what it does so you don't cause an outage — untrusted PoC code can be destructive or backdoored, so test in a lab first. After a successful PoC, **document** the evidence (host, timestamp, steps, screenshot, impact) and **clean up** anything you left behind — test accounts, files, implants. Prove it, record it, restore the system.
+
+#D 9
+## Testing authentication strength
+Password attacks in a test show how weak credentials really are, always within scope and ROE (lockouts and account access can disrupt real users). Two broad approaches:
+- **Offline cracking** works on captured **hashes** without touching the live system — no lockouts, limited only by compute and hash strength.
+- **Online attacks** try credentials against the live service and must respect lockout policy.
+
+## Attack techniques
+- A **dictionary attack** tries passwords from a wordlist (like rockyou.txt); **brute force** tries every combination.
+- **Password spraying** tries one common password across many accounts to stay under per-account lockout thresholds.
+- **Pass-the-hash** authenticates using a captured hash without cracking it.
+- Tools: **hashcat** (GPU-accelerated, many hash types) and **John the Ripper** (CPU-based) crack hashes offline.
+
+## Why strong hashing wins
+A strong, **salted, slow** hash (bcrypt/argon2) resists cracking: the salt defeats precomputation (rainbow tables) and the slowness limits guesses per second. Fast, unsalted hashes (MD5) fall quickly. The remediations a tester recommends are the same defences: **MFA**, long passphrases, account lockout/rate limiting, banning breached passwords, and slow salted hashing server-side.
+
+#D 10
+## Common web application vulnerabilities
+Web apps are a huge attack surface, tested against the **OWASP Top 10**. The classics:
+- **SQL injection** — user input concatenated into a database query, letting the attacker run their own SQL. Fixed with **parameterized queries**.
+- **Cross-site scripting (XSS)** — injecting script that runs in a victim's browser; **stored** XSS is saved on the server and served to many, **reflected** bounces off a single request. Fixed with output encoding and a CSP.
+- **IDOR / broken access control** — changing an ID in a request exposes another user's data because authorization isn't enforced per object.
+- **CSRF** — tricking a browser into sending an authenticated request the user didn't intend; defended with anti-CSRF tokens and SameSite cookies.
+- **SSRF** — abusing a server to make requests to internal systems the attacker can't reach directly (often to steal cloud metadata credentials).
+- **Command injection** — passing user input to a system shell without sanitisation.
+
+## Tools and method
+A **proxy tool** like **Burp Suite** or **OWASP ZAP** intercepts, inspects and modifies HTTP requests between the browser and the app — the core of manual web testing. You can also test purely from the command line with `curl` and fuzz parameters with `ffuf`. For each finding, name the OWASP category and give a concrete defence — the common thread is again "never trust user input; treat it as data, not code."
+
+#D 11
+## Network-based attacks in a test
+On the authorised network, testers demonstrate the risk of weak protocols and configurations:
+- An **on-path (MITM)** position lets you observe and possibly modify traffic between two hosts — proving why unencrypted protocols (Telnet, FTP, HTTP) are dangerous, since credentials and data can be captured.
+- **SMB relay** abuses authentication being relayed to a host that trusts it; **SMB signing** and disabling legacy auth mitigate it.
+- **LLMNR/NBT-NS poisoning** works because Windows falls back to these name-resolution protocols that an attacker can answer, capturing hashes; disabling LLMNR/NBT-NS removes the path.
+
+## Findings and defences
+- A service using **plaintext** is a finding on its own — recommend encrypted replacements (SSH, SFTP, HTTPS, LDAPS).
+- **SNMP** with a default/writable community string can leak or even change device configuration; recommend SNMPv3 with auth+privacy.
+- **DoS-style tests** can take down production and are usually out of scope unless explicitly authorised.
+
+## The overarching fixes
+The recommendations that come out of network testing are consistent: **encrypt everything in transit**, **segment** the network so a foothold can't reach every zone, disable legacy name-resolution and enable SMB signing, and use SNMPv3. Encryption makes captured traffic useless; segmentation limits lateral movement.
+
+#D 12
+## Testing Wi-Fi (only what you own or are authorised for)
+Wireless testing is legal only on networks you own or have explicit written authorisation for — deauth and injection against others' Wi-Fi is illegal. The goal is to show weak wireless security and recommend fixes.
+
+## What the weaknesses are
+- **WEP** is a finding because its broken cipher/IV scheme can be cracked in minutes — recommend WPA2-AES at minimum, ideally **WPA3**.
+- Capturing a **WPA2 handshake** allows *offline* passphrase cracking — but a long, random passphrase makes this impractical.
+- An **evil twin** (a rogue AP impersonating a trusted SSID) shows the risk of users connecting to fake networks.
+- **WPS** is a finding because its PIN can be brute-forced to recover the passphrase — recommend disabling it.
+
+## Requirements and remediation
+- **Monitor mode** on a wireless adapter is needed to capture raw 802.11 frames; not all adapters support it, so an external USB adapter is often required.
+- **WPA2/3-Enterprise (802.1X)** authenticates each user via RADIUS instead of a shared key, so credentials are individually revocable.
+The remediation after a wireless assessment is real controls, not obscurity: **WPA3 (or WPA2-AES)** with a strong passphrase, WPS disabled, separate guest/IoT VLANs, and a wireless IDS to detect rogue/evil-twin APs.
+
+#D 13
+## Cloud attacks (authorised accounts only)
+Cloud testing focuses on the customer-owned layers, since the provider owns the rest (shared responsibility). The most common findings:
+- **Public storage buckets** exposing data — check bucket ACLs/policies first.
+- **Over-privileged IAM roles** — a compromised credential inherits far more access than needed; least privilege limits the blast radius.
+- The **metadata service** (e.g. 169.254.169.254) can be abused via **SSRF** to retrieve temporary role credentials; IMDSv2 and blocking SSRF mitigate this.
+
+## Container attacks
+- A **container escape** breaks out of a container to the host, defeating isolation; non-root containers, seccomp/AppArmor and avoiding `--privileged` reduce it.
+- **Hard-coded secrets** in an image or repo are a finding — anyone with the image gets the credentials; use a secrets manager and scan images.
+Enumerating cloud **IAM** during a test finds excessive permissions and privilege-escalation paths (role/trust chaining).
+
+## Remediation themes
+The fixes after a cloud test are consistent: **least-privilege IAM**, **block public storage**, **enable logging/monitoring**, use **IMDSv2**, and harden containers (non-root, minimal image, no baked-in secrets, scanned for CVEs). Stay within the authorised, customer-owned scope unless the provider authorises more.
+
+#D 14
+## Testing the human and physical layers
+People and buildings are part of the attack surface, and testing them is ethical **only** when explicitly authorised in the ROE with agreed limits and care for staff wellbeing. The goal is improvement, not punishment.
+
+## Social-engineering tests
+- A **phishing simulation** measures how many users click versus report, to improve training and controls — the landing page teaches, it doesn't harvest real credentials.
+- A **pretext** is a believable cover story used to gain trust (posing as IT support).
+- **Vishing** (phone) might try to get staff to reveal info or reset credentials; recommend callback verification.
+Capturing metrics (click rate and, importantly, **report rate**) baselines behaviour; a rising report rate shows a healthier security culture.
+
+## Physical tests
+- **Tailgating** (following staff through a secure door) demonstrates weak access control — recommend mantraps and badge discipline.
+- **Baiting** with a dropped USB tests whether staff plug in unknown devices — recommend disabling autorun plus training.
+The strongest defence a tester can recommend against social engineering is ongoing **awareness training** plus **verification procedures** and **MFA** — because people are the target, so empowering and training them is what actually works.

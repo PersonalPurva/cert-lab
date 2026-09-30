@@ -1,0 +1,97 @@
+#D 15
+## After the foothold: situational awareness
+Once you gain authorised access to a host, the first job is **situational awareness**, not immediate further attack. You answer: *who am I, where am I, what can I reach?* On Linux, `id` and `whoami` reveal your account context and whether you have elevated rights; `sudo -l` shows what you may run as root. Enumerate the local host — users, groups, running services, scheduled tasks (`cron`), network connections — before acting.
+
+## Why enumerate the foothold
+The foothold changes what's reachable: internal hosts and services that were invisible from outside may now be accessible, opening the way to lateral movement. Checking scheduled tasks and writable files owned by root reveals privilege-escalation opportunities (and sometimes existing malware).
+
+## Discipline in post-exploitation
+- **Living off the land** means using built-in system tools rather than dropping detectable malware — smaller footprint, harder to detect.
+- **Document every command** you run: for the report, for reproducibility, and to enable full cleanup afterward.
+- Limit activity to what's necessary to demonstrate impact within scope — prove the risk, then stop. A scoped, justified, reversible next step is the professional standard.
+
+#D 16
+## Linux privilege escalation
+After landing as a low-privilege user, the goal is to become **root**, then document the path and its fix. Classic checks:
+- **SUID binaries** — `find / -perm -4000 -type f 2>/dev/null` lists programs that run with their owner's (often root's) privileges; some can be abused (cross-reference **GTFOBins**).
+- **`sudo -l`** — shows what you may run as root; a misconfigured `NOPASSWD` entry can be an instant escalation.
+- **Writable root cron scripts** — a script run by root that you can edit lets you run commands as root.
+- **Outdated kernel** — a known local kernel exploit.
+- **Path hijacking** — a privileged program calling a binary by name with an attacker-controlled PATH; fix with absolute paths.
+- **File capabilities** (`getcap`) — a binary with `cap_setuid` can escalate without the SUID bit.
+
+## Doing it properly
+Enumeration scripts (linpeas-style) automate these checks — SUID, sudo, cron, kernel, writable files, credentials in configs — but you still verify manually to avoid false positives. After demonstrating escalation, capture proof (`id` showing `uid=0`), then **remediate and clean up** any changes. A typical finding + fix reads: "world-writable script run by root as cron → local root; fix: `chown root:root`, `chmod 700`, audit the cron directory."
+
+#D 17
+## Windows privilege escalation
+On Windows the escalation paths differ but the mindset is the same — find a misconfiguration that grants SYSTEM. Common checks:
+- **Service misconfigurations** — services running as SYSTEM with weak permissions: an **unquoted service path** with spaces lets a planted binary run as SYSTEM; a **writable service binary** or weak service ACLs do the same.
+- **AlwaysInstallElevated** — if enabled, any user can install an MSI as SYSTEM.
+- **Access tokens** — certain privileges (like `SeImpersonate`) enable token-impersonation escalation.
+- **Stored credentials** in the registry or files can be reused for higher-privilege accounts.
+- **DLL hijacking** — a privileged process loading a DLL from a writable location.
+
+## Enumerating and reporting
+- `whoami /priv` shows your privileges (look for `SeImpersonatePrivilege`); tools like **WinPEAS** or **PowerUp** automate the checks.
+- After demonstrating escalation, capture proof and then remediate/clean up.
+The remediations you recommend improve credential hygiene: **LAPS** for unique local admin passwords, no plaintext credentials in scripts/registry, least privilege with separate admin accounts, and enabling protections like Credential Guard.
+
+#D 18
+## Lateral movement and pivoting
+A single foothold is rarely the objective — you show how far an attacker could get.
+- **Lateral movement** is using a compromised host to reach and compromise **other** in-scope systems.
+- **Pivoting** is routing your traffic *through* a compromised host to reach networks you otherwise couldn't — for example a DMZ foothold used to reach the internal LAN (in scope). An SSH dynamic port-forward (`ssh -D`) plus a SOCKS proxy is a common technique.
+
+## How attackers move
+- **Pass-the-hash** and **pass-the-ticket** reuse captured credentials/tickets to authenticate to other hosts without cracking passwords.
+- **Credential dumping** harvests reusable credentials to move on.
+- A **jump/pivot host** reachable to many segments is high value — compromising it grants broad reach.
+
+## The defences you recommend
+The key defence against lateral movement is **network segmentation/microsegmentation**, so one foothold can't freely reach other zones. Add **unique local admin passwords (LAPS)** and **SMB signing** to stop credential reuse, least privilege and tiered admin, MFA on admin access, and EDR/monitoring for credential dumping and anomalous logons. Everything stays strictly in scope — reaching out-of-scope or third-party systems is illegal.
+
+#D 19
+## Persistence — and always cleaning up
+**Persistence** is how an attacker keeps access. In an authorised test you demonstrate it only if it's in scope, and — crucially — **everything you add must be documented and removed at the end**. Testing persistence also measures the client's detection (a purple-team benefit).
+- **Linux** persistence: cron jobs, systemd services, SSH `authorized_keys`, modified startup scripts.
+- **Windows** persistence: scheduled tasks, services, registry Run keys, startup folders.
+Defenders monitor exactly these locations for unexpected changes.
+
+## Cleanup and ethics
+- **Cleanup** at the end of an engagement means removing every tool, account, implant and change you introduced, restoring systems to their prior state and confirming with the client.
+- **Never delete the client's logs** — those are the client's evidence needed for detection review. Attackers clear logs; ethical testers preserve them and note their own activity.
+Leaving hidden access would be unethical and dangerous, so a persistence finding in the report includes how it was established and how to detect and remove similar techniques.
+
+## Detection review
+For each technique, note how a defender would catch it — cron/systemd changes via file-integrity monitoring and config audits; an `authorized_keys` change via key-addition alerts and EDR; beaconing via flow analysis. Testing whether your actions were detected is the purple-team value: undetected TTPs are exactly what the client needs to know about.
+
+#D 20
+## Reporting is the real deliverable
+The most valuable output of a penetration test is a **clear, prioritized report** with findings, evidence, impact and remediation — not the exploit code or a raw scanner dump. The report is what drives fixes and creates value.
+
+## Structure of a good report
+- An **executive summary** for non-technical leadership: overall risk, business impact, and key recommendations, in business terms.
+- Each **technical finding** includes: description, affected assets, **severity**, **evidence** (screenshots, timestamps), **impact**, and a specific, actionable **remediation**.
+- Findings are **ranked by risk** so the client fixes the most dangerous issues first — prioritisation turns a list into an action plan.
+
+## Communication and follow-up
+- Handle sensitive report data (credentials, exploit detail) securely, sharing only with authorised parties.
+- Critical, actively exploitable findings should be **communicated promptly** during the engagement, not held until the final report.
+- **Retesting** after remediation confirms the fixes actually resolved each finding.
+A remediation must be specific ("use parameterized queries; least-privilege DB account; input validation"), not vague ("be more secure") — a developer should be able to fix it from your write-up alone.
+
+#D 21
+## The Nmap Scripting Engine (NSE)
+Nmap's real power for enumeration is the **NSE**, a library of hundreds of scripts organised into categories. On authorised targets:
+- `-sC` (or `--script=default`) runs the safe default scripts for extra detail.
+- Category and named scripts target specific services: `--script http-methods,http-title` on web ports, `--script smb-enum-shares,smb-enum-users` on SMB, `--script ftp-anon` to check anonymous FTP.
+- **Avoid** the `intrusive`/`dos` categories on fragile production without explicit permission — they can disrupt services.
+
+## Saving and parsing results
+- `-oA basename` writes normal, XML and grepable output at once, so you can parse and **diff** scans later (`ndiff scan1.xml scan2.xml` shows what changed).
+- `-p-` scans all ports; combine a full service+script scan and save everything: `nmap -sS -sV -sC -p- -oA fullscan <ip>`.
+- Parse grepable output with `awk`/`grep` to build a clean host/service inventory for the report.
+
+## Building a repeatable workflow
+Good testers script their recon: a small bash script that takes an IP and runs host discovery, a version scan, and default scripts — saving each stage — turns a repeatable process into one command. NSE plus saved, parseable output is how you enumerate thoroughly and document precisely, which is the foundation for reliable exploitation.

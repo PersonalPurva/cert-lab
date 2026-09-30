@@ -1,0 +1,696 @@
+#D 1|1 Engagement|Authorization and rules of engagement|Understand why written authorization defines a legal, ethical engagement.
+Q What single document makes a penetration test legal?
++ Written authorization (a signed contract / statement of work) from the asset owner
+- A verbal "go ahead" from a manager
+- A public bug-bounty logo
+- The tester's certification
+E Without signed authorization scoping the work, testing systems is illegal, no matter your intent.
+Q The Rules of Engagement (ROE) primarily define:
++ Scope, timing, permitted techniques, and points of contact
+- The tester's salary
+- The exploit code to use
+- The client's marketing plan
+E ROE keep the engagement inside legal and safe boundaries.
+Q "Scope" in an engagement specifies:
++ Exactly which systems, networks, and applications may be tested
+- The color of the report
+- The tester's tools only
+- The client's revenue
+E Anything outside scope is off-limits, even if you find a way in.
+Q Why include an emergency contact and a "stop" procedure in the ROE?
++ So the client can halt testing immediately if something breaks or an incident occurs
+- To bill more hours
+- To slow the test
+- It is optional trivia
+E A live production issue must be stoppable within minutes.
+Q "Get out of jail free" letter refers to:
++ Written authorization the tester carries proving the work is sanctioned
+- A real legal immunity from all laws
+- A bug-bounty payout
+- A phishing template
+E It documents permission; it does not excuse illegal acts outside scope.
+Q Which is usually explicitly FORBIDDEN unless specifically authorized?
++ Denial-of-service, social engineering, and physical intrusion
+- Reading the scope document
+- Writing the report
+- Using an approved scanner in scope
+E High-impact techniques require explicit written permission.
+Q A "target of evaluation" list exists so that:
++ Testers only touch approved hosts and avoid third-party/shared systems
+- The client can hide assets
+- Testers can scan the whole internet
+- Nobody is accountable
+E Cloud/shared hosting often requires the provider's permission too.
+Q Testing a cloud-hosted app usually also requires:
++ Awareness of the provider's testing policy and possibly their authorization
+- Nothing extra
+- Only the client's word
+- A public IP list
+E Some providers require notification; DoS is typically banned.
+T Draft rules of engagement
+S Write a one-page ROE for testing a single web app in a lab: scope, schedule, allowed and forbidden techniques, data-handling, and stop procedure.
+X # In scope: app.lab.local and its API only
+X # Window: weekdays 18:00-22:00; test accounts provided
+X # Forbidden: DoS, phishing real staff, pivoting outside scope
+X # Data: findings stored encrypted, deleted after report accepted
+X # Stop: call/msg the named contact; testing pauses immediately
+V the ROE would keep the engagement legal and safe
+T Scope validation
+S Given a target list, describe how you confirm each IP/host is actually owned by the client and in scope before touching it.
+H WHOIS and client confirmation both matter.
+X whois <target-ip> | grep -iE 'org|netname'
+X # cross-check against the client-provided authorized asset list
+X # exclude any shared/third-party ranges; get written OK for cloud
+V no out-of-scope or third-party asset is tested
+T Handle an out-of-scope discovery
+S During a test you find a path into a system NOT in scope. Write the correct steps.
+X # 1 stop; do not access the out-of-scope system
+X # 2 document what you found and how
+X # 3 notify the client contact promptly
+X # 4 continue only if scope is formally amended in writing
+V you never touched the out-of-scope asset
+
+#D 2|1 Engagement|Methodologies and frameworks|Compare penetration-testing methodologies and standards.
+Q The typical penetration-test phases are:
++ Planning, Reconnaissance, Scanning/Enumeration, Exploitation, Post-exploitation, Reporting
+- Exploit, Report, Plan
+- Scan, Delete, Bill
+- Recon, Ransom, Recover
+E A structured methodology keeps the test thorough and repeatable.
+Q MITRE ATT&CK is used by testers to:
++ Map real adversary tactics and techniques to plan and describe attacks
+- Buy exploits
+- Encrypt reports
+- Replace the ROE
+E ATT&CK gives a shared language of TTPs for both red and blue teams.
+Q The Cyber Kill Chain describes:
++ The stages of an attack from reconnaissance to actions on objectives
+- A firewall ruleset
+- A backup process
+- A patch cycle
+E Understanding the chain helps you emulate and disrupt attacks.
+Q OSSTMM, PTES and NIST 800-115 are:
++ Penetration-testing/assessment methodologies and standards
+- Exploit frameworks
+- Malware families
+- Programming languages
+E They guide consistent, defensible testing.
+Q "OWASP Testing Guide / Top 10" is most relevant to:
++ Web application security testing
+- Wireless cracking
+- Physical security
+- Mainframe testing
+E The OWASP Top 10 lists the most critical web app risks.
+Q What is the difference between a red team and a standard pen test?
++ Red teaming emulates a real adversary to test detection/response, often stealthy and goal-based
+- Red teams only write reports
+- They are identical
+- Red teams never get authorization
+E A standard pen test aims for coverage; red teaming aims for realism and objectives.
+Q "Assumed breach" testing starts from:
++ The premise that an attacker already has some foothold (e.g., a workstation)
+- Zero access and zero knowledge
+- Physical access only
+- The report phase
+E It focuses on lateral movement and detection rather than initial access.
+Q Why document your methodology in the report?
++ So findings are reproducible and the client understands coverage and limits
+- To increase page count
+- To hide techniques
+- It is not needed
+E Reproducibility and transparency build trust and let the client re-test fixes.
+T Map an attack to ATT&CK
+S For a phishing-to-foothold scenario, list one technique per kill-chain stage and its ATT&CK-style label.
+X # Recon: gather emails (OSINT)
+X # Delivery: phishing email (T1566)
+X # Exploitation: user runs macro (T1204)
+X # Install: persistence via scheduled task (T1053)
+X # C2: beacon to attacker server (T1071)
+X # Actions: collect + exfil data (T1005/T1041)
+V each stage has a plausible technique
+T Choose a methodology
+S For (a) a web app assessment and (b) a full-scope red team, name the most fitting methodology/framework and why.
+X # (a) OWASP Testing Guide + PTES -> thorough web coverage
+X # (b) MITRE ATT&CK + assumed breach -> realistic adversary emulation
+V each choice fits the goal
+
+#D 3|2 Recon|Passive reconnaissance and OSINT|Gather information without touching the target directly.
+Q Passive reconnaissance means:
++ Collecting information without directly interacting with the target's systems
+- Scanning every port
+- Exploiting a service
+- Brute forcing logins
+E OSINT (open-source intelligence) uses public data, so it is low-risk and stealthy.
+Q WHOIS lookups can reveal:
++ Domain registration details, registrar, and sometimes contacts/name servers
+- The admin password
+- Open ports
+- Running services
+E Much contact data is now privacy-protected, but registrar and NS often show.
+Q DNS enumeration can reveal:
++ Subdomains, mail servers, and name servers of a domain
+- The server's CPU model
+- User passwords
+- Physical location precisely
+E Records like A, MX, NS, TXT, CNAME are useful map-building data.
+Q "Google dorking" refers to:
++ Using advanced search operators to find exposed files, logins, or info
+- Hacking Google
+- A DNS attack
+- A scanning tool
+E e.g. site:, filetype:, intitle: reveal unintentionally public content.
+Q Why is OSINT valuable early in an engagement?
++ It builds the attack surface picture without alerting the target
+- It exploits systems directly
+- It is illegal
+- It replaces scanning
+E You learn domains, emails, tech stack, and employees quietly.
+Q Certificate transparency logs are useful because they:
++ List issued certificates, often revealing subdomains
+- Contain private keys
+- Show open ports
+- Store passwords
+E crt.sh and similar reveal hostnames from public CT logs.
+Q Social media OSINT helps a tester by:
++ Revealing employees, roles, tech used, and phishing pretext material
+- Providing exploits
+- Showing open ports
+- Cracking hashes
+E Job posts often leak the exact technologies in use.
+C Look up the DNS name servers and mail servers for a domain you are authorized to assess.
+A dig example.com NS
+A dig example.com MX
+A host -t NS example.com
+E Passive query of public DNS; no direct contact with the target's servers.
+T Build a passive footprint
+S For an authorized domain, gather: registrar, name servers, MX records, and any subdomains from public sources — without scanning the target.
+X whois example.com | grep -iE 'registrar|name server'
+X dig example.com NS +short; dig example.com MX +short
+X dig example.com TXT +short
+X # subdomains from CT logs (crt.sh) reviewed in a browser
+V you have a passive map with zero packets sent to the target hosts
+T OSINT email/user harvest (authorized)
+S Describe how you would ethically collect likely employee email formats for an authorized social-engineering test.
+X # find the email pattern (first.last@domain) from public sources
+X # list roles from public job posts / company site
+X # only use within the authorized social-engineering scope
+V you have a pretext list without contacting the target infra
+T Reduce your own footprint
+S Explain two ways an organization can limit what OSINT reveals about it.
+X # privacy-protect WHOIS; minimize info in job posts
+X # review CT logs/subdomains for unintended exposure; remove metadata from public files
+V each measure shrinks the public attack surface
+
+#D 4|2 Recon|Active scanning with Nmap|Discover hosts, ports and services on authorized targets.
+Q Active reconnaissance differs from passive because it:
++ Directly interacts with target systems (and can be detected)
+- Uses only public data
+- Is always illegal
+- Never sends packets
+E Scanning is active; run it only on authorized, in-scope targets.
+Q A TCP SYN scan (-sS) is often preferred because it:
++ Is fast and does not complete the full handshake ("half-open")
+- Is the only scan type
+- Requires no privileges
+- Completes every connection
+E It is stealthier and quick; needs raw-socket privileges.
+Q Nmap's -sV flag does what?
++ Detects service and version information on open ports
+- Scans UDP only
+- Runs exploits
+- Hides the scan
+E Version detection helps match services to known vulnerabilities.
+Q Nmap's -O flag attempts to:
++ Fingerprint the target operating system
+- Open a shell
+- Disable the firewall
+- Crack passwords
+E OS detection uses TCP/IP stack behavior.
+Q Which Nmap option runs the default script set for extra discovery?
++ -sC (or --script=default)
+- -sn
+- -Pn
+- -F
+E NSE scripts add banner grabbing, vuln checks, and enumeration.
+Q Nmap's -Pn tells Nmap to:
++ Skip host discovery and treat the host as online
+- Ping only
+- Scan UDP
+- Print help
+E Useful when ICMP is blocked but you know the host is up (and in scope).
+Q A UDP scan (-sU) is slower because:
++ UDP is connectionless, so open/filtered states are ambiguous and need timeouts
+- UDP has more ports
+- It runs exploits
+- It is encrypted
+E Still important: DNS, SNMP, and DHCP live on UDP.
+Q Nmap timing template -T4 vs -T1: -T4 is:
++ Faster/more aggressive; -T1 is slower/stealthier
+- Slower
+- Encrypted
+- UDP-only
+E Slower timing reduces detection and load on fragile targets.
+C Do a service/version scan of a single authorized lab host, top ports only.
+A nmap -sV -F 192.168.56.10
+A nmap -sV --top-ports 100 192.168.56.10
+E Authorized, in-scope targets only. -F scans the 100 most common ports.
+T Full discovery workflow (authorized lab)
+S On your own lab network, discover live hosts, then scan one host for open ports, services, versions and OS.
+X nmap -sn 192.168.56.0/24            # host discovery
+X nmap -sS -sV -O 192.168.56.10       # ports + versions + OS
+X nmap -sC -p- 192.168.56.10          # default scripts, all ports
+V you have a list of services and likely OS for one host
+T Save and compare scans
+S Run a scan, save it, change something on the lab host, rescan, and diff to detect changes.
+X nmap -sV -oA scan1 192.168.56.10
+X # (open/close a service on the lab host)
+X nmap -sV -oA scan2 192.168.56.10
+X ndiff scan1.xml scan2.xml
+V you can see exactly which ports/services changed
+T Targeted UDP check
+S Check a few important UDP services on an authorized host and explain why UDP results are less certain.
+X nmap -sU -p 53,161,123 192.168.56.10
+X # open|filtered means no reply -- could be open or dropped
+V you can interpret open|filtered correctly
+
+#D 5|2 Recon|Enumeration of services|Enumerate specific services to gather actionable detail.
+Q "Enumeration" goes beyond scanning by:
++ Actively extracting detailed info (users, shares, versions, config) from services
+- Only listing open ports
+- Only pinging hosts
+- Reading public data
+E It turns "port 445 open" into "these shares and users exist."
+Q SMB enumeration on port 445 can reveal:
++ Shares, users, and OS details (when misconfigured)
+- The BIOS password
+- Encryption keys
+- Physical location
+E Tools query shares and null sessions where allowed.
+Q Enumerating a web server's directories/files is called:
++ Content discovery / directory brute-forcing
+- Port scanning
+- OS fingerprinting
+- Sniffing
+E Wordlist tools find hidden endpoints like /admin or /backup.
+Q Banner grabbing retrieves:
++ Service identification strings that hint at software and version
+- User passwords
+- The firewall config
+- The source code
+E Versions map to known CVEs.
+Q SNMP with a default community string ("public") can leak:
++ System info, interfaces, running processes, and sometimes config
+- Nothing
+- Only the hostname
+- The admin password directly
+E Default/read community strings are a common misconfiguration.
+Q Enumerating DNS with a zone transfer (AXFR) succeeds when:
++ A misconfigured name server allows anyone to pull all records
+- DNS is encrypted
+- The firewall is off
+- Always
+E A successful AXFR dumps the whole zone — a finding in itself.
+Q LDAP enumeration can reveal:
++ Directory users, groups, and organizational structure
+- The kernel version
+- Wi-Fi keys
+- Disk layout
+E Anonymous binds sometimes expose the directory.
+Q Why enumerate thoroughly before exploiting?
++ Precise detail makes exploitation reliable and reduces noise/damage
+- To waste time
+- To skip authorization
+- To avoid the report
+E Good enumeration is what separates a pro from a script kiddie.
+C Enumerate hidden web directories on an authorized target with a wordlist.
+A gobuster dir -u http://192.168.56.10 -w /usr/share/wordlists/dirb/common.txt
+A ffuf -u http://192.168.56.10/FUZZ -w /usr/share/wordlists/dirb/common.txt
+E Authorized targets only. Review responses (200/301/403) for interesting paths.
+T Enumerate a web server (authorized lab)
+S On a lab web host, identify the server software, discover directories, and note any interesting endpoints.
+X nmap -sV -p 80,443 192.168.56.10
+X whatweb http://192.168.56.10 2>/dev/null || curl -sI http://192.168.56.10
+X gobuster dir -u http://192.168.56.10 -w /usr/share/wordlists/dirb/common.txt -q
+V you have a list of endpoints worth investigating
+T Enumerate SMB (authorized lab)
+S On a lab host with SMB, list shares and (if allowed) users, and note misconfigurations.
+X nmap -p445 --script smb-enum-shares,smb-os-discovery 192.168.56.10
+X smbclient -L //192.168.56.10 -N 2>/dev/null
+V you can list shares and identify anonymous access if present
+T Try a DNS zone transfer
+S Against an authorized name server, attempt an AXFR and record whether it (insecurely) succeeds.
+X dig AXFR example.com @ns1.example.com
+X # success = misconfiguration finding; failure = properly restricted
+V you can state whether the zone transfer was allowed
+
+#D 6|3 Vulnerability|Vulnerability scanning|Run and interpret automated vulnerability scans.
+Q A vulnerability scanner works by:
++ Checking targets against a database of known weaknesses and misconfigurations
+- Exploiting every finding
+- Only pinging hosts
+- Guessing passwords
+E It reports likely issues; a tester then validates them.
+Q "Authenticated" (credentialed) scanning gives:
++ Deeper, more accurate results by logging in to check patch levels/config
+- Only external results
+- No extra value
+- Faster but blind results
+E Credentialed scans find missing patches unauthenticated scans cannot see.
+Q A "false positive" from a scanner is:
++ A reported vulnerability that is not actually exploitable/present
+- A missed real vulnerability
+- A confirmed exploit
+- A network error
+E Validation (manual testing) separates real issues from noise.
+Q CVSS base score ranges roughly as:
++ 0.0-10.0, with higher meaning more severe
+- 1-100
+- A-F letter grades
+- 0-5 only
+E 9.0-10.0 is Critical; context (exposure) still matters for real risk.
+Q A CVE identifier is:
++ A unique ID for a publicly known vulnerability (e.g., CVE-2024-1234)
+- A scanner brand
+- An exploit kit
+- A patch number
+E CVEs let everyone reference the same flaw.
+Q Why avoid running an aggressive scanner against fragile production systems?
++ It can crash unstable services or cause outages
+- It is always safe
+- Scanners never cause load
+- It speeds them up
+E Coordinate timing and intensity in the ROE; some hosts need gentle scans.
+Q Scanner output should be:
++ Validated and prioritized before it goes in the report
+- Pasted raw as the final report
+- Ignored
+- Deleted
+E Raw scan dumps are not a professional deliverable.
+Q "Compliance scanning" checks systems against:
++ A benchmark/standard (e.g., CIS, PCI DSS)
+- The attacker's wishlist
+- Random settings
+- Nothing
+E It reports configuration gaps for a specific requirement set.
+C Run an authorized Nmap NSE vulnerability check against a lab host.
+A nmap --script vuln 192.168.56.10
+E NSE vuln scripts are a lightweight starting point; validate anything flagged.
+T Scan, then validate (authorized lab)
+S Run a vuln scan on a lab host, pick one finding, and manually confirm whether it is real.
+X nmap -sV --script vuln 192.168.56.10 -oN vulnscan.txt
+X # pick e.g. an outdated service; check its real version banner
+X nc 192.168.56.10 <port>            # grab banner to confirm version
+V you classified the finding as confirmed or false positive
+T Prioritize findings
+S Given four findings with CVSS 9.8 (internet-facing), 7.5 (internal), 5.0 (needs local access), 3.1 (info), put them in remediation order and justify.
+X # 9.8 internet-facing first (severe + exposed)
+X # 7.5 internal next
+X # 5.0 local-access lower
+X # 3.1 informational last
+V order reflects severity AND exposure
+T Reduce false positives
+S Describe two ways to make scan results more accurate and trustworthy.
+X # use authenticated/credentialed scans
+X # manually validate high-impact findings before reporting
+V your report would contain confirmed, prioritized issues
+
+#D 7|3 Vulnerability|Analyzing and prioritizing findings|Turn raw findings into risk-ranked, actionable results.
+Q Real-world risk of a vulnerability depends on:
++ Severity AND exposure/exploitability AND business impact
+- CVSS score alone
+- The scanner brand
+- The number of findings
+E A critical CVE on an isolated box may rank below a medium on an internet-facing app.
+Q "Chaining" vulnerabilities means:
++ Combining several lower-severity issues to achieve a high-impact result
+- Locking findings together
+- Encrypting the report
+- Scanning in a loop
+E e.g., info leak + weak password + misconfig = full compromise.
+Q Why map findings to business impact?
++ It helps leadership prioritize fixes by what actually matters to the business
+- To inflate the report
+- To hide technical detail
+- It is unnecessary
+E "This exposes customer PII" motivates action more than a raw CVSS number.
+Q An "attack path" in a report shows:
++ The steps from initial access to the objective, so defenders can break the chain
+- The tester's schedule
+- The firewall brand
+- The client's budget
+E Visualizing the path highlights the cheapest place to add a control.
+Q A finding's "remediation" section should be:
++ Specific, actionable guidance to fix or mitigate the issue
+- A restatement of the finding
+- Blank
+- The exploit code only
+E Tell the client exactly what to change.
+Q Which finding likely deserves the highest priority?
++ An unauthenticated remote code execution on an internet-facing server
+- A verbose error message on an internal test box
+- A missing security header on an internal page
+- An outdated copyright year
+E Unauthenticated + RCE + exposed = maximum urgency.
+Q Why avoid only listing "critical" findings?
++ Chained lows/mediums and quick wins also matter to the client's risk
+- Lows are never useful
+- Clients only read criticals
+- It saves time
+E A good report covers the full picture with clear priorities.
+Q "Risk acceptance" by the client means:
++ They knowingly choose to live with a residual risk rather than fix it now
+- The tester ignores the finding
+- The risk disappears
+- The finding was a false positive
+E Document accepted risks and who accepted them.
+T Rank a findings list
+S Given five mixed findings, assign each a priority (P1-P4) using severity, exposure, and impact, and write a one-line justification each.
+X # P1: internet-facing auth-bypass leading to data access
+X # P2: internal service with known RCE (needs foothold)
+X # P3: weak TLS config internal
+X # P4: informational banner disclosure
+V priorities reflect real risk, not raw CVSS alone
+T Write an attack-path narrative
+S Chain three findings into one attack path from external to sensitive data, and identify the single control that best breaks it.
+X # exposed admin panel -> default creds -> file upload -> data access
+X # best break point: remove/authenticate the admin panel + MFA
+V one well-placed control stops the whole chain
+T Write a remediation
+S For "SQL injection in the login form," write a clear, specific remediation the developers can act on.
+X # use parameterized queries/prepared statements for all DB access
+X # validate/allow-list input; least-privilege DB account; WAF as defense-in-depth
+V a developer could fix it from your text alone
+
+#D 8|4 Exploitation|Exploitation fundamentals and Metasploit|Safely validate vulnerabilities on authorized targets.
+Q In a pen test, the point of exploitation is to:
++ Demonstrate real impact of a vulnerability within the authorized scope
+- Cause maximum damage
+- Keep access forever
+- Skip the report
+E You prove risk, then document and clean up.
+Q What is a "proof of concept" (PoC)?
++ A demonstration that a vulnerability is genuinely exploitable
+- A marketing slide
+- A scanner report
+- A patch
+E A PoC turns a theoretical finding into a confirmed one.
+Q In Metasploit, a "payload" is:
++ The code that runs on the target after a successful exploit (e.g., a shell)
+- The vulnerability itself
+- The scanner
+- The report
+E Payloads can be a simple shell or a fuller agent, per authorization.
+Q A "reverse shell" connects:
++ From the target back to the tester's listener
+- From the tester to the target only
+- Two targets together
+- Nothing
+E Useful when the target cannot accept inbound connections (bind shell does the opposite).
+Q Why prefer a low-impact PoC over a destructive exploit?
++ You prove the risk without harming the client's systems or data
+- Destruction is required
+- It is faster to destroy
+- Clients prefer outages
+E "Do no harm" is core to professional testing.
+Q Before running an exploit, a professional tester:
++ Confirms the target is in scope and understands the exploit's impact
+- Runs it blindly
+- Skips authorization
+- Disables logging first
+E Know what the exploit does so you do not cause an outage.
+Q A "staged" vs "stageless" payload differs in:
++ Whether the payload is delivered in stages or all at once
+- The exploit used
+- The target OS
+- The report format
+E Staged payloads are smaller initially; stageless are self-contained.
+Q After a successful PoC, the tester should:
++ Document evidence, timestamps, and clean up any artifacts left behind
+- Leave backdoors
+- Delete client data
+- Keep persistent access secretly
+E Remove test accounts, files, and implants; record everything.
+C In Metasploit, search for a module matching a service you are authorized to test.
+A search vsftpd
+A search type:exploit name:smb
+E Read the module's description and impact before use; authorized lab targets only.
+T Validate a known-vuln lab box (authorized)
+S On a deliberately vulnerable lab VM (e.g., Metasploitable), confirm one vulnerability with a low-impact PoC and capture evidence.
+X # identify the service/version with nmap -sV
+X msfconsole -q
+X # search <service> ; use <module> ; set RHOSTS <lab-ip> ; check (if supported)
+X # run a benign PoC; screenshot proof; then clean up
+V you have evidence a real vulnerability is exploitable, with no lasting damage
+T Set up a listener safely
+S Explain and set up a reverse-shell listener on your attacker VM for an authorized test, and how you would tear it down afterward.
+X # nc -lvnp 4444    (or msf multi/handler)
+X # after PoC: close the listener, remove any dropped files on target
+V the listener works and you can cleanly stop it
+T Document a PoC
+S Write the fields your PoC evidence must include for the report.
+X # target host/IP, timestamp, vulnerability + CVE, steps taken
+X # screenshot/output proof, impact demonstrated, cleanup performed
+V another tester could reproduce it from your notes
+
+#D 9|4 Exploitation|Password attacks|Test authentication strength on authorized systems.
+Q "Offline" password cracking means:
++ Cracking captured password hashes without contacting the live system
+- Guessing on the login page
+- Phishing
+- Sniffing plaintext
+E Offline attacks avoid lockouts and are limited only by compute and hash strength.
+Q A dictionary attack uses:
++ A wordlist of likely passwords
+- Every possible combination
+- Only numbers
+- The password hash as input to nothing
+E Wordlists (e.g., rockyou) plus rules cover most weak passwords.
+Q Why does a strong, slow hash (bcrypt/argon2) with salt resist cracking?
++ Salting stops precomputation and slow hashing limits guesses per second
+- It hides the login page
+- It encrypts the network
+- It blocks all users
+E Fast unsalted hashes (MD5) crack far quicker.
+Q "Password spraying" avoids lockouts by:
++ Trying one common password across many accounts
+- Trying many passwords on one account
+- Using no passwords
+- Cracking hashes offline
+E It stays under per-account lockout thresholds.
+Q Hashcat vs John the Ripper: hashcat is known for:
++ GPU-accelerated cracking of many hash types
+- Only online attacks
+- Being a scanner
+- Sniffing traffic
+E Both crack hashes; hashcat leverages GPUs heavily.
+Q "Pass-the-hash" lets an attacker:
++ Authenticate using a captured hash without knowing the plaintext
+- Reset the password
+- Crack the hash faster
+- Encrypt the hash
+E It abuses protocols that accept the hash as proof.
+Q A good defense a tester recommends against these attacks is:
++ MFA, strong salted hashing, lockout/rate limiting, and long passphrases
+- Shorter passwords
+- Reusing passwords
+- Disabling logging
+E Report the fix, not just the finding.
+Q Why must password testing stay within scope and ROE?
++ Lockouts and account access can disrupt real users and cross legal lines
+- It never affects users
+- Passwords are public
+- It is unrelated to scope
+E Coordinate spraying/lockout thresholds with the client.
+C Crack a provided lab hash file with a wordlist using John (authorized lab).
+A john --wordlist=/usr/share/wordlists/rockyou.txt hashes.txt
+A hashcat -m 0 hashes.txt /usr/share/wordlists/rockyou.txt
+E Only crack hashes you are authorized to test; -m 0 is raw MD5 in hashcat.
+T Crack lab hashes and report impact
+S Given a lab hash file, identify the hash type, crack the weak ones, and write the remediation.
+X # identify: hashid <hash>   or  john will guess the format
+X john --wordlist=/usr/share/wordlists/rockyou.txt hashes.txt
+X john --show hashes.txt
+X # remediation: enforce passphrases + MFA, use bcrypt/argon2 with salt
+V you cracked the weak passwords and gave a real fix
+T Demonstrate spraying safely (lab)
+S On an authorized lab directory, describe a low-and-slow spray that respects lockout policy, and the detection a defender would use.
+X # one common password across accounts, spaced to avoid lockout
+X # defender detects: many failed logins for different users from one source
+V your approach avoids locking real accounts and is detectable
+T Recommend authentication hardening
+S List five controls that would have stopped the password attacks you demonstrated.
+X # MFA everywhere; long passphrases; account lockout + rate limiting
+X # salted slow hashing (bcrypt/argon2); ban breached passwords
+V each control maps to an attack you performed
+
+#D 10|4 Exploitation|Web application attacks|Test common web vulnerabilities on authorized apps.
+Q SQL injection is possible when:
++ User input is concatenated into a database query without parameterization
+- The site uses HTTPS
+- Passwords are hashed
+- The server is patched
+E Prepared statements are the primary fix.
+Q Cross-site scripting (XSS) lets an attacker:
++ Run script in a victim's browser via unsanitized output
+- Read the server's disk
+- Crash the database
+- Bypass the firewall
+E Output encoding and CSP mitigate it.
+Q The difference between stored and reflected XSS is:
++ Stored is saved on the server and served to many; reflected bounces off a single request
+- Stored is client-side only
+- They are identical
+- Reflected is always worse
+E Stored XSS can hit every viewer of a page.
+Q "IDOR" (Insecure Direct Object Reference) occurs when:
++ Changing an ID in a request exposes another user's data due to missing authorization checks
+- The database is encrypted
+- The URL is HTTPS
+- Input is validated
+E Enforce object-level authorization on every request.
+Q CSRF (Cross-Site Request Forgery) tricks a browser into:
++ Sending an authenticated request the user did not intend
+- Reading server files
+- Cracking passwords
+- Scanning ports
+E Anti-CSRF tokens and SameSite cookies defend against it.
+Q "SSRF" (Server-Side Request Forgery) abuses a server to:
++ Make requests to internal systems the attacker cannot reach directly
+- Read the client's disk
+- Crack a hash
+- Sniff Wi-Fi
+E Often used to reach cloud metadata endpoints; validate/allow-list outbound URLs.
+Q A proxy tool like Burp Suite / OWASP ZAP is used to:
++ Intercept, inspect and modify HTTP requests between browser and app
+- Scan Wi-Fi
+- Crack hashes on a GPU
+- Manage DNS
+E It is the core tool for manual web testing.
+Q "Command injection" happens when:
++ User input is passed to a system shell without sanitization
+- The app uses cookies
+- HTTPS is enabled
+- The DB is patched
+E Avoid shelling out with user input; use safe APIs and allow-lists.
+C Fuzz a web parameter for hidden values on an authorized target with ffuf.
+A ffuf -u 'http://192.168.56.10/page?id=FUZZ' -w /usr/share/wordlists/dirb/common.txt
+E Authorized targets only; watch response codes/sizes for anomalies.
+T Test a login form (authorized lab)
+S On a deliberately vulnerable lab app (e.g., DVWA/Juice Shop), test the login for SQL injection and document the result and fix.
+X # intercept the request in Burp/ZAP
+X # try   ' OR '1'='1' --    in the username (lab only)
+X # if it bypasses auth: confirm, screenshot, then write the fix
+X # fix: parameterized queries + input validation + least-privilege DB user
+V you demonstrated (or ruled out) SQLi and gave remediation
+T Find IDOR (authorized lab)
+S On a lab app, change a resource ID in a request and check whether you can view another user's data.
+X # log in as user A, note a URL like /account?id=1001
+X # change to id=1002 -- if you see user B's data, that's IDOR
+X # fix: enforce per-object authorization server-side
+V you either found IDOR or confirmed proper authorization
+T Map to OWASP Top 10
+S For three vulnerabilities you tested, name the OWASP Top 10 category and one defense each.
+X # SQLi -> A03 Injection -> parameterized queries
+X # broken access (IDOR) -> A01 Broken Access Control -> server-side authz
+X # XSS -> A03 Injection (XSS) -> output encoding + CSP
+V each maps to a category and a concrete defense

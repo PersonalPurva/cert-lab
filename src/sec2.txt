@@ -1,0 +1,472 @@
+#D 6|2 Threats|Malware types|Compare types of malware and how they spread.
+Q What defines a virus versus a worm?
++ A virus needs a host file/user action to spread; a worm self-propagates across networks
+- A worm needs a host; a virus spreads itself
+- They are identical
+- A virus only affects Windows
+E Worms spread on their own (e.g., across a LAN); viruses attach to files.
+Q Ransomware primarily does what?
++ Encrypts or locks data and demands payment to restore access
+- Steals passwords silently
+- Mines cryptocurrency
+- Sends spam only
+E Best defenses: offline/immutable backups, patching, MFA, least privilege.
+Q A "Trojan" is malware that:
++ Disguises itself as legitimate software to trick the user into running it
+- Replicates across networks automatically
+- Is always a browser add-on
+- Cannot be removed
+E Named after the Trojan horse — it looks useful but carries a payload.
+Q Software that secretly records keystrokes is a:
++ Keylogger
+- Rootkit
+- Worm
+- Logic bomb
+E It captures passwords and messages. It can be software or hardware.
+Q A rootkit is dangerous mainly because it:
++ Hides itself and gains privileged, persistent control of the OS
+- Only shows pop-up ads
+- Cannot survive a reboot
+- Is easy to detect
+E Rootkits operate at a low level, hiding processes and files from tools.
+Q A "logic bomb" triggers when:
++ A specific condition or time is met (e.g., a date, or a user being deleted)
+- The computer starts
+- Any file is opened
+- The network is idle
+E A disgruntled admin might set code to fire after they are removed from payroll.
+Q Fileless malware is hard to detect because it:
++ Runs in memory using legitimate tools (like PowerShell) rather than dropping a file
+- Has no code at all
+- Only affects printers
+- Is written in assembly
+E Living-off-the-land techniques abuse built-in binaries.
+Q What is a botnet?
++ A network of compromised devices controlled by an attacker
+- A robot vacuum network
+- A backup system
+- A type of firewall
+E Bots (zombies) take orders from a command-and-control (C2) server, often for DDoS.
+C On Linux, hash a suspicious binary so you can check it against threat-intel feeds.
+A sha256sum suspicious.bin
+A md5sum suspicious.bin
+E Submit the hash (not the file) to a reputation service like an IOC lookup.
+T Malware indicator triage
+S You find these on a host: a new scheduled task, a process with no file on disk, outbound traffic to a strange IP every 60s, and a renamed powershell.exe. Match each to a malware behavior.
+X # scheduled task -> persistence
+X # process with no file -> fileless / in-memory
+X # beacon every 60s -> C2 / botnet check-in
+X # renamed powershell -> living-off-the-land evasion
+V each indicator maps to a technique
+T Safe static look at a file
+S Without executing it, gather basic facts about a suspicious file: type, size, and readable strings.
+X file suspicious.bin
+X ls -l suspicious.bin
+X strings suspicious.bin | head -40
+V you can describe the file without running it
+
+#D 7|2 Threats|Password and application attacks|Explain password attacks, injection and other application attacks.
+Q A brute-force password attack:
++ Tries every possible combination until one works
+- Uses a list of common passwords only
+- Reads the password from memory
+- Requires the hash file
+E A dictionary attack uses a wordlist; brute force is exhaustive; both are slower with strong hashes and lockouts.
+Q What is a dictionary attack?
++ Trying passwords from a list of likely words/leaked passwords
+- Attacking the dictionary app
+- A physical attack
+- Encrypting a wordlist
+E Wordlists like rockyou.txt are common in labs.
+Q Why does "salting" a password hash help?
++ It adds random data so identical passwords hash differently, defeating precomputed tables
+- It makes the password shorter
+- It encrypts the password reversibly
+- It speeds up logins
+E Salt defeats rainbow tables and stops attackers from seeing duplicate passwords.
+Q SQL injection works by:
++ Inserting malicious SQL through input that the app runs against its database
+- Flooding the database with traffic
+- Guessing the DB password
+- Encrypting the database
+E Parameterized queries (prepared statements) are the main defense.
+Q Cross-site scripting (XSS) allows an attacker to:
++ Run malicious script in another user's browser via a vulnerable web page
+- Read the server's disk directly
+- Crash the database
+- Bypass the firewall physically
+E Output encoding and a Content Security Policy mitigate XSS.
+Q A "pass-the-hash" attack means:
++ Authenticating with a stolen password hash without cracking it
+- Sharing a hash publicly
+- Hashing a password twice
+- Salting a hash
+E It abuses how some protocols accept the hash as proof of identity.
+Q What is credential stuffing?
++ Reusing username/password pairs leaked from one site against many others
+- Filling a form with junk
+- Brute forcing one account
+- Stuffing a hash with salt
+E It works because people reuse passwords; MFA stops most of it.
+Q A race condition (TOCTOU) vulnerability is:
++ A flaw where the state changes between the time of check and time of use
+- A slow network
+- A CPU overheating
+- Two users logging in at once safely
+E Attackers exploit the tiny window between a check and an action.
+C On Linux, generate a bcrypt-style password hash to see how modern hashing looks.
+A openssl passwd -6 'MyP@ss'
+A openssl passwd -6
+E -6 is SHA-512 crypt with a random salt; note the different output each run.
+T Compare hash strength
+S Hash the same password with an old fast algorithm and a modern salted one; explain which is harder to crack and why.
+X echo -n "password123" | md5sum
+X openssl passwd -6 "password123"
+X openssl passwd -6 "password123"    # note: different salt -> different output
+V you can explain salting and slow hashing
+T Prevent SQL injection (concept lab)
+S Given the unsafe query   "SELECT * FROM users WHERE name='" + input + "'"   rewrite it as a parameterized query and explain why it stops injection.
+X # unsafe: input   ' OR '1'='1   returns all rows
+X # safe (pseudo):  db.query("SELECT * FROM users WHERE name = ?", [input])
+X # the input is treated as data, never as SQL code
+V the injection payload no longer changes the query logic
+T Account-lockout defense
+S Describe the settings that turn a brute-force attack from easy to impractical.
+X # long complex passphrase or MFA
+X # account lockout after N failed attempts
+X # rate limiting / progressive delay
+X # slow salted hashing (bcrypt/argon2) server-side
+V an attacker cannot try enough guesses in time
+
+#D 8|2 Threats|Network attacks|Explain common network-based attacks.
+Q A man-in-the-middle (on-path) attack lets an attacker:
++ Intercept and possibly alter traffic between two parties
+- Only slow the network
+- Encrypt all traffic
+- Physically cut a cable
+E Defenses: TLS everywhere, certificate validation, and secure Wi-Fi.
+Q ARP poisoning is used to:
++ Trick devices into sending traffic to the attacker on a local network
+- Poison DNS records globally
+- Flood a web server
+- Crack Wi-Fi passwords
+E The attacker maps their MAC to another host's IP. Dynamic ARP inspection helps.
+Q DNS poisoning (spoofing) results in:
++ Users being sent to a malicious IP for a legitimate domain name
+- Slower DNS only
+- Encrypted DNS
+- A physical attack
+E DNSSEC and using trusted resolvers reduce it.
+Q A SYN flood is a type of:
++ Denial-of-service attack that exhausts a server's half-open connections
+- Password attack
+- Injection attack
+- Phishing
+E SYN cookies and rate limiting mitigate it.
+Q What is a "distributed" denial of service (DDoS)?
++ A DoS launched from many compromised sources at once
+- A DoS from one PC
+- A backup failure
+- A slow disk
+E A botnet amplifies the flood; cloud scrubbing services help absorb it.
+Q Rogue access point vs evil twin: the evil twin specifically:
++ Impersonates a legitimate AP's name (SSID) to trick users into connecting
+- Is any unauthorized AP
+- Is a wired switch
+- Only affects Ethernet
+E Both are dangerous; the evil twin mimics a trusted network.
+Q A replay attack succeeds when:
++ Captured valid data (like an auth token) is resent to impersonate a user
+- The network is replayed on video
+- A backup is restored
+- DNS is poisoned
+E Timestamps, nonces and session tokens prevent replay.
+Q DNS over HTTPS (DoH) mainly improves:
++ Privacy/integrity of DNS queries by encrypting them
+- Web page speed only
+- Password strength
+- Physical security
+E It stops on-path snooping and tampering of DNS lookups.
+C On Linux, capture the first 20 packets on interface eth0 to inspect traffic (authorized lab only).
+A sudo tcpdump -i eth0 -c 20
+A tcpdump -i eth0 -c 20
+E Only capture on networks you own or are authorized to test.
+T Read a capture for plaintext
+S On your own lab network, capture traffic to an HTTP (not HTTPS) test site and show why HTTPS matters.
+X sudo tcpdump -i eth0 -A -c 50 'tcp port 80'
+X # observe that HTTP headers and data are readable
+V you can see plaintext over HTTP and explain how TLS fixes it
+T Detect ARP spoofing
+S Show your ARP table and explain what a duplicated MAC for two IPs (or the gateway MAC changing) would indicate.
+X ip neigh
+X arp -a
+X # two IPs sharing one MAC, or the gateway's MAC suddenly changing = possible ARP poisoning
+V you can spot a suspicious ARP entry
+
+#D 9|2 Threats|Vulnerabilities and the attack surface|Explain hardware, software and cloud vulnerabilities.
+Q A "zero-day" vulnerability is one that:
++ Has no patch available because the vendor does not yet know or has not fixed it
+- Is 24 hours old exactly
+- Only affects new hardware
+- Is always low risk
+E Defense relies on layered controls and behavior-based detection.
+Q What is the difference between a vulnerability and an exploit?
++ A vulnerability is the weakness; an exploit is the code/technique that abuses it
+- They are the same
+- An exploit is the fix
+- A vulnerability is always exploited
+E A vulnerability with no working exploit is lower (but not zero) risk.
+Q "Patch management" reduces risk by:
++ Applying vendor updates that fix known vulnerabilities in a controlled way
+- Deleting old files
+- Encrypting disks
+- Blocking all ports
+E Unpatched systems are one of the most common breach causes.
+Q A buffer overflow happens when:
++ A program writes more data than a memory buffer can hold, corrupting adjacent memory
+- The network buffer is full
+- The disk is full
+- Too many users log in
+E It can let an attacker run their own code. Modern OSes use ASLR/DEP to mitigate.
+Q "Legacy" systems are risky because they:
++ No longer receive security updates and may run outdated protocols
+- Are always slower
+- Cost more to run
+- Cannot be networked
+E If they cannot be replaced, isolate them (compensating control).
+Q Misconfiguration is dangerous because it:
++ Leaves systems exposed even when the software itself is secure (e.g., open S3 bucket)
+- Only affects hardware
+- Is not exploitable
+- Is a type of malware
+E Secure baselines and configuration reviews catch these.
+Q A supply-chain attack targets:
++ A trusted vendor/component to reach that vendor's many customers
+- Only the delivery trucks
+- One end user
+- The power grid only
+E Example: malware inserted into a software update.
+Q What is "TTPs" in threat analysis?
++ Tactics, Techniques and Procedures — how an adversary operates
+- Trusted Third Parties
+- Transport Test Protocols
+- Time To Patch
+E TTPs (from MITRE ATT&CK) help defenders anticipate behavior.
+C On Linux, list installed packages so you can check them against a vulnerability list.
+A rpm -qa
+A dpkg -l
+E Feed the versions into a scanner or CVE lookup to find known issues.
+T Reduce your attack surface
+S On a Linux server, list listening services and disable one that is not needed.
+X ss -tulpn
+X systemctl disable --now <unneeded-service>
+X ss -tulpn        # confirm the port is gone
+V fewer ports are open than before
+T Prioritize with CVSS (concept)
+S Two findings: (a) CVSS 9.8 internet-facing RCE, (b) CVSS 4.3 local info-leak on an isolated box. Which do you patch first and why?
+X # (a) first: higher severity AND exposed to the internet
+X # (b) later: low severity and not reachable by attackers
+V you can justify prioritizing by severity + exposure
+
+#D 10|3 Architecture|Secure network design|Compare architecture concepts: segmentation, DMZ, defense in depth.
+Q What is a DMZ (screened subnet)?
++ A network zone between the internet and the internal LAN for public-facing servers
+- A demilitarized country
+- A backup site
+- A VPN protocol
+E Web/email servers sit in the DMZ so a breach there does not directly reach the LAN.
+Q "Defense in depth" means:
++ Using multiple layers of controls so one failure does not cause a breach
+- One very strong firewall
+- Only physical security
+- Encrypting once
+E If one layer fails, others still protect the asset.
+Q A VLAN provides:
++ Logical segmentation of a switch into separate broadcast domains
+- Faster internet
+- Wireless encryption
+- A VPN tunnel
+E VLANs separate traffic (e.g., guests from staff) without extra cabling.
+Q What does a jump server (bastion host) do?
++ Provides a single, hardened, monitored entry point to manage internal systems
+- Speeds up jumps between websites
+- Backs up data
+- Replaces the firewall
+E Admins connect to the jump host first; direct admin access elsewhere is blocked.
+Q Which describes an air-gapped system?
++ A system physically isolated from other networks
+- A system with extra RAM
+- A cloud VM
+- A wireless-only host
+E Used for the most sensitive systems; data crosses only via strict manual processes.
+Q A proxy server placed between users and the internet can:
++ Filter, cache and log outbound web requests
+- Replace the router
+- Encrypt disks
+- Assign IP addresses
+E A forward proxy controls client access; a reverse proxy protects servers.
+Q What is a "honeypot"?
++ A decoy system designed to attract and study attackers
+- A backup server
+- A password vault
+- A type of firewall
+E It has no production value, so any interaction is suspicious.
+Q Network Access Control (NAC) enforces:
++ Health/identity checks before a device is allowed onto the network
+- Faster DNS
+- Disk encryption
+- Web filtering
+E A device failing posture checks can be quarantined to a remediation VLAN.
+C On Linux, view the routing table to understand how traffic leaves this host.
+A ip route
+A ip route show
+E Segmentation and gateways show up here as different routes.
+T Segment a small network (design)
+S Design VLANs for a small office: staff, guests, servers, IoT cameras. State which segments may talk to which.
+X # VLAN10 staff, VLAN20 guests (internet only), VLAN30 servers, VLAN40 IoT
+X # guests -> internet only; IoT -> no internet, no staff; staff -> servers on needed ports
+V no segment has more access than it needs
+T Build a host firewall baseline
+S On a Linux server, allow only SSH and HTTPS inbound and confirm.
+X firewall-cmd --permanent --add-service=ssh --add-service=https
+X firewall-cmd --permanent --set-target=DROP --zone=public 2>/dev/null || true
+X firewall-cmd --reload
+X firewall-cmd --list-all
+V only 22 and 443 are reachable
+
+#D 11|3 Architecture|Cloud and virtualization security|Summarize secure cloud and virtualization concepts.
+Q In the cloud shared-responsibility model, who secures the physical data center?
++ The cloud provider
+- The customer
+- Both equally always
+- No one
+E The customer always owns their data and access; the split depends on IaaS/PaaS/SaaS.
+Q In IaaS, patching the guest operating system is usually:
++ The customer's responsibility
+- The provider's responsibility
+- Automatic and no one's job
+- Illegal
+E IaaS gives you the VM; you secure the OS and apps.
+Q What is a CASB?
++ A Cloud Access Security Broker that enforces policy between users and cloud apps
+- A cloud backup service
+- A billing tool
+- A hypervisor
+E It gives visibility and control over SaaS usage (including shadow IT).
+Q "VM escape" is dangerous because it:
++ Lets code break out of a guest VM to the hypervisor/host
+- Deletes a VM
+- Slows the VM
+- Copies a VM legally
+E It breaks the isolation that virtualization relies on.
+Q What does "infrastructure as code" (IaC) improve for security?
++ Consistent, reviewable, version-controlled configuration of infrastructure
+- Faster CPUs
+- Cheaper storage
+- Physical security
+E Misconfigurations can be caught in code review before deployment.
+Q A "container" differs from a VM because it:
++ Shares the host kernel and packages just the app and its dependencies
+- Includes a full separate OS kernel
+- Cannot be networked
+- Is always more secure
+E Containers are lighter but share the kernel, so kernel isolation matters.
+Q Which is a key control for securing cloud storage buckets?
++ Blocking public access and enforcing least-privilege IAM policies
+- Making them public for speed
+- Disabling encryption
+- Removing logging
+E Public buckets are a classic breach source.
+Q Serverless (functions) shifts more responsibility to the provider but you still own:
++ Your code and its permissions/secrets
+- The hypervisor
+- The physical network
+- The data center power
+E Over-privileged functions and hard-coded secrets are the common risks.
+C With the AWS CLI, list S3 buckets to review what exists (authorized account only).
+A aws s3 ls
+E Then check each bucket's public-access and policy settings.
+T Classify cloud responsibilities
+S For SaaS, PaaS and IaaS, state who patches the OS, who secures the app, and who owns the data.
+X # IaaS: customer patches OS + app; provider does hardware/hypervisor
+X # PaaS: provider patches OS/runtime; customer secures app + data
+X # SaaS: provider does almost all; customer manages data + access/config
+X # data + identity: ALWAYS the customer
+V you can fill the responsibility matrix
+T Harden a container image (concept)
+S List four things you would change to harden a Dockerfile that currently runs as root and installs everything.
+X # use a minimal base image
+X # create and run as a non-root user (USER appsvc)
+X # install only needed packages, pin versions
+X # scan the image for CVEs before push; don't bake in secrets
+V the image is smaller, non-root, and scanned
+
+#D 12|3 Architecture|Cryptography concepts|Compare symmetric/asymmetric crypto, hashing and PKI basics.
+Q Symmetric encryption uses:
++ The same key to encrypt and decrypt
+- A public and a private key
+- No key
+- A hash
+E Fast (e.g., AES) but you must share the key securely.
+Q Asymmetric encryption uses:
++ A public key to encrypt and a matching private key to decrypt
+- One shared secret
+- A salt only
+- A hash function
+E RSA and ECC are examples. Slower, so often used to exchange a symmetric key.
+Q To send a confidential message to Bob, Alice encrypts with:
++ Bob's public key (only Bob's private key can decrypt)
+- Bob's private key
+- Alice's public key
+- A shared password automatically
+E Anyone can hold the public key; only Bob holds the private key.
+Q A digital signature is created by:
++ Encrypting a hash of the message with the sender's private key
+- Encrypting with the receiver's public key
+- Hashing with a salt only
+- Sharing a symmetric key
+E The receiver verifies with the sender's public key — proving integrity and origin.
+Q What does a Certificate Authority (CA) do?
++ Issues and vouches for digital certificates that bind a public key to an identity
+- Encrypts all internet traffic
+- Stores passwords
+- Runs the DNS
+E Browsers trust certificates signed by trusted CAs.
+Q Hashing is different from encryption because it is:
++ One-way — you cannot reverse a hash back to the original
+- Reversible with a key
+- Only for passwords
+- The same as encoding
+E Hashing verifies integrity; encryption protects confidentiality (and is reversible with the key).
+Q "Perfect forward secrecy" ensures:
++ A compromised long-term key does not expose past session keys
+- Passwords are never stored
+- Certificates never expire
+- Backups are encrypted
+E Each session uses ephemeral keys (e.g., ECDHE).
+Q What is the purpose of a certificate's CRL or OCSP?
++ To check whether a certificate has been revoked before trusting it
+- To speed up TLS
+- To store the private key
+- To encrypt email
+E A revoked (e.g., stolen) certificate must not be trusted even if unexpired.
+C Create a self-signed certificate and key for a lab web server.
+A openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
+E Self-signed is fine for labs; production uses a trusted CA.
+T Encrypt and decrypt a file (symmetric)
+S Use OpenSSL to encrypt a file with AES, then decrypt it, proving symmetric crypto works.
+X openssl enc -aes-256-cbc -salt -pbkdf2 -in secret.txt -out secret.enc
+X openssl enc -d -aes-256-cbc -pbkdf2 -in secret.enc -out secret.dec
+X diff secret.txt secret.dec && echo "match"
+V the decrypted file equals the original
+T Sign and verify (asymmetric)
+S Generate a key pair, sign a file, and verify the signature.
+X openssl genpkey -algorithm RSA -out priv.pem
+X openssl rsa -in priv.pem -pubout -out pub.pem
+X openssl dgst -sha256 -sign priv.pem -out doc.sig document.txt
+X openssl dgst -sha256 -verify pub.pem -signature doc.sig document.txt
+V verification prints "Verified OK"
+T Inspect a real certificate
+S View the certificate a website presents and note its issuer, validity dates, and key size.
+X openssl s_client -connect example.com:443 -servername example.com </dev/null 2>/dev/null | openssl x509 -noout -issuer -dates -subject
+V you can read the issuer and expiry

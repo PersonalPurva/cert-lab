@@ -1,0 +1,135 @@
+#D 1
+## The CIA triad
+Almost every security idea traces back to three goals, remembered as the **CIA triad**:
+- **Confidentiality** — information is seen only by those authorised. Achieved mainly with **encryption** and access controls.
+- **Integrity** — information is accurate and unaltered. Verified with **hashing** and digital signatures; if a file's hash still matches, it hasn't changed.
+- **Availability** — systems and data are usable when needed. Protected with **redundancy, backups, and DDoS defences**.
+Every control you learn supports one or more of these. A denial-of-service attack harms availability; eavesdropping harms confidentiality; tampering harms integrity.
+
+## Authentication, authorization, accounting (AAA)
+Three related ideas that are easy to confuse:
+- **Authentication** proves *who you are* (you log in).
+- **Authorization** decides *what you may do* once identified (your permissions).
+- **Accounting** records *what you did* (logs and audit trails).
+Together they are called **AAA**. A fourth idea, **non-repudiation**, means someone cannot later deny an action — digital signatures provide it because only the signer holds the private key.
+
+## Why the triad guides decisions
+When you evaluate any control, ask which goal it serves. Full-disk encryption → confidentiality. A RAID array or load balancer → availability. A file hash or digital signature → integrity. This framing keeps security decisions grounded rather than reacting to fear — you spend effort where a real goal is at risk.
+
+#D 2
+## Control types (who enforces it)
+Security **controls** are the safeguards you put in place. They are classified two ways. First, by **type** — the nature of the control:
+- **Technical** (also called logical) — enforced by technology: firewalls, encryption, antivirus.
+- **Managerial** (administrative) — the policies and procedures that direct the program: a security policy, risk assessments.
+- **Operational** — carried out by people day to day: awareness training, an incident-response procedure.
+- **Physical** — protect the tangible world: locks, fences, guards, cameras.
+
+## Control functions (what it does)
+Second, by **function** — what the control accomplishes:
+- **Preventive** — stops an incident (a door lock, a firewall rule).
+- **Detective** — notices an incident (an IDS, CCTV recording, a log alert).
+- **Corrective** — fixes or recovers after one (a backup restore, re-imaging).
+- **Deterrent** — discourages an attacker (a warning sign, visible cameras).
+- **Compensating** — an alternative used when the primary control isn't feasible (isolating a legacy server you cannot patch).
+- **Directive** — instructs behaviour (a policy telling staff what to do).
+Any real control usually has both a type and a function — antivirus is *technical* and mostly *preventive/detective*.
+
+## Defence in depth
+No single control is perfect, so you layer them — **defence in depth**. If one layer fails, others still protect the asset. A compensating control fills a gap when the ideal control can't be used.
+
+#D 3
+## Change management
+Unplanned or untracked changes are one of the biggest causes of outages **and** new vulnerabilities, so mature organisations control change formally. A good change process includes: a clear purpose, an assessment of **risk and impact**, a **test plan**, approval (often by a change advisory board), a **maintenance window** to make disruptive changes at a low-impact time, and — critically — a **rollback/backout plan** so a change can be undone if it breaks something. The rule of thumb: never deploy a change you cannot reverse. Version control (like Git) is a simple, powerful change-management tool for configurations.
+
+## Zero trust
+The old model trusted everything inside the corporate firewall. **Zero trust** removes that assumption: *never trust, always verify* — every request is authenticated and authorised regardless of where it comes from. Key pieces:
+- The **Policy Decision Point (PDP)** decides whether to allow a request; the **Policy Enforcement Point (PEP)** actually enforces that decision.
+- **Least privilege** — give each user or process only the access it needs, limiting the damage a compromised account can do.
+- **Microsegmentation** — divide the network into small zones so a breach in one cannot spread freely.
+
+## Why these matter together
+Change management protects availability and integrity by keeping the environment predictable; zero trust protects confidentiality and integrity by refusing to assume any request is safe. Both reflect the same mindset: reduce blast radius and verify before trusting.
+
+#D 4
+## Threat actors
+A **threat actor** is anyone who might attack you. They differ in skill, resources and motivation, and knowing the type helps you prepare:
+- **Nation-state / APT (Advanced Persistent Threat)** — the best-funded and most patient; motivated by espionage or sabotage.
+- **Organised crime** — motivated by **money**; runs ransomware and fraud.
+- **Hacktivist** — motivated by a political or social **cause**; defaces sites or leaks data.
+- **Script kiddie** — low skill, using tools written by others; still dangerous.
+- **Insider threat** — a trusted employee causing harm, deliberately or accidentally; dangerous because they already have access.
+
+## Actor attributes and motivations
+Describe actors by **attributes**: internal vs external, their level of **sophistication/capability**, and their **resources/funding**. And by **motivation**: financial gain, espionage, political/philosophical belief, revenge, notoriety, or simple disruption. **Shadow IT** — hardware or software used without IT approval — creates unmanaged risk that any of these actors can exploit.
+
+## Threat intelligence
+**Threat intelligence** is knowledge about likely attackers and their techniques, shared through feeds and frameworks so defenders can prepare. **MITRE ATT&CK** is the widely used catalogue of adversary **tactics, techniques and procedures (TTPs)** — it gives red and blue teams a shared language for how attacks actually unfold.
+
+#D 5
+## What social engineering is
+**Social engineering** attacks the *person* rather than the machine, tricking someone into revealing information or taking an unsafe action. It works by exploiting human tendencies — **authority, urgency, scarcity, familiarity and fear**. Because people are the target, the strongest defences are **awareness training** plus **verification procedures** and MFA.
+
+## The main techniques
+- **Phishing** — fraudulent messages (usually email) that trick users into clicking malicious links or revealing data. It is the most common initial attack vector.
+- **Spear phishing** — phishing targeted at a specific person with personalised detail; **whaling** targets executives.
+- **Vishing** — voice phishing (phone calls); **smishing** — phishing via SMS.
+- **Pretexting** — inventing a believable scenario ("I'm from the fraud team…") to gain trust.
+- **Watering hole** — compromising a website the target group is known to visit.
+- **Business email compromise** — impersonating an executive to authorise a fraudulent payment.
+
+## Physical and everyday tricks
+- **Tailgating (piggybacking)** — following an employee through a secure door without badging in.
+- **Shoulder surfing** — watching someone type a password.
+- **Baiting** — leaving a malware-loaded USB stick for someone to plug in.
+The right response to a suspected attack is simple: **don't click or reply, report it, and verify any request through a known official channel** — never the contact details in the suspicious message itself.
+
+#D 6
+## Malware families
+**Malware** is malicious software. The types are distinguished by how they spread and what they do:
+- **Virus** — attaches to a file and needs a user action to spread.
+- **Worm** — spreads by itself across networks, no user needed.
+- **Trojan** — disguised as legitimate software so the user runs it.
+- **Ransomware** — encrypts or locks data and demands payment; best defended with **offline/immutable backups**, patching, MFA and least privilege.
+- **Spyware / keylogger** — secretly gathers information or records keystrokes.
+- **Rootkit** — hides itself and gains privileged, persistent control of the OS, making it hard to detect.
+- **Logic bomb** — malicious code that triggers on a condition (a date, a user being deleted).
+
+## Modern evasive malware
+- **Fileless malware** runs in memory using legitimate tools (like PowerShell) instead of dropping a detectable file — "living off the land".
+- A **botnet** is a network of compromised devices (bots/zombies) controlled by an attacker through a **command-and-control (C2)** server, often used for DDoS.
+
+## Detecting malware
+Behaviour is the giveaway: new scheduled tasks (persistence), a process with no file on disk (fileless), regular beacon traffic to a strange IP (C2 check-in), or a renamed system binary (evasion). Modern defence uses **EDR** (behaviour-based detection) rather than only signature antivirus, plus indicators of compromise (IOCs) like file hashes and malicious IPs.
+
+#D 7
+## Password attacks
+Passwords are attacked in several ways:
+- **Brute force** — trying every possible combination; slow, defeated by long passwords and lockouts.
+- **Dictionary attack** — trying likely words from a wordlist.
+- **Credential stuffing** — reusing username/password pairs leaked from one site against many others; works because people reuse passwords, and is stopped by MFA.
+- **Password spraying** — trying one common password across many accounts to avoid per-account lockout.
+- **Pass-the-hash** — authenticating with a stolen password hash without cracking it.
+Defences: **MFA**, long passphrases, account lockout/rate limiting, and — on the server side — **salted, slow hashing** (bcrypt/argon2). A **salt** is random data added before hashing so identical passwords hash differently, defeating precomputed "rainbow tables".
+
+## Application attacks
+Attacks that abuse how software handles input:
+- **SQL injection** — inserting malicious SQL through an input field the app runs against its database. Fixed with **parameterized queries** (prepared statements).
+- **Cross-site scripting (XSS)** — injecting script that runs in another user's browser. Fixed with output encoding and a Content Security Policy.
+- **Buffer overflow** — writing more data than a memory buffer holds, corrupting adjacent memory and possibly running attacker code; mitigated by ASLR/DEP.
+- **Race condition (TOCTOU)** — exploiting the gap between the *time of check* and the *time of use*.
+The common thread: never trust user input — validate it, and treat it as data, never as code.
+
+#D 8
+## On-path and spoofing attacks
+Network attacks intercept or redirect traffic:
+- **Man-in-the-middle / on-path** — the attacker sits between two parties, reading and possibly altering traffic. Defended with **TLS everywhere** and certificate validation.
+- **ARP poisoning** — tricking devices on a local network into sending traffic to the attacker by faking the mapping of an IP to the attacker's MAC. Dynamic ARP Inspection helps.
+- **DNS poisoning (spoofing)** — corrupting DNS so a legitimate name resolves to a malicious IP. DNSSEC and trusted resolvers reduce it.
+- **Replay attack** — capturing valid data (like an auth token) and resending it; defeated by timestamps, nonces and session tokens.
+
+## Denial of service
+- **DoS** floods a service so real users cannot reach it; a **DDoS** does it from many compromised sources at once (a botnet). Cloud "scrubbing" services and rate limiting absorb the flood. A **SYN flood** exhausts a server's half-open connections; SYN cookies mitigate it.
+
+## Wireless and encryption fixes
+- A **rogue access point** is any unauthorised AP; an **evil twin** specifically impersonates a legitimate network's name (SSID) to trick users into connecting.
+The overarching defence against sniffing and interception is **encryption in transit** (TLS/IPsec) and **network segmentation** — captured traffic that is encrypted is useless, and segmentation limits how far an intruder can move. Modern DNS privacy (DoH/DoT) encrypts lookups to stop on-path snooping.

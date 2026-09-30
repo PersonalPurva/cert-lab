@@ -1,0 +1,714 @@
+#D 1|RH124|Shell basics and getting help|Access shell prompts, issue commands with correct syntax, and find answers in man, info and /usr/share/doc.
+Q In the prompt `[student@servera ~]$`, what does the final `$` tell you?
++ You are logged in as a regular (non-root) user
+- You are logged in as root
+- A command is still running in the background
+- SELinux is in enforcing mode
+E A `$` prompt means a normal user; `#` means root. Always glance at it before running admin commands.
+Q Which command searches the short descriptions of all man pages for a keyword?
++ man -k keyword
+- man -f keyword
+- info -s keyword
+- help keyword
+E `man -k` is the same as `apropos`. If it returns "nothing appropriate", build the index as root with `mandb`.
+Q Which man section documents configuration file formats such as /etc/fstab?
++ Section 5
+- Section 1
+- Section 8
+- Section 3
+E Section 1 = user commands, 5 = file formats, 8 = admin commands. Use `man 5 fstab`.
+C Open the manual page for the /etc/passwd file format (not the passwd command).
+A man 5 passwd
+E Without the section number, `man passwd` opens section 1, the command.
+Q Where do packages usually install extra documentation such as example config files?
++ /usr/share/doc
+- /etc/doc
+- /var/doc
+- /opt/doc
+E Look in `/usr/share/doc/<package>` for READMEs and examples. It is available during the exam.
+Q Which keyboard shortcut searches backwards through your bash command history?
++ Ctrl+R
+- Ctrl+H
+- Ctrl+B
+- Ctrl+L
+E Press Ctrl+R, type part of an old command, press Ctrl+R again to go further back, Enter to run it.
+C Show only the last 20 commands from your history.
+A history 20
+E `history` alone shows everything; `!N` reruns entry number N.
+Q What does `!!` do in bash?
++ Runs the previous command again
+- Repeats the last argument of the previous command
+- Inverts the exit code of the last command
+- Opens the history file in an editor
+E `!!` is the whole last command (handy as `sudo !!`). `!$` is only the last argument.
+C Find out whether `cd` is a shell builtin, an alias, or a program on disk.
+A type cd
+E `type` reports how bash resolves a name. Builtins have no separate man page; use `help cd`.
+Q Inside a man page, how do you search forward for the word "UID"?
++ Type /UID and press Enter, then n for the next match
+- Press Ctrl+F and type UID
+- Type :find UID
+- Press s and type UID
+E man uses the `less` pager: `/pattern` searches forward, `n` next match, `N` previous, `q` quit.
+T Find answers only with the built-in documentation
+S Without using the internet, find out: (1) which man section documents /etc/shadow, (2) which useradd option sets a specific UID, and (3) which commands have "partition" in their description.
+H `man -f name` lists every section that has a page with that name.
+H If `man -k` finds nothing, the index has not been built yet.
+X man -f shadow
+X man 5 shadow
+X man useradd        # then type /UID and press n
+X man -k partition
+X sudo mandb         # only if man -k printed "nothing appropriate"
+V man -k partition | head
+T Practise history and shell shortcuts
+S Run five different commands. Rerun the third one by its history number, reuse the last argument of a command with `!$`, find an old command with Ctrl+R, then save your whole history to ~/myhistory.txt.
+X history
+X !3
+X ls -ld /etc/ssh
+X cd !$
+X history > ~/myhistory.txt
+V tail ~/myhistory.txt
+
+#D 2|RH124|Managing files and directories|Create, delete, copy and move files and directories; understand the filesystem hierarchy.
+Q Where are system-wide configuration files kept on RHEL?
++ /etc
+- /usr
+- /var
+- /opt
+E `/etc` holds configuration. `/usr` holds installed software, `/var` holds variable data such as logs.
+Q Which directory holds data that changes while the system runs, such as logs, spools and caches?
++ /var
+- /etc
+- /boot
+- /srv
+E Logs live in `/var/log`, for example `/var/log/messages` and `/var/log/secure`.
+Q Which of these paths is absolute?
++ /home/student/docs
+- ../student/docs
+- ./docs
+- docs/report.txt
+E An absolute path starts with `/` and works from any current directory.
+C Create the directory tree a/b/c in one command, creating missing parents.
+A mkdir -p a/b/c
+E Without `-p`, mkdir fails if `a` or `a/b` doesn't exist.
+C Copy the directory /etc/skel and everything inside it to /tmp/skelcopy.
+A cp -r /etc/skel /tmp/skelcopy
+A cp -R /etc/skel /tmp/skelcopy
+A cp -a /etc/skel /tmp/skelcopy
+E Directories need `-r`. `-a` (archive) also keeps permissions, ownership and timestamps.
+Q What is the difference between `rmdir dir` and `rm -r dir`?
++ rmdir only removes empty directories; rm -r removes the directory and its contents
+- rmdir asks for confirmation; rm -r never deletes hidden files
+- They are identical
+- rm -r only works as root
+E Use `rmdir` when you want a safety check that a directory is empty.
+Q Which files does the glob `file?.txt` match?
++ file1.txt and fileA.txt, but not file10.txt
+- file1.txt and file10.txt
+- Every file starting with "file"
+- Only a file literally named file?.txt
+E `?` matches exactly one character, `*` matches any number, `[abc]` matches one of a set.
+C Create report1.txt through report5.txt with a single touch command.
+A touch report{1..5}.txt
+E Brace expansion `{1..5}` expands to 1 2 3 4 5 before the command runs.
+Q As a regular user with no aliases, what happens with `mv a.txt b.txt` when b.txt already exists?
++ b.txt is overwritten without any prompt
+- mv refuses and prints an error
+- mv renames a.txt to b.txt.1
+- mv asks for confirmation
+E Use `mv -i` to be asked first. On RHEL, root has aliases `rm -i`, `cp -i` and `mv -i` set in /root/.bashrc.
+C Go back to the directory you were in just before the current one.
+A cd -
+E `cd -` toggles between your last two directories. `cd` alone goes home.
+T File management workout
+S As student, build ~/lab2 with subdirectories projects, archive and trash. Create notes1.txt to notes3.txt inside projects. Copy notes1.txt into archive, rename notes2.txt to draft.txt, move notes3.txt into trash, then delete the trash directory with everything in it.
+H Brace expansion saves typing for both mkdir and touch.
+X mkdir -p ~/lab2/{projects,archive,trash}
+X touch ~/lab2/projects/notes{1..3}.txt
+X cp ~/lab2/projects/notes1.txt ~/lab2/archive/
+X mv ~/lab2/projects/notes2.txt ~/lab2/projects/draft.txt
+X mv ~/lab2/projects/notes3.txt ~/lab2/trash/
+X rm -r ~/lab2/trash
+V ls -R ~/lab2
+T Tour the filesystem hierarchy
+S Find where these live on your RHEL VM and note them down: the SSH server config file, the kernel image, the `ls` binary, the system log file, and the home directory of root.
+X ls /etc/ssh/
+X ls /boot/vmlinuz-*
+X which ls
+X ls -l /var/log/messages
+X echo ~root
+V ls -ld /etc/ssh /boot /usr/bin /var/log /root
+
+#D 3|RH124|Links and finding files|Create hard and soft links, and locate files with find.
+Q What is true about a hard link?
++ It points to the same inode as the original file
+- It stores the path of the original file
+- It breaks when the original file is deleted
+- It can point to a directory
+E Hard links are extra names for the same inode. The data stays until the last name is removed.
+Q What happens to a symbolic link when its target file is deleted?
++ The link remains but is broken (dangling)
+- The link is deleted automatically
+- The link keeps a copy of the data
+- The link now points to /dev/null
+E A soft link stores a path. If nothing exists at that path, the link is broken. `ls -l` shows it in red.
+Q Which of these can a hard link NOT do?
++ Point to a directory or to a file on another filesystem
+- Point to a file in the same directory
+- Share the same inode as the original
+- Survive deleting the original name
+E Soft links can cross filesystems and point to directories; hard links cannot.
+C Create a symbolic link /root/hosts-link that points to /etc/hosts.
+A ln -s /etc/hosts /root/hosts-link
+E Order: `ln -s TARGET LINKNAME`. Leave out `-s` to make a hard link.
+C Find every file on the system owned by user natasha, hiding "Permission denied" errors.
+A find / -user natasha 2>/dev/null
+A find / -user natasha -type f 2>/dev/null
+E `2>/dev/null` discards error messages from directories you cannot read.
+Q Which find test matches files larger than 100 MiB?
++ -size +100M
+- -size 100M+
+- -bigger 100M
+- -size >100M
+E `+` means more than, `-` means less than. Units: k, M, G.
+C Find files under /etc that were modified in the last 2 days.
+A find /etc -mtime -2
+A find /etc -type f -mtime -2
+E `-mtime -2` = less than 2 days ago. Use `-mmin` for minutes.
+Q In `find / -user harry -exec cp -a {} /root/harry/ \;` what does `{}` stand for?
++ Each path that find matched
+- The current directory
+- The user's home directory
+- The previous command's output
+E `\;` ends the -exec command. find runs it once for every match, putting the path in place of `{}`.
+Q What does the second column of `ls -l` output show for a file?
++ The number of hard links to it
+- The inode number
+- The file size in blocks
+- The number of users who opened it
+E `ls -i` shows the inode number. A link count of 2 on a file means one extra hard link exists.
+C Find every file under /usr that has the SUID bit set.
+A find /usr -perm -4000
+A find /usr -perm -u+s
+A find /usr -type f -perm -4000
+A find /usr -perm /4000
+E `-perm -4000` means "at least these bits". `ls -l` shows SUID as an `s` in the owner execute slot.
+T Hard links vs soft links
+S In ~/linklab create original.txt containing "version 1". Make a hard link hard.txt and a soft link soft.txt. Compare inode numbers, delete original.txt, and see which link still shows the content.
+X mkdir ~/linklab && cd ~/linklab
+X echo "version 1" > original.txt
+X ln original.txt hard.txt
+X ln -s original.txt soft.txt
+X ls -li
+X rm original.txt
+X cat hard.txt       # still works
+X cat soft.txt       # No such file or directory
+V ls -li ~/linklab
+T Find a user's files and copy them (exam classic)
+S Create user harry and give him a few files in /tmp and his home. Then, as root, find every regular file owned by harry and copy it into /root/harryfiles, keeping permissions.
+H Create the destination directory before running find.
+X useradd harry
+X sudo -u harry touch /tmp/harry1 /home/harry/notes
+X mkdir -p /root/harryfiles
+X find / -user harry -type f -exec cp -a {} /root/harryfiles/ \; 2>/dev/null
+V ls -l /root/harryfiles
+
+#D 4|RH124|Redirection and pipes|Use input-output redirection (>, >>, |, 2>, etc.).
+Q What does `2>` redirect?
++ Standard error
+- Standard output
+- Standard input
+- Both output streams
+E File descriptors: 0 = stdin, 1 = stdout, 2 = stderr.
+Q What does `command > out.txt 2>&1` do?
++ Sends both standard output and standard error to out.txt
+- Sends only errors to out.txt
+- Appends to out.txt
+- Sends output to out.txt and errors to a file called 1
+E `2>&1` means "send stderr to wherever stdout goes now". The order matters.
+Q With `command 2>&1 > file`, where do the errors go?
++ To the terminal
+- To file
+- To /dev/null
+- Nowhere; bash reports a syntax error
+E Redirections are processed left to right. At the time of `2>&1`, stdout still pointed at the terminal.
+C Append the line "hello" to notes.txt without overwriting it.
+A echo hello >> notes.txt
+A echo "hello" >> notes.txt
+A echo 'hello' >> notes.txt
+E `>` truncates the file first. `>>` appends.
+C Search the whole filesystem for files named passwd, throwing away all error messages.
+A find / -name passwd 2>/dev/null
+E /dev/null discards everything written to it.
+Q What does `tee` do?
++ Copies its input to a file and to standard output at the same time
+- Splits a file into two parts
+- Joins two files side by side
+- Redirects errors to a file
+E Example: `ls -l | tee list.txt | wc -l` saves the listing and still counts it.
+C Save the output of `ls -l /etc` to /root/etc.txt and also show it on the screen.
+A ls -l /etc | tee /root/etc.txt
+E Use `tee -a` to append instead of overwrite.
+Q In bash, what does `&> file` do?
++ Redirects both stdout and stderr to file
+- Runs the command in the background and writes to file
+- Redirects only stderr to file
+- Appends stdout to file
+E `&> file` is short for `> file 2>&1`. Use `&>> file` to append both.
+Q What does the pipe `|` connect?
++ The stdout of the left command to the stdin of the right command
+- The stderr of the left command to the right command
+- Two files into one
+- The exit code of the left command to the right command
+E Errors are not piped unless you add `2>&1` first (or use `|&`).
+C Count the number of lines in /etc/passwd.
+A wc -l /etc/passwd
+A wc -l < /etc/passwd
+A cat /etc/passwd | wc -l
+E Each line in /etc/passwd is one account, so this also counts accounts.
+T Redirection practice
+S Run `ls /etc /nonexistent` four ways: output only to ok.txt, errors only to err.txt, both to all.txt, and append a second run to all.txt. Check each file after every step.
+X cd ~ && ls /etc /nonexistent > ok.txt
+X ls /etc /nonexistent 2> err.txt
+X ls /etc /nonexistent &> all.txt
+X ls /etc /nonexistent >> all.txt 2>&1
+V wc -l ok.txt err.txt all.txt
+T Build a pipeline
+S Show the 5 largest files in /usr/bin with their sizes in human-readable form and save that list to /root/biggest.txt while also printing it.
+H `ls -lS` sorts by size, largest first.
+X ls -lhS /usr/bin | head -n 6 | tee /root/biggest.txt
+X # head -n 6 because the first line of ls -l is the "total" line
+V cat /root/biggest.txt
+
+#D 5|RH124|Editing and viewing text files|Create and edit text files with vim; read files with cat, less, head and tail.
+Q In vim, how do you save the file and quit?
++ Press Esc, then type :wq and Enter
+- Press Ctrl+S then Ctrl+Q
+- Type :q and Enter
+- Press Esc then type :x! twice
+E `:wq` writes and quits. `:x` or `ZZ` do the same but only write if the file changed.
+Q In vim, how do you quit without saving your changes?
++ :q!
+- :wq!
+- :exit
+- Ctrl+C
+E The `!` forces vim to discard changes.
+Q In vim normal (command) mode, what does `dd` do?
++ Deletes (cuts) the current line
+- Duplicates the current line
+- Deletes the whole file
+- Moves down two lines
+E `yy` copies a line, `p` pastes below, `u` undoes, `Ctrl+R` redoes.
+Q Which vim keys jump to the last line and to the first line of the file?
++ G for the last line, gg for the first
+- End and Home
+- :$ for the first line, :0 for the last
+- L and H
+E `:25` or `25G` jumps to line 25. `:set nu` shows line numbers.
+Q How do you replace every "foo" with "bar" in the whole file in vim?
++ :%s/foo/bar/g
+- :s/foo/bar
+- :replace foo bar
+- /foo/bar/g
+E `%` means every line, `g` means every match on each line. Add `c` to confirm each one.
+C Show only the first 5 lines of /etc/passwd.
+A head -n 5 /etc/passwd
+A head -5 /etc/passwd
+E `tail -n 5` shows the last 5 lines.
+C Watch /var/log/messages live as new lines are written to it.
+A tail -f /var/log/messages
+A sudo tail -f /var/log/messages
+E Stop following with Ctrl+C. `journalctl -f` does the same for the journal.
+Q Which command opens an interactive vim lesson you can practise on?
++ vimtutor
+- vim --help
+- man vim
+- vim -t
+E Doing `vimtutor` once takes about 30 minutes and covers everything needed for the exam.
+C Open /etc/services one screen at a time so you can scroll up and down and search.
+A less /etc/services
+E In `less`: Space = next page, b = back, /word = search, q = quit.
+Q In vim, which key enters insert mode before the cursor, and which opens a new line below?
++ i inserts before the cursor; o opens a new line below
+- a inserts before the cursor; O opens a line below
+- I inserts at the cursor; n opens a line below
+- Insert key only; there is no key for a new line
+E `a` appends after the cursor, `A` at the end of the line, `O` opens a line above.
+T vim speed drill
+S Copy /etc/services to ~/services.txt and open it in vim. Show line numbers, jump to line 100, delete 3 lines, go to the end of the file, add a line "# edited by me", replace every "tcp" with "TCP", then save and quit.
+X cp /etc/services ~/services.txt
+X vim ~/services.txt
+X # :set nu   ->  :100  ->  3dd  ->  G  ->  o  type the text  ->  Esc
+X # :%s/tcp/TCP/g   ->  :wq
+V tail -n 2 ~/services.txt
+V grep -c TCP ~/services.txt
+T Read logs efficiently
+S As root, show the first 10 and last 10 lines of /var/log/secure, open it in less and search for "session opened", then follow it live while you log in from a second terminal.
+X head /var/log/secure
+X tail /var/log/secure
+X less /var/log/secure      # then /session opened
+X tail -f /var/log/secure   # in another terminal: ssh student@localhost
+V grep -c 'session opened' /var/log/secure
+
+#D 6|RH124|grep and regular expressions|Use grep and regular expressions to analyze text.
+C Show the lines of /etc/passwd that start with "root".
+A grep '^root' /etc/passwd
+A grep ^root /etc/passwd
+A grep "^root" /etc/passwd
+E `^` anchors the match to the start of the line.
+Q Which regular expression matches lines that end with "bash"?
++ bash$
+- ^bash
+- bash^
+- $bash
+E `$` anchors to the end of the line. `^$` matches an empty line.
+Q In a basic regular expression, what does `.` match?
++ Any single character
+- A literal dot only
+- Zero or more characters
+- The end of the line
+E Escape it as `\.` to match a real dot, for example `grep '\.conf$'`.
+C Show all lines in /etc/ssh/sshd_config that are neither comments nor empty lines.
+A grep -v '^#' /etc/ssh/sshd_config | grep -v '^$'
+A grep -Ev '^(#|$)' /etc/ssh/sshd_config
+A grep -vE '^#|^$' /etc/ssh/sshd_config
+A grep -Ev '^#|^$' /etc/ssh/sshd_config
+E This is the quickest way to see what a config file really sets.
+Q What does `grep -E 'cat|dog' file` print?
++ Lines containing cat or dog
+- Lines containing cat followed by dog
+- Only the words cat and dog
+- Lines that contain neither word
+E `-E` turns on extended regex so `|`, `+`, `?` and `{n}` work without backslashes.
+C Count how many lines in /etc/passwd contain "nologin".
+A grep -c nologin /etc/passwd
+A grep -c 'nologin' /etc/passwd
+E `-c` prints a count instead of the lines.
+Q What does `grep -w root` do differently from `grep root`?
++ It only matches "root" as a whole word
+- It matches case-insensitively
+- It prints the word count
+- It searches recursively
+E With `-w`, "rootkit" and "chroot" no longer match.
+C Search every file under /etc for "PermitRootLogin" and show file names with line numbers.
+A grep -rn PermitRootLogin /etc
+A grep -rn 'PermitRootLogin' /etc
+A grep -nr PermitRootLogin /etc
+E `-r` recursive, `-n` line numbers, `-i` ignore case, `-l` file names only.
+Q An exam task says: "Save all lines containing ssh from /etc/services to /root/ssh.txt, in their original order." Which is correct?
++ grep ssh /etc/services > /root/ssh.txt
+- grep ssh /etc/services | sort > /root/ssh.txt
+- grep -c ssh /etc/services > /root/ssh.txt
+- cat /etc/services | grep -v ssh > /root/ssh.txt
+E Don't sort or change the output unless the task asks. Check with `cat /root/ssh.txt`.
+Q Which grep option makes the match case-insensitive?
++ -i
+- -c
+- -v
+- -s
+E `grep -i error` matches Error, ERROR and error.
+T Text hunting with grep
+S Using /etc/passwd: list users whose shell is /bin/bash, count them, list accounts with UID 0, and save the non-login (nologin) account names to /root/nologin-users.txt.
+H Use `cut -d: -f1` to keep only the user name field.
+X grep 'bash$' /etc/passwd
+X grep -c '/bin/bash$' /etc/passwd
+X grep ':x:0:' /etc/passwd
+X grep nologin /etc/passwd | cut -d: -f1 > /root/nologin-users.txt
+V cat /root/nologin-users.txt
+T Regular expressions on a log
+S As root, find in /var/log/secure every failed password line, count them, and print only unique source IP addresses. (Create failures first by trying a wrong password with `ssh wronguser@localhost`.)
+X ssh wronguser@localhost      # type a wrong password a few times
+X grep 'Failed password' /var/log/secure
+X grep -c 'Failed password' /var/log/secure
+X grep -Eo 'from [0-9.]+' /var/log/secure | sort -u
+V grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /var/log/secure | sort | uniq -c
+
+#D 7|RH124|Local users and groups|Create, delete and modify local user accounts and groups.
+Q How many colon-separated fields does each line in /etc/passwd have?
++ 7
+- 5
+- 9
+- 4
+E name:password:UID:GID:comment:home:shell. The password field is `x` because the hash is in /etc/shadow.
+Q Where are the password hashes stored?
++ /etc/shadow
+- /etc/passwd
+- /etc/login.defs
+- /etc/security/passwd
+E /etc/shadow is readable only by root. It also stores password-aging fields.
+Q On RHEL, which UID does the first regular user account get by default?
++ 1000
+- 500
+- 100
+- 0
+E UID 0 is root, 1-999 are system accounts. The range comes from /etc/login.defs.
+C Create a user named harry with UID 2000.
+A useradd -u 2000 harry
+E Check with `id harry`.
+C Add the existing user natasha to the supplementary group sysmgrs without removing her other groups.
+A usermod -aG sysmgrs natasha
+A usermod -a -G sysmgrs natasha
+A gpasswd -a natasha sysmgrs
+E Always use `-a` with `-G`, or the other supplementary groups are removed.
+Q What happens if you run `usermod -G sysmgrs natasha` (without -a)?
++ natasha's supplementary groups are replaced by only sysmgrs
+- sysmgrs becomes natasha's primary group
+- sysmgrs is added to her existing groups
+- The command fails
+E `-g` changes the primary group; `-G` sets the full supplementary list.
+C Create the user sarah with a shell that does not allow interactive login.
+A useradd -s /sbin/nologin sarah
+A useradd -s /usr/sbin/nologin sarah
+E `/sbin/nologin` and `/usr/sbin/nologin` are the same file on RHEL.
+C Create a group named sysmgrs with GID 3000.
+A groupadd -g 3000 sysmgrs
+E Verify with `getent group sysmgrs`.
+Q Which command deletes the user harry together with his home directory and mail spool?
++ userdel -r harry
+- userdel harry
+- deluser --all harry
+- usermod -D harry
+E Without `-r`, the home directory stays on disk, owned by a now-unused UID.
+Q What does the "user private group" scheme mean on RHEL?
++ Each new user gets a primary group with the same name as the user
+- Every user joins the users group
+- Users cannot belong to more than one group
+- Only root can create groups
+E That's why `useradd harry` also creates a group called harry.
+T Exam-style user setup
+S Create group sysmgrs. Create users natasha and harry with sysmgrs as a supplementary group. Create user sarah with a non-interactive shell who is not a member of sysmgrs. Set the password of all three to "Rhcsa@2026".
+X groupadd sysmgrs
+X useradd -G sysmgrs natasha
+X useradd -G sysmgrs harry
+X useradd -s /sbin/nologin sarah
+X for u in natasha harry sarah; do echo 'Rhcsa@2026' | passwd --stdin $u; done
+V id natasha; id harry; id sarah
+V grep sarah /etc/passwd
+T Modify accounts
+S Change harry's comment to "Harry Potter", move his home to /home/hpotter (moving the files too), lock sarah's account, then unlock it again. Finally rename group sysmgrs to sysadmins and back.
+X usermod -c "Harry Potter" harry
+X usermod -d /home/hpotter -m harry
+X usermod -L sarah
+X grep sarah /etc/shadow      # a ! appears before the hash
+X usermod -U sarah
+X groupmod -n sysadmins sysmgrs
+X groupmod -n sysmgrs sysadmins
+V getent passwd harry
+V ls -ld /home/hpotter
+
+#D 8|RH124|Passwords, aging and sudo|Change passwords and adjust password aging; configure privileged access.
+Q What does `chage -M 90 harry` set?
++ harry must change his password at most every 90 days
+- harry must wait 90 days before changing his password
+- harry's account expires in 90 days
+- harry gets a warning 90 days before expiry
+E -M max days, -m min days, -W warning days, -I inactive days, -E account expiry date.
+C Force harry to change his password at his next login.
+A chage -d 0 harry
+A passwd -e harry
+A passwd --expire harry
+E Setting the last-change date to 0 means the password counts as already expired.
+C Make natasha's account expire on 2026-12-31.
+A chage -E 2026-12-31 natasha
+A usermod -e 2026-12-31 natasha
+E The account (not just the password) stops working after this date.
+Q Which file sets the default password-aging values for users created in the future?
++ /etc/login.defs
+- /etc/default/useradd
+- /etc/shadow
+- /etc/security/pwquality.conf
+E Look for PASS_MAX_DAYS, PASS_MIN_DAYS and PASS_WARN_AGE.
+Q You edit PASS_MAX_DAYS in /etc/login.defs. Which accounts does it affect?
++ Only accounts created after the change
+- All existing accounts immediately
+- Only the root account
+- All accounts after a reboot
+E For existing users, run `chage` on each one.
+C Show the password-aging information for harry.
+A chage -l harry
+E It shows last change, expiry, min, max and warning days in readable form.
+C Set sarah's password to Secret123 without an interactive prompt.
+A echo Secret123 | passwd --stdin sarah
+A echo 'Secret123' | passwd --stdin sarah
+A echo "Secret123" | passwd --stdin sarah
+E `--stdin` is a RHEL passwd option; it's handy in scripts and exam tasks.
+Q What is the safe way to edit sudo rules?
++ Use visudo, or put a file in /etc/sudoers.d/ and check it with visudo -c
+- Edit /etc/sudoers directly with nano
+- Add the user to /etc/sudo.conf
+- Run sudo --edit-rules
+E visudo checks the syntax before saving. A broken sudoers file can lock everyone out of sudo.
+Q Which sudoers line lets members of sysmgrs run any command as root without a password?
++ %sysmgrs ALL=(ALL) NOPASSWD: ALL
+- sysmgrs ALL=(ALL) NOPASSWD: ALL
+- %sysmgrs ALL=NOPASSWD
+- @sysmgrs ALL=(root) ALL
+E `%` marks a group. Without the `%`, sudo treats the name as a user.
+Q On RHEL, members of which group get full sudo access by default?
++ wheel
+- admin
+- sudo
+- root
+E /etc/sudoers contains `%wheel ALL=(ALL) ALL`. Add a user with `usermod -aG wheel user`.
+Q What is the difference between `su harry` and `su - harry`?
++ `su -` starts a login shell with harry's full environment and home directory
+- `su -` does not ask for a password
+- `su` without the dash only works for root
+- There is no difference
+E Prefer `su -` so PATH and variables match the target user.
+T Password policy task
+S Make passwords of all NEW users expire after 30 days. For the existing user harry, set maximum password age to 60 days with a 7-day warning, and force him to change his password at next login. Make natasha's account expire on 2026-12-31.
+X vim /etc/login.defs          # PASS_MAX_DAYS 30
+X chage -M 60 -W 7 harry
+X chage -d 0 harry
+X chage -E 2026-12-31 natasha
+V grep ^PASS_MAX_DAYS /etc/login.defs
+V chage -l harry; chage -l natasha
+V useradd testuser && chage -l testuser | grep Maximum
+T Configure privileged access
+S Members of sysmgrs must run all commands as root without a password. User alex may only run `systemctl` as root (with a password). Use files in /etc/sudoers.d and check the syntax.
+X echo '%sysmgrs ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/sysmgrs
+X useradd alex
+X echo 'alex ALL=(root) /usr/bin/systemctl' > /etc/sudoers.d/alex
+X visudo -c
+V su - natasha -c 'sudo -n id'      # should print uid=0 with no password prompt
+V sudo -l -U alex
+
+#D 9|RH124|Standard permissions|List, set and change ugo/rwx permissions and ownership.
+Q What is `rwxr-x---` in octal?
++ 750
+- 755
+- 740
+- 570
+E r=4, w=2, x=1 per group of three: 7 (rwx), 5 (r-x), 0 (---).
+Q What does the x (execute) permission mean on a directory?
++ You can enter the directory and reach files inside it
+- You can run every script inside it
+- You can list its contents
+- You can delete it
+E r on a directory lets you list names; x lets you enter or traverse; w lets you create and delete entries (it needs x too).
+Q What permission do you need to delete a file?
++ Write and execute on the directory that contains it
+- Write on the file itself
+- Read and write on the file
+- Execute on the file
+E Deleting changes the directory, not the file. The sticky bit changes this rule.
+C Add write permission for the group on report.txt using symbolic mode.
+A chmod g+w report.txt
+E Symbolic mode: who (u g o a), operator (+ - =), permissions (r w x).
+C Set script.sh to rwxr-xr-x using octal mode.
+A chmod 755 script.sh
+A chmod 0755 script.sh
+E 7 = rwx, 5 = r-x.
+C Make harry the owner and sysmgrs the group of /data in one command.
+A chown harry:sysmgrs /data
+E `chown :group file` changes only the group, same as `chgrp`.
+C Change the group of /shared and everything inside it to sysmgrs.
+A chgrp -R sysmgrs /shared
+A chown -R :sysmgrs /shared
+E `-R` applies the change recursively.
+Q Who can change which user owns a file?
++ Only root
+- The file owner
+- Any member of the file's group
+- Anyone with write permission
+E A regular owner can change the group, but only to a group they belong to.
+Q In `ls -l` output `-rw-r--r--.`, what does the trailing `.` mean?
++ The file has an SELinux context and no ACL
+- The file is hidden
+- The file is a hard link
+- The file is immutable
+E A `+` in that spot means the file has an ACL. Check with `getfacl`.
+C Remove all permissions for "others" on secret.txt without touching owner and group permissions.
+A chmod o= secret.txt
+A chmod o-rwx secret.txt
+E `=` with nothing after it sets that class to no permissions.
+T Permissions workout
+S Create /srv/project owned by harry and group sysmgrs. Owner: full access. Group: read and enter only. Others: nothing. Inside, create plan.txt readable and writable only by the owner. Test access as natasha and sarah.
+X mkdir /srv/project
+X chown harry:sysmgrs /srv/project
+X chmod 750 /srv/project
+X touch /srv/project/plan.txt && chown harry:sysmgrs /srv/project/plan.txt
+X chmod 600 /srv/project/plan.txt
+V ls -ld /srv/project; ls -l /srv/project
+V su - natasha -c 'ls /srv/project'   # works (group member)
+V su - harry -c 'cat /srv/project/plan.txt'
+T Fix a script that will not run
+S Create /usr/local/bin/hello.sh containing `echo Hello $USER`. Run it and read the error. Fix the permissions so every user can run it but only root can edit it.
+X echo 'echo Hello $USER' > /usr/local/bin/hello.sh
+X hello.sh             # Permission denied
+X chmod 755 /usr/local/bin/hello.sh
+V ls -l /usr/local/bin/hello.sh
+V su - harry -c hello.sh
+
+#D 10|RH124|Special permissions, umask and ACLs|Manage default file permissions and diagnose and correct file permission problems.
+Q What does the SGID bit do on a directory?
++ New files created in it get the directory's group
+- Only the group owner may delete files in it
+- Files inside it run with group privileges
+- Group members get write access automatically
+E This is how you build shared team directories.
+Q What does the sticky bit do on a directory such as /tmp?
++ Users can only delete their own files, even with write permission on the directory
+- Files are never deleted at reboot
+- New files inherit the directory's owner
+- Only root can create files
+E /tmp shows `drwxrwxrwt`. In octal the sticky bit is 1, e.g. `chmod 1777`.
+C Set the SGID bit on /home/managers using symbolic mode.
+A chmod g+s /home/managers
+E Octal version: `chmod 2770 /home/managers` (2 = SGID, 4 = SUID, 1 = sticky).
+Q With umask 027, what permissions does a newly created regular file get?
++ 640 (rw-r-----)
+- 750 (rwxr-x---)
+- 027 (----w-rwx)
+- 600 (rw-------)
+E Files start from 666, directories from 777, then the umask bits are removed: 666-027 = 640, 777-027 = 750.
+C Set the umask of your current shell so new files are 600 and new directories 700.
+A umask 077
+A umask 0077
+E Run `umask` with no argument to see the current value.
+Q How do you make a user's umask survive logout and reboot?
++ Put the umask command in that user's ~/.bashrc or ~/.bash_profile
+- Run umask as root
+- Add it to /etc/fstab
+- Set it with chmod on the home directory
+E For every user, use a script in /etc/profile.d/ instead.
+C Give user natasha read and write access to /var/tmp/fstab using an ACL.
+A setfacl -m u:natasha:rw /var/tmp/fstab
+A setfacl -m u:natasha:rw- /var/tmp/fstab
+A setfacl -m user:natasha:rw /var/tmp/fstab
+E View the result with `getfacl /var/tmp/fstab`.
+C Use an ACL so that user harry has no access at all to /var/tmp/fstab.
+A setfacl -m u:harry:--- /var/tmp/fstab
+A setfacl -m u:harry:- /var/tmp/fstab
+A setfacl -m u:harry:0 /var/tmp/fstab
+A setfacl -m user:harry:--- /var/tmp/fstab
+E A named-user ACL entry takes priority over the "other" permissions.
+Q `ls -l /usr/bin/passwd` shows `-rwsr-xr-x`. What does the `s` mean?
++ SUID: the program runs with the privileges of its owner (root)
+- The file is a socket
+- The file is sticky
+- The file is signed
+E This is how normal users can update /etc/shadow through passwd. A capital `S` means SUID is set but execute is not.
+Q A user cannot open /data/reports/q1.txt even though the file is mode 644. What is the most likely cause?
++ A parent directory is missing the x permission for that user
+- The file needs mode 777
+- The user needs to be in the wheel group
+- The file needs the sticky bit
+E Check every directory on the path, e.g. `namei -l /data/reports/q1.txt`. Also check ACLs and SELinux.
+T Collaborative directory (exam classic)
+S Create /home/managers. Group owner: sysmgrs. Members of sysmgrs get read, write and access; others get no access. Files created inside must automatically belong to sysmgrs.
+X mkdir /home/managers
+X chgrp sysmgrs /home/managers
+X chmod 2770 /home/managers
+V ls -ld /home/managers        # drwxrws---. root sysmgrs
+V su - natasha -c 'touch /home/managers/test && ls -l /home/managers'
+T File ACLs (exam classic)
+S Copy /etc/fstab to /var/tmp/fstab. Owner root, group root, not executable by anyone. natasha can read and write, harry has no access, everyone else can read.
+X cp /etc/fstab /var/tmp/fstab
+X chown root:root /var/tmp/fstab
+X chmod 644 /var/tmp/fstab
+X setfacl -m u:natasha:rw /var/tmp/fstab
+X setfacl -m u:harry:--- /var/tmp/fstab
+V getfacl /var/tmp/fstab
+V su - harry -c 'cat /var/tmp/fstab'     # Permission denied

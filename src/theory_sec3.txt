@@ -1,0 +1,130 @@
+#D 17
+## The incident-response lifecycle
+When something goes wrong, a structured process keeps the response effective. The NIST phases in order:
+1. **Preparation** — plans, playbooks, tools and training ready *before* an incident.
+2. **Detection & Analysis** — recognise and confirm the incident.
+3. **Containment** — stop it spreading while **preserving evidence**.
+4. **Eradication & Recovery** — remove the threat (malware, backdoors, compromised accounts), then restore clean systems.
+5. **Lessons Learned** — improve controls and playbooks so it doesn't recur; this closes the loop back to preparation.
+
+## Key practices
+- A **playbook/runbook** is a step-by-step procedure for a specific incident type, making response fast and consistent.
+- A **tabletop exercise** is a discussion-based drill through a hypothetical incident — testing the plan without touching production.
+- An **incident commander** declares the incident and coordinates, so roles are clear.
+- Don't immediately power off a compromised machine — you may lose **volatile evidence** in RAM; consider isolating it from the network first, then capturing memory.
+
+## Preserving evidence during response
+Containment must not destroy evidence. Isolate hosts, block command-and-control, and disable accounts, but keep logs and captures intact. This overlaps with forensics: the same care that makes evidence useful in court also helps you understand and fully eradicate the intrusion.
+
+#D 18
+## Chain of custody and integrity
+Digital forensics is about handling evidence so it is trustworthy and admissible:
+- **Chain of custody** documents *who* handled evidence, *when*, and *what* they did. A break in the chain can make evidence unusable.
+- Before and after acquiring evidence, you **hash** it (e.g. SHA-256) and compare — matching hashes prove the copy is identical to the original and unaltered.
+- A **write blocker** lets you read a drive without changing it, preserving the original.
+
+## Acquisition and analysis principles
+- Work on a **verified copy (image)**, never the original — the original stays pristine.
+- Follow the **order of volatility**: collect the most fleeting data first — CPU registers/cache, then RAM, then network state and running processes, then disk, then remote logs and archives. Data in memory vanishes on power loss.
+- **Metadata** (timestamps, author, GPS, device info) is often central to an investigation.
+
+## Legal aspects
+- **Legal hold** means preserving relevant data because litigation or investigation is anticipated — normal deletion/retention is suspended for that data.
+- **e-Discovery** is identifying and producing electronic evidence for legal proceedings. These tie forensics to data-retention policy and the law.
+
+#D 19
+## RTO and RPO
+Resilience planning uses two key numbers:
+- **RTO (Recovery Time Objective)** — the maximum acceptable *time* to restore a service after an outage ("how fast must we be back?").
+- **RPO (Recovery Point Objective)** — the maximum acceptable *data loss*, measured in time ("how much data can we lose?"). RPO drives backup frequency: a 15-minute RPO means backing up (or replicating) at least every 15 minutes.
+
+## Backup types
+- **Full** — copies everything each time; simple to restore, but large and slow.
+- **Incremental** — copies only what changed since the *last backup of any type*; fast backups, but restore needs the full plus every increment in order.
+- **Differential** — copies everything changed since the last *full*; restore needs only the full plus the latest differential.
+The **3-2-1 rule**: keep **3** copies, on **2** different media, with **1** off-site — modern practice adds **1 offline/immutable** copy to survive ransomware.
+
+## High availability and testing
+- **High availability (HA)** uses redundancy and failover (clusters, load balancers, redundant power/network) so service continues if a component fails.
+- **Test your backups regularly** — an untested backup may be corrupt or incomplete: "you don't have a backup until you've restored it." For ransomware, the recovery essentials are off-site, offline/immutable, versioned backups plus a tested, documented restore.
+
+#D 20
+## Replacing insecure protocols with secure ones
+A core Security+ skill is knowing which protocols are safe and what to replace the unsafe ones with. Insecure protocols send data (and passwords) in **plaintext**, so anyone on the path can read them:
+- **Telnet (23) → SSH (22)** for encrypted remote administration.
+- **FTP (21) → SFTP (over SSH) or FTPS (FTP+TLS)** for file transfer.
+- **HTTP (80) → HTTPS (443)**, which uses **TLS** (SSL is deprecated).
+- Plain **SMTP → SMTP with STARTTLS**; **IMAP/POP3 → IMAPS/POP3S** for mail.
+
+## Encryption and integrity for services
+- **SNMPv3** adds authentication and encryption (v1/v2c send community strings in plaintext).
+- **LDAPS** wraps directory queries in TLS (plain LDAP on 389 is exposed; LDAPS uses 636).
+- **DNSSEC** adds integrity/authenticity to DNS records via signatures; **DoH/DoT** add confidentiality by encrypting queries.
+
+## Knowing the default ports
+Recognising ports helps you reason about traffic: 22 SSH, 25 SMTP, 53 DNS, 80 HTTP, 443 HTTPS, 389 LDAP, 636 LDAPS. Email authenticity is further protected by **SPF, DKIM and DMARC** — records that verify a sender's domain and reduce spoofing.
+
+#D 21
+## Wireless security standards
+Wi-Fi encryption has improved over generations, and using the strongest available matters:
+- **WEP** — badly broken (weak cipher/IV); can be cracked in minutes — never use it.
+- **WPA2** — acceptable, using AES.
+- **WPA3** — the current best, using the SAE handshake.
+Two deployment modes: **WPA2/3-Personal** uses a shared passphrase, while **Enterprise** uses **802.1X/RADIUS** for per-user authentication — so credentials can be revoked individually without changing everyone's key. Hiding the SSID and MAC filtering are "security by obscurity," not real controls; disable **WPS**, which can be brute-forced.
+
+## Mobile device management
+Organisations manage fleets of devices with **MDM/UEM**, enforcing policy: encryption, screen-lock PINs, and **remote wipe** so a lost or stolen device's data can be erased.
+- **BYOD (Bring Your Own Device)** raises risk because personal devices are outside full corporate control yet access company data; **containerization** separates work and personal data on them.
+
+## Practical wireless hardening
+A solid wireless posture: **WPA3 (or WPA2-AES)** with a long passphrase, WPS disabled, firmware updated, remote admin off, and a **separate guest/IoT VLAN**. In enterprises, 802.1X gives each user unique, revocable credentials and lets clients validate the network — defending against rogue and evil-twin access points.
+
+#D 22
+## Classifying and protecting data
+You cannot protect everything equally, so you **classify** data by sensitivity (public, internal, confidential, restricted) and apply controls to match. Roles matter: the **data owner** classifies data and decides who may access it; the **data custodian** implements the controls.
+
+## The three states of data
+Data needs protection in each state:
+- **At rest** (stored on disk/media) — protected mainly by **encryption** (LUKS, BitLocker).
+- **In transit** (crossing a network) — protected by **TLS/IPsec**.
+- **In use** (being processed in memory) — protected by restricting privileges and access.
+
+## DLP and privacy techniques
+- **DLP (Data Loss Prevention)** detects and blocks sensitive data from leaving the organisation (via email, uploads, endpoints).
+- **Tokenization** replaces a sensitive value with a non-sensitive token mapped in a secure vault (common for payment cards) — the real value never leaves the vault.
+- **Data masking** hides parts of data (showing only the last four digits) for non-privileged views and test environments.
+- Privacy regulations (like **GDPR**) grant rights such as the "right to be forgotten," requiring you to find and delete personal data on request — which is only possible if you know where your data is (classification again).
+
+#D 23
+## Physical controls
+Security starts in the physical world; if someone can touch the hardware, most logical controls can be bypassed. Common physical controls and what they do:
+- **Locks, fences, bollards** — prevent entry or vehicle attacks (preventive/deterrent).
+- **Access control vestibule (mantrap)** — two interlocking doors that let one person through at a time, defeating **tailgating**.
+- **CCTV cameras** — deter (when visible) and detect/record who enters.
+- **Security lighting and clear sightlines** (CPTED) reduce hiding spots.
+- A **Faraday cage** blocks electromagnetic signals to prevent eavesdropping or interference.
+
+## Access badges and biometrics
+- A **proximity badge** is "something you have"; a **biometric** (fingerprint, iris, face) is "something you are." Combine a badge with a PIN for MFA at the door.
+- Biometrics are tuned by two error rates: the **False Acceptance Rate (FAR)** — wrongly admitting an impostor (a security risk) — and the **False Rejection Rate (FRR)** — wrongly rejecting a valid user (an annoyance). High-security doors tune toward a low FAR.
+
+## Layered physical security and decoys
+Apply defence in depth physically — perimeter (fence, lighting, cameras), building (badge doors, reception, visitor logs), server room (mantrap, locked racks). A **honeyfile/honeytoken** is a decoy file or credential that alerts defenders the moment anyone touches it, strongly implying an intruder.
+
+#D 24
+## Governance: policies, standards, procedures
+Security needs direction from the top, expressed as documents at different levels:
+- A **policy** states *what and why* at a high level (an **Acceptable Use Policy** defines how staff may use company systems).
+- A **standard** is a *mandatory* specific rule supporting a policy (e.g. "use AES-256 for encryption").
+- A **procedure** is the step-by-step *how*.
+- A **guideline** is *recommended*, not mandatory.
+
+## Frameworks
+A **security framework** is a structured set of best practices to build and measure a program — examples include **NIST CSF**, **ISO 27001**, and the **CIS Controls**. They give you a checklist and a common language, and help demonstrate **compliance** with regulations.
+
+## People controls that prevent fraud
+Governance also shapes how people work:
+- **Separation of duties** requires more than one person to complete a sensitive task, so no single person can both request and approve a payment.
+- **Job rotation** and **mandatory vacation** help detect fraud (it often surfaces when the usual person is away).
+- Solid **onboarding/offboarding** ensures access is granted correctly and **fully removed** when someone leaves — orphaned ex-employee accounts are a major risk.
+- **Due diligence** is investigating/planning; **due care** is acting responsibly on it.

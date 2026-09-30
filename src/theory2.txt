@@ -1,0 +1,180 @@
+#D 8
+## Why passwords live in two files
+When you log in, Linux checks your password. But the account details and the secret password are kept apart for safety. `/etc/passwd` is readable by everyone and holds the account basics; the actual scrambled password (a **hash**) lives in `/etc/shadow`, which only root can read. This way an ordinary user can look up account info without ever seeing the hashes.
+
+## The passwd command
+`passwd` changes a password.
+- As a normal user, typing `passwd` on its own changes **your own** password (it asks for the current one first).
+- As **root**, `passwd harry` sets another user's password without knowing the old one.
+- `echo 'Secret123' | passwd --stdin harry` (RHEL-only) sets a password without the interactive prompt — very useful in scripts and on the exam.
+- `passwd -l harry` **locks** an account (puts a `!` in front of the hash so no password works); `passwd -u harry` unlocks it; `passwd -e harry` **expires** the password so the user must change it at next login.
+
+## Password aging with chage
+"Aging" means forcing passwords to change over time. `chage` (change age) controls this per user:
+- `chage -l harry` **lists** harry's current aging settings in plain language — always start here.
+- `chage -M 90 harry` sets the **maximum** days a password is valid (must change every 90 days).
+- `chage -m 7 harry` sets the **minimum** days before it can be changed again.
+- `chage -W 7 harry` sets the **warning** days before expiry.
+- `chage -E 2026-12-31 harry` sets an **account** expiry date (the whole account stops working after that day).
+- `chage -d 0 harry` sets the last-change date to zero, which counts as already expired — so harry must set a new password at next login.
+System-wide defaults for **new** users live in `/etc/login.defs` (look for `PASS_MAX_DAYS`, `PASS_MIN_DAYS`, `PASS_WARN_AGE`). Changing that file only affects accounts created afterward; existing users need `chage`.
+
+## Becoming another user: su and sudo
+Sometimes you need more power than your own account has.
+- `su - harry` **switches** to harry (asks for harry's password). The dash is important: `su -` starts a full **login shell**, loading harry's environment and moving to his home directory. Without the dash you keep your own environment. `su -` with no name means "become root".
+- `sudo command` runs a single command **as root** (or another user), but you type **your own** password, and only if you have been granted permission. This is safer than sharing the root password and it logs who did what.
+- On RHEL, members of the **wheel** group get full sudo by default. Add a user with `usermod -aG wheel harry`.
+
+## Editing sudo rules safely
+sudo's rules live in `/etc/sudoers`, but you must **never** edit it directly with a plain editor — a typo can lock everyone out. Instead:
+- Run `visudo`, which checks the syntax before saving.
+- Better, drop a small file into `/etc/sudoers.d/` (e.g. `/etc/sudoers.d/admins`) and check it with `visudo -c`.
+A rule looks like `harry ALL=(ALL) ALL` (harry may run any command as anyone). A group rule starts with `%`: `%sysmgrs ALL=(ALL) NOPASSWD: ALL` lets the sysmgrs group run anything as root **without** a password. `%wheel ALL=(ALL) ALL` is the default wheel rule.
+
+#D 9
+## What permissions are for
+Linux is multi-user, so every file and directory records **who may do what** with it. Look at the left of `ls -l` output, for example `-rwxr-xr--`. That is ten characters: the first is the **type** (`-` file, `d` directory, `l` link), and the remaining nine are three groups of three permissions.
+
+## The three who's and the three what's
+Permissions are set for three classes of people:
+- **u** = the **user** who owns the file (owner).
+- **g** = the **group** that owns the file.
+- **o** = **others** (everyone else).
+And three kinds of access:
+- **r** (read) = 4, **w** (write) = 2, **x** (execute) = 1.
+So `rwxr-xr--` means: owner can read/write/execute, group can read/execute, others can only read.
+
+## What r, w, x mean on directories (the tricky part)
+On a **file** the meanings are obvious. On a **directory** they are different:
+- **r** lets you **list** the names inside (e.g. run `ls`).
+- **x** lets you **enter** the directory and reach files inside (traverse it). Without `x` you cannot `cd` in, even if you can read the name list.
+- **w** (plus x) lets you **create and delete** entries inside.
+A common bug: a file is readable but a user still cannot open it — usually because a parent directory is missing `x` for them. Trace the whole path with `namei -l /path/to/file`.
+
+## chmod: changing permissions
+`chmod` changes permissions two ways.
+- **Symbolic mode** spells out who/operator/what: `chmod g+w file` adds write for group, `chmod o-rwx file` removes all from others, `chmod u=rwx,go=rx file` sets exact values, and `chmod a+x file` adds execute for all (a = all three classes).
+- **Octal (numeric) mode** adds up r=4, w=2, x=1 for each class: `chmod 755 file` = rwx (7) for owner, r-x (5) for group, r-x (5) for others. `chmod 644` is the normal file default (rw-r--r--), `chmod 600` is owner-only. `chmod -R` applies changes recursively through a directory tree.
+
+## chown and chgrp: changing ownership
+- `chown harry file` changes the **owner** to harry (root only).
+- `chown harry:sysmgrs file` changes owner **and** group at once.
+- `chown :sysmgrs file` changes just the group (same as `chgrp sysmgrs file`).
+- `chown -R harry:sysmgrs /data` changes ownership through a whole tree.
+A regular owner may change a file's group only to a group they belong to; only root can give a file to a different user.
+
+#D 10
+## Special permission bits
+Beyond rwx there are three **special bits** that change behaviour, shown in place of an `x` in `ls -l`:
+- **SUID** (Set User ID, value 4) on an executable makes it run with the **owner's** privileges instead of yours. That is how `passwd` (owned by root) can update `/etc/shadow` when you run it. Shown as an `s` in the owner's execute slot (`-rwsr-xr-x`).
+- **SGID** (Set Group ID, value 2) on a **directory** makes new files inside inherit the directory's **group** — perfect for shared team folders. Shown as `s` in the group slot.
+- **Sticky bit** (value 1) on a directory means users can only **delete their own** files there, even if the directory is world-writable. `/tmp` uses it, shown as `t` in the others slot (`drwxrwxrwt`).
+Set them in octal by prefixing a fourth digit: `chmod 2770 dir` (SGID), `chmod 1777 dir` (sticky), `chmod 4755 file` (SUID). Or symbolically: `chmod g+s dir`, `chmod +t dir`, `chmod u+s file`.
+
+## umask: the default for new files
+When you create a file, its starting permissions are decided by the **umask**, which *removes* bits from a base. New files start from 666 and new directories from 777, then the umask is subtracted.
+- With `umask 022`, files become 644 (666−022) and directories 755 — the common default.
+- With `umask 077`, files become 600 and directories 700 — private to you.
+Run `umask` alone to see the current value. To make a umask permanent for one user, add the `umask` line to their `~/.bashrc`; for everyone, put a script in `/etc/profile.d/`.
+
+## Access Control Lists (ACLs) for finer control
+Standard permissions only cover one owner, one group, and others. **ACLs** let you grant a *specific* extra user or group their own permissions on a file.
+- `getfacl file` shows the ACL.
+- `setfacl -m u:natasha:rw file` gives user natasha read+write. `setfacl -m g:auditors:r file` grants a group.
+- `setfacl -m u:harry:--- file` gives harry no access at all (a named-user entry beats the "others" bits).
+- `setfacl -x u:natasha file` removes one entry; `setfacl -b file` removes all ACL entries.
+- On a directory, a **default** ACL applies to files created later: `setfacl -m d:u:harry:rwx dir`.
+A file that has an ACL shows a `+` at the end of its `ls -l` permission string (e.g. `-rw-r--r--+`).
+
+#D 11
+## What a process is
+A running program is a **process**. Each has a unique number, the **PID** (Process ID), and belongs to a user. The kernel schedules processes onto the CPU. Understanding how to see, prioritise and stop processes is core system administration.
+
+## Seeing what is running: ps and top
+- `ps` shows a snapshot of processes. The most common form is `ps aux` (every process, with user and resource use). `ps -ef` is another full listing. Add sorting: `ps aux --sort=-%cpu` (biggest CPU first) or `--sort=-%mem` (biggest memory).
+- `top` (or the friendlier `htop`) is a **live** view that refreshes every few seconds. Inside top: press **P** to sort by CPU, **M** by memory, **k** to kill a PID, **r** to renice, and **q** to quit.
+- Process **states** you will see: R (running), S (sleeping), T (stopped), Z (zombie), D (uninterruptible sleep, usually waiting on disk).
+
+## Signals and kill
+You control processes by sending them **signals** (messages).
+- `kill PID` sends **SIGTERM (15)** by default — a polite "please exit cleanly".
+- `kill -9 PID` sends **SIGKILL (9)** — force-quit, which a process cannot catch or ignore. Use it only when SIGTERM does not work.
+- Other useful signals: **SIGHUP (1)** often tells a daemon to reload; **SIGSTOP** pauses a process and **SIGCONT** resumes it.
+- `pkill name` and `killall name` kill by **name** instead of PID; `pgrep name` lists matching PIDs first so you can check before killing. `pkill -u harry` targets all of a user's processes.
+
+## Foreground, background and jobs
+A command normally runs in the **foreground**, holding your terminal. You can move work to the **background**:
+- Add `&` to start a command in the background: `sleep 1000 &`.
+- Press **Ctrl+Z** to **suspend** (pause) the foreground job; **Ctrl+C** sends SIGINT to end it.
+- `jobs` lists background jobs; `bg %1` resumes job 1 in the background; `fg %1` brings it to the foreground.
+- `nohup command &` runs something immune to hang-ups so it keeps running after you log out.
+
+## Priority: nice and renice
+Every process has a **nice value** from **−20** (highest priority, greediest) to **19** (lowest, most generous to others); the default is 0.
+- `nice -n 10 command` starts a command with a nicer (lower) priority.
+- `renice -n 5 -p 1234` changes the priority of running PID 1234.
+- Only **root** can *raise* priority (give a more negative nice); regular users can only make their own processes nicer.
+
+#D 12
+## What systemd and units are
+On modern RHEL, **systemd** is the first process to start (PID 1) and it manages everything else. The things it manages are called **units**. The most common unit type is a **service** (a background program, or "daemon"), whose files end in `.service`. Other unit types include targets, sockets, and timers.
+
+## systemctl: the one command to know
+`systemctl` controls units. The verbs are intuitive:
+- `systemctl status sshd` — show whether it is running, plus recent log lines.
+- `systemctl start sshd` / `stop sshd` / `restart sshd` — control it **now**.
+- `systemctl reload sshd` — tell it to re-read its config **without** stopping (not all services support it; `reload-or-restart` covers both).
+- `systemctl enable sshd` — make it start **at boot**; `disable` undoes that. These do **not** affect the current run — that is why `enable --now sshd` (enable *and* start) is so handy.
+- `systemctl is-active sshd` and `is-enabled sshd` answer the two separate questions: running now? starting at boot?
+
+## Enabled vs active — two different things
+This trips up beginners: **enabled** is about the *next boot*, **active** is about *right now*. A service can be enabled but stopped, or running but not enabled. The exam usually wants services that are **both** running and enabled — so `systemctl enable --now name` is your go-to.
+
+## Masking, and finding units
+- `systemctl mask atd` links a unit to `/dev/null` so it **cannot** be started at all, even manually — a strong "off switch". `systemctl unmask atd` reverses it.
+- `systemctl list-units --type=service` lists running services; `list-unit-files` shows every installed unit and its boot state; `--failed` shows what has failed.
+- `systemctl cat sshd` prints a unit's file; `systemctl daemon-reload` makes systemd re-read unit files after you add or edit one (files you write go in `/etc/systemd/system/`, which overrides the packaged copies in `/usr/lib/systemd/system/`).
+
+#D 13
+## What SSH is
+**SSH** (Secure Shell) lets you log in to and run commands on another machine over an **encrypted** connection. It replaced old plaintext tools like Telnet, which sent passwords in the clear. The client command is `ssh`; the server is the `sshd` service listening on TCP port **22**.
+
+## Connecting and running remote commands
+- `ssh student@servera` opens an interactive shell on servera as student.
+- `ssh student@servera hostname` runs a single command remotely and returns just its output.
+- The first time you connect, SSH shows the server's **host key fingerprint** and asks you to accept it; it is then stored in `~/.ssh/known_hosts`. If a host is reinstalled its key changes and you will be warned — remove the stale entry with `ssh-keygen -R servera`.
+- Copy files over SSH with `scp file user@host:/path` (or `scp user@host:/path localfile` to pull), and `sftp user@host` for an interactive file transfer session.
+
+## Key-based authentication (no password)
+Instead of typing a password every time, you can use a **key pair**: a private key you keep secret and a matching public key you place on the server.
+- `ssh-keygen` creates the pair in `~/.ssh/` (`id_rsa`/`id_ed25519` private, `.pub` public). Press Enter for defaults; you may add a passphrase for extra safety.
+- `ssh-copy-id student@servera` copies your public key into the server's `~/.ssh/authorized_keys` and fixes the permissions automatically.
+- After that, `ssh student@servera` logs in using the key, no password needed.
+- Permissions matter: the server ignores your key unless `~/.ssh` is `700` and `authorized_keys` is `600` (this is "StrictModes").
+
+## Hardening the SSH server
+The server's config is `/etc/ssh/sshd_config` (and drop-in files in `/etc/ssh/sshd_config.d/`). Two important settings:
+- `PermitRootLogin no` stops root logging in directly over SSH.
+- `PasswordAuthentication no` forces key-only login (set up your key **first**, or you will lock yourself out).
+Always check the syntax with `sshd -t` before applying, then `systemctl reload sshd`. Note `/etc/ssh/ssh_config` is the **client** config — don't confuse it with the server's `sshd_config`.
+
+#D 14
+## Two logging systems working together
+RHEL records events in two ways. The **systemd journal** (managed by `systemd-journald`) is a structured, queryable log of everything systemd and its services produce. Alongside it, **rsyslog** writes traditional plain-text log files under `/var/log/`. Key files: `/var/log/messages` (general system messages) and `/var/log/secure` (authentication and security events like SSH logins).
+
+## Reading the journal with journalctl
+`journalctl` queries the journal. Learn these filters:
+- `journalctl` alone shows everything (in the `less` pager); `-n 20` shows the last 20 lines; `-f` **follows** live like `tail -f`.
+- `journalctl -u sshd` limits output to one **unit** (service). Combine with `-f` to watch a service live.
+- `journalctl -p err` filters by **priority** (err and worse). Priorities from most to least severe: emerg, alert, crit, err, warning, notice, info, debug (numbered 0–7).
+- `journalctl -b` shows only the **current boot**; `-b -1` the previous boot; `--list-boots` lists them.
+- `journalctl --since "1 hour ago"` or `--since "2026-10-01 09:00" --until "10:00"` limits by time.
+- `journalctl _UID=1000` or `_COMM=sshd` filter by fields; `-o verbose` shows one entry in full detail.
+
+## Making the journal survive reboots
+By default (`Storage=auto`) the journal is kept in memory under `/run/log/journal` and is **lost on reboot** unless a directory exists to persist it. To keep it:
+- Create `/var/log/journal` (or set `Storage=persistent` in `/etc/systemd/journald.conf`), then restart `systemd-journald`.
+- After a reboot, `journalctl --list-boots` should show more than one boot, proving persistence works.
+
+## Sending your own log messages
+`logger` writes a message into the log system, useful for testing rules and scripts: `logger -p user.notice "hello"`. Check it landed with `journalctl -n 5` or `tail /var/log/messages`. rsyslog's routing rules live in `/etc/rsyslog.conf` and drop-in files in `/etc/rsyslog.d/*.conf`; a rule like `authpriv.*  /var/log/secure` means "all authpriv-facility messages go to that file".

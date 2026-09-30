@@ -1,0 +1,484 @@
+#D 11|RH124|Processes and signals|Identify CPU and memory intensive processes and kill processes; manage jobs.
+Q Which signal does `kill PID` send when you give no signal?
++ SIGTERM (15)
+- SIGKILL (9)
+- SIGHUP (1)
+- SIGINT (2)
+E SIGTERM asks the program to exit cleanly. Use `kill -9` only when it refuses.
+Q Which signal can a process NOT catch or ignore?
++ SIGKILL (9)
+- SIGTERM (15)
+- SIGHUP (1)
+- SIGINT (2)
+E SIGKILL and SIGSTOP are handled by the kernel directly.
+C List all processes sorted by CPU usage, highest first.
+A ps aux --sort=-%cpu
+A ps aux --sort -%cpu
+A ps -eo pid,user,%cpu,cmd --sort=-%cpu
+E Use `--sort=-%mem` to sort by memory instead.
+C Kill every process owned by user harry.
+A pkill -u harry
+A killall -u harry
+A pkill -U harry
+E `pgrep -u harry` lists the PIDs first so you can see what will be killed.
+Q In top, which key sorts processes by memory usage?
++ M
+- P
+- k
+- m
+E P sorts by CPU, M by memory, k kills a PID, r renices, q quits.
+C Start `sleep 1000` as a background job.
+A sleep 1000 &
+E The shell prints the job number and PID. `jobs` lists background jobs.
+Q What does Ctrl+Z do to the program running in the foreground?
++ Stops (suspends) it; `bg` resumes it in the background
+- Kills it with SIGKILL
+- Moves it to the background while it keeps running
+- Logs you out
+E Ctrl+C sends SIGINT to end it. Ctrl+Z sends SIGTSTP to pause it.
+C Bring job number 1 back to the foreground.
+A fg %1
+A fg 1
+E `bg %1` resumes it in the background instead. `kill %1` sends it SIGTERM.
+Q A process shows state `D` in ps. What does that mean?
++ Uninterruptible sleep, usually waiting for disk or network I/O
+- It is a zombie
+- It is stopped
+- It is running on a CPU
+E R running, S sleeping, T stopped, Z zombie, D uninterruptible sleep.
+T Find and stop CPU hogs
+S Start three CPU-heavy processes with `sha1sum /dev/zero &`. Find them with ps sorted by CPU and with top. Kill one by PID with SIGTERM, and kill the other two by name.
+X for i in 1 2 3; do sha1sum /dev/zero & done
+X ps aux --sort=-%cpu | head -5
+X top          # press P, note a PID, press q
+X kill <PID>
+X pkill sha1sum
+V pgrep -l sha1sum || echo "all gone"
+T Find the biggest memory users
+S Save the 5 processes using the most memory (with PID, user, %MEM and command) to /root/topmem.txt.
+X ps -eo pid,user,%mem,cmd --sort=-%mem | head -6 > /root/topmem.txt
+V cat /root/topmem.txt
+T Job control drill
+S Start `sleep 500` and `sleep 600` in the background and `sleep 700` in the foreground. Suspend the foreground job, resume it in the background, bring job 2 to the foreground and end it with Ctrl+C, then kill the rest by job number.
+X sleep 500 &
+X sleep 600 &
+X sleep 700          # then press Ctrl+Z
+X jobs
+X bg %3
+X fg %2             # then press Ctrl+C
+X kill %1 %3
+V jobs
+T Pause and resume a process with signals
+S As harry, start `sleep 900`. As root, stop it with SIGSTOP, confirm the state is T, resume it with SIGCONT, then kill it with SIGKILL.
+X su - harry -c 'sleep 900 &'
+X pgrep -u harry sleep
+X kill -SIGSTOP <PID>
+X ps -o pid,stat,cmd -p <PID>      # STAT shows T
+X kill -SIGCONT <PID>
+X kill -9 <PID>
+V pgrep -u harry sleep || echo stopped
+
+#D 12|RH124|Controlling services with systemd|Start, stop and check services; configure automatic startup.
+C Start httpd now and also enable it at boot, in one command.
+A systemctl enable --now httpd
+A systemctl enable --now httpd.service
+A systemctl enable httpd --now
+E `enable` alone only affects the next boot. `--now` also starts it.
+Q What does `systemctl mask atd` do?
++ Links the unit to /dev/null so it cannot be started at all, even manually
+- Hides it from `systemctl list-units`
+- Disables it at boot but still allows manual start
+- Stops it and deletes its unit file
+E Undo with `systemctl unmask atd`.
+C Check whether sshd is enabled to start at boot.
+A systemctl is-enabled sshd
+A systemctl is-enabled sshd.service
+E `systemctl is-active sshd` tells you whether it's running now.
+C List all units that are in a failed state.
+A systemctl --failed
+A systemctl list-units --state=failed
+A systemctl list-units --failed
+E Then run `systemctl status <unit>` and `journalctl -u <unit>` for details.
+Q What is the difference between `systemctl reload` and `systemctl restart`?
++ reload tells the service to re-read its config without stopping; restart stops and starts it
+- reload also enables the service at boot
+- restart only works if reload fails
+- There is no difference
+E Not every service supports reload; `systemctl reload-or-restart` covers both cases.
+Q You create or edit a unit file under /etc/systemd/system. What must you run next?
++ systemctl daemon-reload
+- systemctl reboot
+- systemctl reset-failed
+- systemctl rescan
+E systemd caches unit files. daemon-reload makes it read them again.
+Q Where should administrators put their own unit files and overrides?
++ /etc/systemd/system
+- /usr/lib/systemd/system
+- /run/systemd/system
+- /var/lib/systemd
+E Package units live in /usr/lib/systemd/system. Files in /etc take priority. `systemctl edit unit` creates a drop-in override for you.
+C Stop the atd service and stop it starting at boot, in one command.
+A systemctl disable --now atd
+A systemctl disable --now atd.service
+A systemctl disable atd --now
+E Confirm with `systemctl status atd`.
+Q `systemctl status sshd` shows "Loaded: ... enabled; preset: enabled" and "Active: active (running)". What does that mean?
++ sshd is running now and will start at boot
+- sshd is running but will not start at boot
+- sshd starts at boot but is not running now
+- sshd is masked
+E "enabled" is the boot setting, "active" is the current state. They are separate.
+T Install and run a web server
+S Install httpd, start it and enable it at boot, allow HTTP through the firewall, put "Hello RHCSA" in /var/www/html/index.html and fetch it with curl.
+X dnf install -y httpd
+X systemctl enable --now httpd
+X firewall-cmd --permanent --add-service=http && firewall-cmd --reload
+X echo "Hello RHCSA" > /var/www/html/index.html
+V curl http://localhost
+V systemctl is-enabled httpd; systemctl is-active httpd
+T Mask and unmask a service
+S Mask atd, try to start it and read the error, then unmask it and make sure it is running and enabled.
+X systemctl mask atd
+X systemctl start atd       # Unit atd.service is masked.
+X systemctl unmask atd
+X systemctl enable --now atd
+V systemctl status atd --no-pager
+T Explore units
+S List all installed service unit files and their boot state, show what multi-user.target pulls in, and print the unit file of sshd.
+X systemctl list-unit-files --type=service
+X systemctl list-dependencies multi-user.target
+X systemctl cat sshd
+V systemctl list-units --type=service --state=running
+T Write your own service
+S Create /usr/local/bin/heartbeat.sh that writes "alive" to the journal every 30 seconds in a loop. Create heartbeat.service to run it, enable it at boot, and read its messages in the journal.
+X printf '#!/bin/bash\nwhile true; do echo alive; sleep 30; done\n' > /usr/local/bin/heartbeat.sh
+X chmod 755 /usr/local/bin/heartbeat.sh
+X vim /etc/systemd/system/heartbeat.service
+X # [Unit]
+X # Description=Heartbeat demo
+X # [Service]
+X # ExecStart=/usr/local/bin/heartbeat.sh
+X # [Install]
+X # WantedBy=multi-user.target
+X systemctl daemon-reload
+X systemctl enable --now heartbeat
+V journalctl -u heartbeat -n 5
+
+#D 13|RH124|Configure and secure SSH|Access remote systems using SSH and configure key-based authentication.
+C Generate a new SSH key pair with the default settings.
+A ssh-keygen
+A ssh-keygen -t ed25519
+A ssh-keygen -t rsa
+E Keys are saved in ~/.ssh/. The .pub file is the public key you share.
+C Copy your public key to the account harry on host servera.
+A ssh-copy-id harry@servera
+E It appends your key to ~harry/.ssh/authorized_keys and sets safe permissions.
+Q On the server, which file lists the public keys allowed to log in to an account?
++ ~/.ssh/authorized_keys
+- ~/.ssh/known_hosts
+- /etc/ssh/ssh_known_hosts
+- ~/.ssh/id_rsa
+E known_hosts on the client stores the server fingerprints you have accepted.
+Q Which permissions does sshd expect on ~/.ssh and ~/.ssh/authorized_keys?
++ 700 on the directory and 600 on the file
+- 755 and 644
+- 777 and 666
+- 750 and 640
+E If they are too open, sshd ignores the key (StrictModes) and falls back to a password.
+Q How do you stop root from logging in over SSH?
++ Set `PermitRootLogin no` in the sshd config, then reload sshd
+- Remove root from /etc/passwd
+- Set root's shell to nologin in /etc/ssh/ssh_config
+- Delete /root/.ssh
+E On RHEL 9 and 10 you can put the setting in a file under /etc/ssh/sshd_config.d/. /etc/ssh/ssh_config is the client config, not the server.
+C Check the sshd configuration for syntax errors before reloading.
+A sshd -t
+A /usr/sbin/sshd -t
+E No output means the syntax is valid. Then run `systemctl reload sshd`.
+C Run `hostname` on servera as student without opening an interactive shell.
+A ssh student@servera hostname
+A ssh student@servera 'hostname'
+E The command runs remotely and the output comes back to your terminal.
+Q What is OpenSSH's built-in default for PermitRootLogin, which RHEL 9 and 10 use?
++ prohibit-password: root can log in with a key but not with a password
+- yes
+- no
+- without-root
+E Exam tasks often need root password login between exam nodes, or a key. Read the task carefully.
+Q Where are the SSH server's own host keys stored?
++ /etc/ssh/ssh_host_*_key
+- ~/.ssh/host_keys
+- /var/lib/sshd/keys
+- /etc/pki/ssh
+E If a host is reinstalled, its host key changes and clients warn you. Remove the old line with `ssh-keygen -R host`.
+T Key-based login between two machines
+S On node1 as student, generate a key pair and set up key-based login to student@node2. Confirm you can run a command on node2 with no password prompt.
+X ssh-keygen                 # press Enter for defaults
+X ssh-copy-id student@node2
+X ssh student@node2 hostname
+V ssh -o PasswordAuthentication=no student@node2 true && echo KEY-OK
+T Harden the SSH server
+S On node2: stop root logging in over SSH and stop password logins for everyone. Make sure your key login works BEFORE you reload sshd, then test both.
+H Settings in /etc/ssh/sshd_config.d/*.conf are read first, so the first value set wins.
+X vim /etc/ssh/sshd_config.d/50-hardening.conf
+X # PermitRootLogin no
+X # PasswordAuthentication no
+X sshd -t && systemctl reload sshd
+V ssh root@node2              # Permission denied
+V ssh student@node2 true && echo still-ok
+T Remote commands and quick copies
+S From node1, save the output of `df -h` on node2 to /root/node2-disk.txt on node1, and copy node2's /etc/os-release into /tmp on node1 in one command each.
+X ssh root@node2 'df -h' > /root/node2-disk.txt
+X scp root@node2:/etc/os-release /tmp/
+V cat /root/node2-disk.txt; cat /tmp/os-release
+T Use ssh-agent with a passphrase
+S Create a second key ~/.ssh/lab_key with a passphrase, install it on node2, and load it into ssh-agent so you type the passphrase only once.
+X ssh-keygen -f ~/.ssh/lab_key
+X ssh-copy-id -i ~/.ssh/lab_key.pub student@node2
+X eval $(ssh-agent)
+X ssh-add ~/.ssh/lab_key
+X ssh -i ~/.ssh/lab_key student@node2 hostname
+V ssh-add -l
+
+#D 14|RH124|System logs and the journal|Locate and interpret system log files and journals; preserve system journals.
+C Show journal entries for the sshd service only.
+A journalctl -u sshd
+A journalctl -u sshd.service
+E Add `-f` to follow, `-n 20` for the last 20 lines, `--since today` to limit time.
+C Show only messages of priority err or worse from the current boot.
+A journalctl -p err -b
+A journalctl -b -p err
+A journalctl -p 3 -b
+A journalctl -b -p 3
+E `-p` includes that level and everything more severe.
+C Show journal messages from the last hour.
+A journalctl --since "1 hour ago"
+A journalctl --since '1 hour ago'
+A journalctl --since -1h
+E You can also give dates: `--since "2026-10-01 09:00" --until "2026-10-01 10:00"`.
+Q Which journald setting keeps the journal across reboots?
++ Storage=persistent in /etc/systemd/journald.conf, then restart systemd-journald
+- Persistent=yes in /etc/rsyslog.conf
+- SystemMaxUse=0 in journald.conf
+- Enable the journal-persist service
+E With the default Storage=auto, the journal is only kept if /var/log/journal exists. Otherwise it stays in /run/log/journal and is lost at reboot.
+Q Which file holds authentication and security messages on RHEL?
++ /var/log/secure
+- /var/log/auth.log
+- /var/log/messages
+- /var/log/audit.log
+E /var/log/auth.log is the Debian and Ubuntu name. SELinux denials go to /var/log/audit/audit.log.
+C Send the test message "hello from logger" to syslog with priority user.notice.
+A logger -p user.notice "hello from logger"
+A logger -p user.notice 'hello from logger'
+A logger -p user.notice hello from logger
+E Check it with `tail /var/log/messages` or `journalctl -n 5`.
+Q What does the rsyslog rule `authpriv.*  /var/log/secure` mean?
++ Messages of every priority from the authpriv facility go to /var/log/secure
+- Only authpriv errors go to /var/log/secure
+- Everything except authpriv goes to /var/log/secure
+- /var/log/secure is private
+E Rule format: facility.priority followed by the target. Drop-in rules go in /etc/rsyslog.d/*.conf.
+Q Which list orders syslog priorities from most to least severe?
++ emerg, alert, crit, err, warning, notice, info, debug
+- debug, info, notice, warning, err, crit, alert, emerg
+- crit, emerg, alert, err, warning, info, notice, debug
+- err, warning, info, debug, notice, crit, alert, emerg
+E Numbers 0 to 7 in that same order.
+C List every boot the journal has records for.
+A journalctl --list-boots
+E Only the current boot is listed unless the journal is persistent. `journalctl -b -1` shows the previous boot.
+T Preserve the journal (exam objective)
+S Configure the journal so it survives reboots. Reboot, then prove that the previous boot's messages are still there.
+X vim /etc/systemd/journald.conf        # under [Journal]: Storage=persistent
+X systemctl restart systemd-journald
+X ls /var/log/journal/
+X systemctl reboot
+V journalctl --list-boots      # two or more boots listed
+V journalctl -b -1 -n 5
+T Custom rsyslog rule
+S Send messages of every facility at priority debug and above to a new file /var/log/messages-debug. Test it with logger.
+X echo '*.debug  /var/log/messages-debug' > /etc/rsyslog.d/debug.conf
+X systemctl restart rsyslog
+X logger -p user.debug "Debug test from RHCSA practice"
+V tail -n 3 /var/log/messages-debug
+T Investigate failed logins
+S Make a few failed SSH logins to localhost, then use journalctl to show today's failed sshd attempts and count them.
+X ssh wronguser@localhost          # enter wrong passwords
+X journalctl -u sshd --since today | grep -i fail
+X journalctl -u sshd --since today | grep -ci 'failed password'
+V journalctl -u sshd -n 20 --no-pager
+T Filter the journal by fields
+S Show journal entries for UID 1000 only, then only entries from the sshd command, then one entry in full verbose form.
+X journalctl _UID=1000
+X journalctl _COMM=sshd
+X journalctl -n 1 -o verbose
+V journalctl _SYSTEMD_UNIT=sshd.service -n 3
+
+#D 15|RH124|Time synchronization|Configure time service clients and time zones.
+C Show the current time, time zone and whether NTP sync is active.
+A timedatectl
+A timedatectl status
+E Look for "System clock synchronized: yes" and "NTP service: active".
+C Set the system time zone to Asia/Kolkata.
+A timedatectl set-timezone Asia/Kolkata
+E This updates the /etc/localtime symlink.
+C List the available time zones that contain "Asia".
+A timedatectl list-timezones | grep Asia
+A timedatectl list-timezones | grep -i asia
+E `tzselect` asks you questions and suggests a zone name.
+Q Which file configures the chrony NTP client on RHEL?
++ /etc/chrony.conf
+- /etc/ntp.conf
+- /etc/chrony/chrony.conf
+- /etc/systemd/timesyncd.conf
+E RHEL uses chronyd. ntpd and timesyncd are not the RHEL defaults.
+Q Which chrony.conf line syncs from classroom.example.com and speeds up the first sync?
++ server classroom.example.com iburst
+- ntp classroom.example.com fast
+- pool classroom.example.com quick
+- sync classroom.example.com iburst
+E Use `server` for one host and `pool` for a pool name that resolves to many hosts.
+C Apply your chrony.conf changes.
+A systemctl restart chronyd
+A systemctl restart chronyd.service
+E Also make sure it starts at boot: `systemctl enable chronyd`.
+C Show the time sources chrony is using.
+A chronyc sources
+A chronyc sources -v
+E `-v` adds a legend that explains each column.
+Q In `chronyc sources` output, what does `^*` before a server mean?
++ It is the source chrony is currently synchronized to
+- The server cannot be reached
+- The server is too far off and was rejected
+- The server is a local reference clock
+E `^?` means not reachable yet. Wait a minute after a restart.
+Q What does `timedatectl set-ntp true` do on RHEL?
++ Enables and starts chronyd so the clock is synced over the network
+- Installs the NTP package
+- Syncs the time once and exits
+- Switches the time zone to UTC
+E `set-ntp false` stops and disables chronyd.
+T Configure an NTP client (exam classic)
+S Make node1 an NTP client of node2 (or of classroom.example.com in class). Remove the default pool line and confirm node1 syncs to it.
+X vim /etc/chrony.conf
+X # comment out:  pool 2.rhel.pool.ntp.org iburst
+X # add:          server node2 iburst
+X systemctl enable chronyd
+X systemctl restart chronyd
+V chronyc sources -v
+V timedatectl | grep synchronized
+T Turn node2 into an NTP server
+S Let node2 answer NTP requests from your lab subnet and open the firewall for it, so node1's client task has a server.
+X vim /etc/chrony.conf     # add: allow 192.168.122.0/24   (use your subnet)
+X # add: local stratum 10  (serve time even without internet)
+X systemctl restart chronyd
+X firewall-cmd --permanent --add-service=ntp && firewall-cmd --reload
+V chronyc clients      # run after node1 has synced
+T Time zones and manual time
+S Set the time zone to America/New_York, turn off NTP, set the clock to 2026-12-25 10:00:00, look at the result, then set the zone back to Asia/Kolkata and turn NTP on again.
+X timedatectl set-timezone America/New_York
+X timedatectl set-ntp false
+X timedatectl set-time "2026-12-25 10:00:00"
+X timedatectl
+X timedatectl set-timezone Asia/Kolkata
+X timedatectl set-ntp true
+V timedatectl
+
+#D 16|RH124|Networking: IPv4 and hostname|Configure IPv4 addresses, hostname and hostname resolution with NetworkManager.
+C Show all connection profiles that NetworkManager knows about.
+A nmcli con show
+A nmcli connection show
+A nmcli c show
+A nmcli c s
+E `nmcli dev status` shows the devices and which profile each one uses.
+C Show the IP addresses on all interfaces.
+A ip a
+A ip addr
+A ip address
+A ip addr show
+A ip -br addr
+A ip -br a
+E `ip -br a` gives one short line per interface.
+Q Where does NetworkManager on RHEL 9 and 10 store connection profiles?
++ /etc/NetworkManager/system-connections/ as .nmconnection keyfiles
+- /etc/sysconfig/network-scripts/ifcfg-*
+- /etc/network/interfaces
+- /etc/netplan/*.yaml
+E ifcfg files are the old RHEL 8 format. After editing a keyfile by hand, run `nmcli con reload`.
+C On connection "eth0", set the static address 192.168.100.10/24 with gateway 192.168.100.1 and manual method.
+A nmcli con mod eth0 ipv4.addresses 192.168.100.10/24 ipv4.gateway 192.168.100.1 ipv4.method manual
+A nmcli connection modify eth0 ipv4.addresses 192.168.100.10/24 ipv4.gateway 192.168.100.1 ipv4.method manual
+A nmcli con mod eth0 ipv4.method manual ipv4.addresses 192.168.100.10/24 ipv4.gateway 192.168.100.1
+E Without `ipv4.method manual`, the profile may keep using DHCP.
+Q When do settings changed with `nmcli con mod` take effect?
++ When the connection is activated again, e.g. `nmcli con up eth0`
+- Immediately
+- Only after a reboot
+- After `systemctl restart sshd`
+E If you work over SSH and change the IP, your session drops. Use the console.
+C Set the hostname permanently to node1.lab.example.com.
+A hostnamectl set-hostname node1.lab.example.com
+A hostnamectl hostname node1.lab.example.com
+E This writes /etc/hostname. Check it with `hostnamectl` or `hostname`.
+Q Which file maps host names to IP addresses locally, before DNS is asked?
++ /etc/hosts
+- /etc/resolv.conf
+- /etc/hostname
+- /etc/networks
+E The lookup order is set by the `hosts:` line in /etc/nsswitch.conf.
+C Set DNS server 192.168.100.1 on connection eth0.
+A nmcli con mod eth0 ipv4.dns 192.168.100.1
+A nmcli connection modify eth0 ipv4.dns 192.168.100.1
+E NetworkManager then writes it to /etc/resolv.conf. Don't edit resolv.conf by hand.
+Q Which command lists listening TCP and UDP ports with the process using each one?
++ ss -tulpn
+- netstat -r
+- ip route
+- nmcli dev show
+E t = TCP, u = UDP, l = listening, p = process, n = numeric ports.
+T Static IPv4 network (exam classic)
+S On node1, configure the existing connection with IP 192.168.122.11/24, gateway 192.168.122.1 and DNS 192.168.122.1 (adjust to your lab subnet). Set the hostname to node1.lab.example.com. It must all survive a reboot.
+X nmcli con show
+X nmcli con mod "<profile>" ipv4.addresses 192.168.122.11/24 ipv4.gateway 192.168.122.1 ipv4.dns 192.168.122.1 ipv4.method manual connection.autoconnect yes
+X nmcli con up "<profile>"
+X hostnamectl set-hostname node1.lab.example.com
+V ip -br a; ip route; cat /etc/resolv.conf
+V reboot, then check again
+T Create a new connection profile
+S Create a profile "static-lab" for your interface with a static address, and keep the DHCP profile too. Switch between them and check the address each time.
+X nmcli con add con-name static-lab type ethernet ifname <dev> ipv4.addresses 192.168.122.50/24 ipv4.gateway 192.168.122.1 ipv4.dns 192.168.122.1 ipv4.method manual
+X nmcli con up static-lab
+X ip -br a
+X nmcli con up "<dhcp-profile>"
+V nmcli con show --active
+T Add a second IP address
+S Add 10.0.0.11/24 as an extra address to your main profile without removing the first one.
+X nmcli con mod "<profile>" +ipv4.addresses 10.0.0.11/24
+X nmcli con up "<profile>"
+V ip -br a
+T Local name resolution
+S Add node1 and node2 (short and full names) to /etc/hosts on both machines. Resolve and ping by name.
+X echo '192.168.122.11 node1.lab.example.com node1' >> /etc/hosts
+X echo '192.168.122.12 node2.lab.example.com node2' >> /etc/hosts
+X getent hosts node2
+V ping -c 2 node2
+
+#D 17|RH124|Networking: IPv6, DNS and troubleshooting|Configure IPv6 addresses, name resolution and network services at boot.
+C Give connection eth0 the static IPv6 address fd00:10::10/64 with the manual method.
+A nmcli con mod eth0 ipv6.addresses fd00:10::10/64 ipv6.method manual
+A nmcli connection modify eth0 ipv6.addresses fd00:10::10/64 ipv6.method manual
+A nmcli con mod eth0 ipv6.method manual ipv6.addresses fd00:10::10/64
+E Add `ipv6.gateway fd00:10::1` if the task gives a gateway, then `nmcli con up eth0`.
+Q What is the IPv6 loopback address?
++ ::1
+- 127.0.0.1
+- fe80::1
+- ::
+E `::` on its own means the all-zero (unspecified) address.
+Q Addresses beginning with fe80:: are what kind of IPv6 address?
++ Link-local, created automatically on every IPv6 interface
+- Global addresses routed on the internet
+- Multicast addresses
+- Loopback addresses
+E Your static address shows as "scope global" in `ip a` next to the fe80:: link-local one.

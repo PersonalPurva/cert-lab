@@ -1,0 +1,466 @@
+#D 51|RH134|Advanced LVM: snapshots|Create, use and merge LVM snapshots to capture and roll back a logical volume.
+Q What is an LVM snapshot?
++ A point-in-time copy of a logical volume that only stores changed blocks
+- A full independent copy of the volume
+- A backup stored off the disk
+- A read-only clone that never changes
+E Snapshots use copy-on-write, so they start tiny and grow as the origin changes.
+Q What happens if a snapshot's allocated space fills up completely?
++ The snapshot becomes invalid (dropped) and can no longer be used
+- The origin volume is deleted
+- The system reboots
+- Nothing; it auto-extends forever
+E Size the snapshot for the expected amount of change, or enable auto-extend in lvm.conf.
+Q Which command reverts an origin volume to its snapshot's state?
++ lvconvert --merge /dev/vg/snap
+- lvrevert /dev/vg/snap
+- lvrestore /dev/vg/snap
+- lvcreate --rollback
+E If the origin is in use, the merge happens at the next activation/reboot.
+Q In `lvs`, which columns tell you a snapshot's origin and how full it is?
++ Origin and Data%
+- Attr and Size only
+- Move and Log
+- Meta% and Pool
+E Watch Data% — at 100% the snapshot is lost.
+Q Why take a snapshot before a risky upgrade or edit?
++ You can quickly roll the volume back to the pre-change state if it breaks
+- It speeds up the upgrade
+- It encrypts the volume
+- It is required by systemd
+E Snapshots are a fast local "undo" — not a replacement for real backups.
+Q A snapshot is best used as a stable source for:
++ Taking a consistent backup while the origin keeps changing
+- Permanent long-term storage
+- Growing the volume group
+- Swap space
+E Back up from the frozen snapshot, then remove it.
+C Create a 1 GiB snapshot named datasnap of the logical volume /dev/vgdata/lvdata.
+A lvcreate -s -n datasnap -L 1G /dev/vgdata/lvdata
+A lvcreate --snapshot -n datasnap -L 1G /dev/vgdata/lvdata
+E -s makes it a snapshot; the origin is the last argument.
+C Show all logical volumes including snapshots, with their origin and usage.
+A lvs -a -o +origin,data_percent
+A lvs -a
+E `lvs -a` reveals hidden internal volumes; add columns to see snapshot detail.
+C Merge the snapshot /dev/vgdata/datasnap back into its origin.
+A lvconvert --merge /dev/vgdata/datasnap
+E After merging, the snapshot is automatically removed.
+T Snapshot, break, and roll back (exam-plus)
+S On lvdata (mounted at /mnt/data with a file inside), take a snapshot, deliberately corrupt the data, then roll back using the snapshot and prove the file returned.
+X echo "good version" > /mnt/data/report.txt
+X lvcreate -s -n datasnap -L 1G /dev/vgdata/lvdata
+X echo "corrupted" > /mnt/data/report.txt
+X umount /mnt/data
+X lvconvert --merge /dev/vgdata/datasnap
+X mount /dev/vgdata/lvdata /mnt/data
+V cat /mnt/data/report.txt      # shows "good version"
+T Consistent backup from a snapshot
+S Snapshot lvdata, mount the snapshot read-only, back it up with tar, then remove the snapshot.
+X lvcreate -s -n bsnap -L 500M /dev/vgdata/lvdata
+X mkdir -p /mnt/snap && mount -o ro /dev/vgdata/bsnap /mnt/snap
+X tar -czf /root/data-backup.tar.gz -C /mnt/snap .
+X umount /mnt/snap && lvremove -y /dev/vgdata/bsnap
+V tar -tzf /root/data-backup.tar.gz | head; lvs | grep -c bsnap   # 0 left
+T Watch a snapshot fill up
+S Create a small (100 MiB) snapshot, then write more than 100 MiB into the origin and observe the snapshot become invalid.
+X lvcreate -s -n tiny -L 100M /dev/vgdata/lvdata
+X dd if=/dev/zero of=/mnt/data/bigfile bs=1M count=200
+X lvs -a -o +data_percent      # tiny shows 100% then goes invalid
+X rm /mnt/data/bigfile
+V lvs shows the snapshot invalidated (Attr has an 'I'); you understand sizing
+
+#D 52|RH134|Advanced LVM: thin, striped and RAID volumes|Build thin-provisioned, striped and mirrored/RAID logical volumes.
+Q What is thin provisioning in LVM?
++ Logical volumes can present more space than is physically allocated, using a shared thin pool
+- Volumes that are always exactly their physical size
+- A way to compress data
+- A read-only volume type
+E Space is consumed from the pool only as data is written.
+Q What is the main risk of thin provisioning?
++ Over-provisioning: if the pool fills, writes to any thin volume fail
+- It is slower to read
+- It cannot be snapshotted
+- It uses more disk immediately
+E Monitor the pool's Data% and Meta% and extend before it fills.
+Q A striped logical volume (`--type striped -i 2`) improves:
++ Performance, by spreading I/O across multiple physical volumes
+- Redundancy against disk failure
+- Encryption
+- Snapshot speed
+E Striping has no redundancy; losing one PV loses the volume.
+Q Which LVM RAID type gives mirroring (redundancy) across two devices?
++ raid1
+- raid0
+- striped
+- linear
+E raid1 keeps a full copy on each leg; it survives one device failing.
+Q In `lvcreate --type raid5 -i 3`, what does -i specify?
++ The number of data stripes (RAID 5 also adds one parity's worth of space)
+- The number of mirrors
+- The extent size
+- The snapshot size
+E RAID 5 needs at least 3 devices and tolerates one failure.
+Q Which command shows the underlying devices and segment type of LVs?
++ lvs -a -o +devices,segtype
+- pvscan
+- vgck
+- lvchange -a
+E It reveals which PVs each stripe/leg sits on.
+C Create a 1 GiB thin pool named tpool in volume group vgdata.
+A lvcreate --type thin-pool -L 1G -n tpool vgdata
+A lvcreate -L 1G -T vgdata/tpool
+E -T (or --type thin-pool) builds the pool that thin volumes draw from.
+C Create a 5 GiB thin volume named tvol from the thin pool vgdata/tpool.
+A lvcreate -V 5G -T vgdata/tpool -n tvol
+A lvcreate --virtualsize 5G --thin vgdata/tpool -n tvol
+E -V is the virtual size, which may exceed the pool's real size.
+C Create a striped LV named fast across 2 PVs, 1 GiB total, 64 KiB stripe size.
+A lvcreate --type striped -i 2 -I 64 -L 1G -n fast vgdata
+E -i = number of stripes (PVs), -I = stripe size in KiB.
+C Create a mirrored (raid1) LV named safe of 500 MiB in vgdata.
+A lvcreate --type raid1 -m 1 -L 500M -n safe vgdata
+E -m 1 means one mirror copy (two legs total).
+T Thin provisioning end to end
+S In vgdata create a 1 GiB thin pool, a 4 GiB thin volume, format and mount it, and watch pool usage grow as you write.
+X lvcreate --type thin-pool -L 1G -n tpool vgdata
+X lvcreate -V 4G -T vgdata/tpool -n tvol
+X mkfs.xfs /dev/vgdata/tvol && mkdir -p /mnt/thin && mount /dev/vgdata/tvol /mnt/thin
+X dd if=/dev/zero of=/mnt/thin/f1 bs=1M count=300
+X lvs vgdata      # tpool Data% climbs toward 300 MiB used
+V df -h /mnt/thin shows 4G; lvs shows the pool is only partly used
+T Build and inspect a RAID1 volume
+S Create a raid1 LV across two PVs, format and mount it, then show its legs and sync status.
+X lvcreate --type raid1 -m 1 -L 500M -n safe vgdata
+X lvs -a -o +devices,segtype,sync_percent vgdata
+X mkfs.ext4 /dev/vgdata/safe && mkdir -p /mnt/safe && mount /dev/vgdata/safe /mnt/safe
+V lvs -a shows two rimage/rmeta legs and 100% sync
+T Extend a thin pool before it fills
+S Simulate a nearly full thin pool and extend the pool (not just the volume) to avoid write failures.
+X lvs vgdata      # note tpool Data%
+X lvextend -L +1G vgdata/tpool
+X lvs vgdata      # Data% drops as capacity grows
+V the pool has more free space and thin volumes keep working
+T Compare striped vs linear (concept + build)
+S Create one linear and one striped LV of the same size and explain when you would choose each.
+X lvcreate -L 500M -n lin vgdata
+X lvcreate --type striped -i 2 -I 64 -L 500M -n strp vgdata
+X lvs -a -o +segtype,devices vgdata
+V # linear = simple/flexible; striped = faster I/O, no redundancy
+
+#D 53|RH134|Advanced storage: Stratis, VDO and recovery|Use Stratis pools, LVM-VDO dedup/compression, and recover LVM metadata.
+Q What is Stratis?
++ A local storage-management layer that builds pools and thin XFS filesystems on top of LVM/device-mapper
+- A network filesystem
+- A backup tool
+- A RAID controller
+E You manage it with the `stratis` command and the stratisd service.
+Q How do you make a Stratis filesystem mount at boot in /etc/fstab?
++ Add the x-systemd.requires=stratisd.service mount option
+- Use the noauto option
+- Nothing special is needed
+- Use _netdev
+E The device is not ready until stratisd runs, so the mount must wait for it.
+Q What does LVM-VDO provide?
++ Inline deduplication and compression, so a volume stores more logical data than physical space
+- Encryption at rest
+- Network replication
+- Faster boot
+E VDO is ideal for backups/VM images with lots of repeated data.
+Q Where does LVM keep automatic backups of volume-group metadata?
++ /etc/lvm/backup (current) and /etc/lvm/archive (historical)
+- /var/lib/lvm
+- /boot/lvm
+- /root/lvm
+E These let you restore a VG's metadata after accidental damage.
+Q Which command restores a volume group's metadata from an LVM backup file?
++ vgcfgrestore
+- vgimport
+- vgchange -a y
+- pvcreate
+E Pair it with vgcfgbackup, which writes the current metadata to a file.
+Q To physically move a volume group's disks to another system, you first:
++ Deactivate its LVs and run vgexport, then vgimport on the new host
+- Run pvremove
+- Delete /etc/lvm
+- Reformat the disks
+E vgexport marks the VG as movable; vgimport reactivates it elsewhere.
+C Create a Stratis pool named mypool from the disk /dev/vdb.
+A stratis pool create mypool /dev/vdb
+E Install stratisd/stratis-cli and enable stratisd first.
+C Create a Stratis filesystem named data in the pool mypool.
+A stratis filesystem create mypool data
+E It appears at /dev/stratis/mypool/data.
+C Back up the current metadata of volume group vgdata to a file.
+A vgcfgbackup vgdata
+A vgcfgbackup -f /root/vgdata.meta vgdata
+E By default it writes to /etc/lvm/backup/vgdata.
+T Stratis pool and filesystem at boot
+S Install Stratis, build a pool on a spare disk, create a filesystem, and mount it persistently at /mnt/stratis.
+X dnf install -y stratisd stratis-cli
+X systemctl enable --now stratisd
+X stratis pool create mypool /dev/vdb
+X stratis filesystem create mypool data
+X mkdir -p /mnt/stratis
+X echo '/dev/stratis/mypool/data /mnt/stratis xfs defaults,x-systemd.requires=stratisd.service 0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V stratis filesystem list; findmnt /mnt/stratis; reboot and re-check
+T Grow a Stratis pool
+S Add a second disk to your Stratis pool and confirm the extra capacity appears.
+X stratis pool add-data mypool /dev/vdc
+X stratis pool list
+V the pool's total size increased with no downtime
+T Deduplication with LVM-VDO
+S Create a VDO volume, format and mount it, write duplicate data, and show that physical usage stays low.
+X lvcreate --type vdo -n vdolv -L 10G -V 30G vgdata
+X mkfs.xfs -K /dev/vgdata/vdolv && mkdir -p /mnt/vdo && mount /dev/vgdata/vdolv /mnt/vdo
+X for i in $(seq 1 5); do cp /root/bigfile /mnt/vdo/copy$i; done
+X lvs -o+vdo_used_size,data_percent vgdata
+V logical data far exceeds the physical space actually used
+T Recover a damaged volume group
+S Back up vgdata's metadata, "accidentally" remove an LV, then restore the metadata from the archive.
+X vgcfgbackup vgdata
+X lvs vgdata      # note an LV to sacrifice, e.g. lvtest
+X lvremove -y /dev/vgdata/lvtest
+X ls /etc/lvm/archive/ | grep vgdata      # find the pre-removal archive
+X vgcfgrestore -f /etc/lvm/archive/vgdata_XXXXX.vg vgdata
+V lvs vgdata shows lvtest restored (reactivate with vgchange -ay vgdata)
+
+#D 54|RH134|Advanced SELinux: troubleshooting denials|Read AVC denials and generate custom policy with audit2allow.
+Q Where are SELinux AVC (access-vector-cache) denials logged?
++ /var/log/audit/audit.log
+- /var/log/selinux
+- /var/log/messages only
+- /etc/selinux/denials
+E Search them with ausearch; if auditd is off they may appear in the journal/messages.
+Q Which command searches the audit log for recent AVC denials?
++ ausearch -m AVC -ts recent
+- journalctl -u selinux
+- getenforce -a
+- sestatus -v
+E -m AVC filters the message type; -ts recent limits the time window.
+Q What does audit2why do?
++ Explains WHY an SELinux denial happened (often suggesting a boolean or context fix)
+- Turns SELinux off
+- Deletes the denial
+- Relabels the filesystem
+E It reads denials and gives human-readable reasons.
+Q What does `audit2allow -a -M mymod` produce?
++ A loadable policy module (mymod.pp) that allows the denied actions
+- A firewall rule
+- A new user
+- A relabel script
+E You then load it with `semodule -i mymod.pp`.
+Q Before writing a custom module for a denial, you should first check whether:
++ A boolean or a correct file/port label already fixes it (the preferred solution)
+- SELinux should be disabled
+- The kernel needs patching
+- The service should run as root
+E Custom modules are a last resort; labels and booleans fix most issues.
+Q The setroubleshoot tool `sealert -a /var/log/audit/audit.log` gives you:
++ Plain-language analysis of denials with suggested fixes
+- A list of open ports
+- A firewall report
+- A backup of the policy
+E Install setroubleshoot-server to get sealert and desktop alerts.
+Q Putting one domain into "permissive" (e.g. httpd_t) while keeping the rest enforcing is done with:
++ semanage permissive -a httpd_t
+- setenforce 0
+- setsebool -P httpd_permissive on
+- systemctl mask selinux
+E This logs (but allows) only that domain's denials — great for targeted troubleshooting.
+C Show recent SELinux denials from the audit log.
+A ausearch -m AVC -ts recent
+A ausearch -m avc -ts recent
+E Add `| audit2why` to see the reason for each denial.
+C Generate and name a policy module "myweb" from all current denials.
+A audit2allow -a -M myweb
+E Review the generated myweb.te before loading myweb.pp.
+C Load a compiled SELinux policy module named myweb.pp.
+A semodule -i myweb.pp
+E List loaded modules with `semodule -l`; remove with `semodule -r myweb`.
+T Diagnose and fix a real denial (label first)
+S Serve a file that has the wrong context so httpd is denied, find the denial, understand it, and fix it the RIGHT way (relabel, not a custom module).
+X echo hi > /root/index.html && mv /root/index.html /var/www/html/
+X curl -s http://localhost/ | head        # 403
+X ausearch -m AVC -ts recent | audit2why
+X restorecon -v /var/www/html/index.html
+V curl http://localhost/ now returns the content
+T Custom module as a last resort
+S Create a denial that no boolean fixes (e.g. a service writing to an unusual path), capture it, and build+load a custom module — after confirming no label/boolean solves it.
+X # trigger the denial, then:
+X ausearch -m AVC -ts recent
+X ausearch -m AVC -ts recent | audit2allow -m custom      # review .te first
+X ausearch -m AVC -ts recent | audit2allow -M custom
+X semodule -i custom.pp
+V the action is now allowed and semodule -l shows "custom"
+T Targeted permissive domain
+S Put httpd_t into permissive mode to collect all its denials for a misbehaving app without weakening the rest of the system, then remove it afterward.
+X semanage permissive -a httpd_t
+X getenforce      # still Enforcing overall
+X # reproduce the app behavior, collect denials with ausearch
+X semanage permissive -d httpd_t
+V only httpd_t was permissive; the rest stayed enforcing
+T Use sealert for a guided fix
+S Install setroubleshoot, reproduce a denial, and use sealert to get a step-by-step suggested fix.
+X dnf install -y setroubleshoot-server
+X # reproduce the denial
+X sealert -a /var/log/audit/audit.log | less
+V you can read the suggested commands and apply the correct one
+
+#D 55|RH134|Advanced SELinux: contexts, ports, booleans and confined users|Manage custom file contexts, port labels, booleans and SELinux user mappings.
+Q What is the difference between chcon and semanage fcontext + restorecon?
++ chcon changes the label now but is lost on relabel; semanage records it permanently, restorecon applies it
+- They are identical
+- chcon is permanent
+- semanage is temporary
+E For anything that must survive a relabel, always use semanage fcontext.
+Q A file-context rule like `'/web(/.*)?'` uses:
++ A regular expression so the type applies to the directory and everything under it
+- A shell glob only
+- An exact path only
+- A UUID
+E The `(/.*)?` suffix covers the directory itself and all contents.
+Q To let a service listen on a non-standard port under SELinux, you:
++ Add the port to the correct type, e.g. semanage port -a -t http_port_t -p tcp 8888
+- Disable SELinux
+- chmod the port
+- Edit /etc/services only
+E If the port is already labeled another type, use -m to modify it.
+Q What does `semanage boolean -l -C` show?
++ Only the booleans you have changed from their default
+- Every boolean
+- Only httpd booleans
+- Port labels
+E Handy for reviewing your customizations.
+Q SELinux confined users (user_u, staff_u, sysadm_u) control:
++ What a Linux login is allowed to do at the SELinux level, beyond normal permissions
+- File ownership
+- Disk quotas
+- Network routes
+E semanage login maps a Linux user to an SELinux user.
+Q Which command maps the Linux user "operator" to the SELinux user staff_u?
++ semanage login -a -s staff_u operator
+- usermod -Z staff_u operator
+- semanage user -a operator
+- chcon -u staff_u operator
+E See current mappings with `semanage login -l`.
+Q After adding many fcontext rules, which single command applies default labels to a whole tree?
++ restorecon -Rv /path
+- chcon -R /path
+- relabel /path
+- semanage relabel /path
+E restorecon reads the fcontext database and sets each file to its defined type.
+C Add a permanent rule so /web and everything under it is labeled httpd_sys_content_t.
+A semanage fcontext -a -t httpd_sys_content_t '/web(/.*)?'
+E Then apply it with `restorecon -Rv /web`.
+C Let SELinux allow a service to listen on TCP port 8888 as an http port.
+A semanage port -a -t http_port_t -p tcp 8888
+E Check with `semanage port -l | grep 8888`.
+C List every SELinux boolean related to httpd with its current value.
+A getsebool -a | grep httpd
+A semanage boolean -l | grep httpd
+E Toggle persistently with `setsebool -P <boolean> on`.
+T Custom web root on a custom port (full stack)
+S Serve /web/index.html on port 8888 in enforcing mode: fix the file context, the port label, and the firewall.
+X mkdir -p /web && echo "custom" > /web/index.html
+X sed -i 's/^Listen .*/Listen 8888/' /etc/httpd/conf/httpd.conf
+X sed -i 's#^DocumentRoot .*#DocumentRoot "/web"#' /etc/httpd/conf/httpd.conf
+X semanage fcontext -a -t httpd_sys_content_t '/web(/.*)?' && restorecon -Rv /web
+X semanage port -a -t http_port_t -p tcp 8888
+X firewall-cmd --permanent --add-port=8888/tcp && firewall-cmd --reload
+X systemctl restart httpd
+V curl http://localhost:8888/ returns "custom"
+T Confine a user with SELinux
+S Create a user "guestx", map them to the restrictive user_u SELinux user, and show that the mapping applies.
+X useradd guestx && echo 'Rhcsa@2026' | passwd --stdin guestx
+X semanage login -a -s user_u guestx
+X semanage login -l | grep guestx
+V su - guestx -c 'id -Z' shows user_u:...  (a confined context)
+T Review and reset your SELinux customizations
+S List all the fcontext rules, port labels and booleans you have changed, then remove one custom fcontext rule and relabel.
+X semanage fcontext -l -C
+X semanage port -l -C
+X semanage boolean -l -C
+X semanage fcontext -d '/web(/.*)?' && restorecon -Rv /web
+V semanage fcontext -l -C no longer lists the /web rule
+T Boolean-driven feature
+S Enable httpd to connect to the network and to read user home directories, persistently, and verify.
+X setsebool -P httpd_can_network_connect on
+X setsebool -P httpd_enable_homedirs on
+X getsebool httpd_can_network_connect httpd_enable_homedirs
+V both booleans report "on" and survive a reboot
+
+#D 56|RH134|Advanced SELinux: services, containers and relabeling|Apply SELinux to real services and containers, and relabel a filesystem.
+Q Why does moving a file with `mv` often break a service under SELinux?
++ mv preserves the file's original context instead of the destination's default
+- mv deletes the SELinux label
+- mv always sets httpd_sys_content_t
+- mv disables SELinux
+E cp (without -a) or restorecon gives the file the destination's correct type.
+Q What does `restorecon -Rv /path` do that chcon does not?
++ It sets each file to the type defined by the fcontext policy (surviving relabels)
+- It changes ownership
+- It is temporary
+- It disables SELinux
+E restorecon is policy-driven; chcon is a manual, non-persistent override.
+Q How do you trigger a full filesystem relabel on the next boot?
++ touch /.autorelabel  (then reboot)
+- setenforce relabel
+- restorecon /boot
+- semodule -R
+E The system relabels everything and removes the flag; it can take a while.
+Q In `podman run -v /data:/data:Z`, what does the :Z do?
++ Relabels the volume with a private container context so the container can access it
+- Makes it read-only
+- Encrypts the volume
+- Shares it with every container
+E Lowercase :z labels it as shared among containers; :Z is private to one.
+Q Rootless containers rely on SELinux type ______ to confine container processes.
++ container_t (with content typically container_file_t)
+- unconfined_t
+- httpd_t
+- init_t
+E SELinux adds a strong isolation layer on top of namespaces.
+Q Which tool checks whether a path currently matches its policy-defined context?
++ matchpathcon (or `restorecon -n -v` for a dry run)
+- getenforce
+- semodule -l
+- ausearch
+E It shows the expected label so you can spot mismatches.
+C Dry-run a relabel of /var/www to see what restorecon WOULD change, without changing anything.
+A restorecon -Rnv /var/www
+E -n means "no change"; drop it to actually apply the labels.
+C Show the policy-defined (default) context for the path /web/index.html.
+A matchpathcon /web/index.html
+E Compare it to the actual label from `ls -Z` to find mismatches.
+C Run a container mounting /srv/data with a private SELinux relabel.
+A podman run -v /srv/data:/data:Z ...
+E :Z relabels the host directory to container_file_t for that container.
+T Move vs copy and fix the label
+S Show how mv breaks a web file's context while cp/restorecon fixes it.
+X echo A > /root/a.html; echo B > /root/b.html
+X mv /root/a.html /var/www/html/          # keeps admin_home_t
+X cp /root/b.html /var/www/html/          # gets correct type
+X ls -Z /var/www/html/*.html
+X restorecon -v /var/www/html/a.html      # fix the moved one
+V both files now have httpd_sys_content_t
+T Persistent SELinux for a container volume
+S Run a rootless container that serves content from a host directory, using the correct SELinux volume label, and make the host label permanent.
+X mkdir -p /srv/webdata && echo "container page" > /srv/webdata/index.html
+X semanage fcontext -a -t container_file_t '/srv/webdata(/.*)?'
+X restorecon -Rv /srv/webdata
+X podman run -d --name web -p 8080:80 -v /srv/webdata:/usr/share/nginx/html:Z nginx 2>/dev/null || echo "(pull nginx first)"
+V ls -Z /srv/webdata shows container_file_t; curl localhost:8080 works
+T Full filesystem relabel
+S Schedule and perform a full relabel (as you would after fixing widespread context damage), then confirm it ran.
+X touch /.autorelabel
+X systemctl reboot
+X # system relabels during boot, then removes /.autorelabel
+X ls -l /.autorelabel 2>/dev/null || echo "relabel done, flag cleared"
+V getenforce is Enforcing and contexts are correct
+T Audit a directory's contexts
+S For /var/www, dry-run restorecon to list any files whose label does not match policy, then fix only those.
+X restorecon -Rnv /var/www          # lists mismatches without changing them
+X restorecon -Rv /var/www           # apply the fixes
+V a second dry run (restorecon -Rnv /var/www) reports nothing to change

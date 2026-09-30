@@ -1,0 +1,110 @@
+#D 63
+## Profiles, devices and keyfiles
+NetworkManager separates the **device** (the network card, e.g. `eth0`) from the **connection profile** (a saved configuration). One device can have several profiles; you activate whichever you need. On RHEL 9/10, profiles are stored as **keyfiles** in `/etc/NetworkManager/system-connections/` ending in `.nmconnection`. After hand-editing a keyfile, run `nmcli con reload`.
+
+## Modifying list properties with + and -
+Many settings are **lists** (addresses, DNS servers, routes). nmcli lets you add or remove single items without replacing the whole list:
+- `nmcli con mod eth0 +ipv4.addresses 10.0.0.5/24` **appends** a second address.
+- `nmcli con mod eth0 -ipv4.dns 8.8.8.8` removes one DNS entry.
+- No prefix replaces the entire list.
+Changes only take effect when you re-activate the profile: `nmcli con up eth0`.
+
+## Static routes and metrics
+- Add a persistent route with `nmcli con mod eth0 +ipv4.routes "192.168.50.0/24 192.168.1.254"` (reach that subnet via that gateway). This survives reboots, unlike a bare `ip route add`.
+- On a host with two uplinks, `ipv4.route-metric` sets which is preferred — **lower wins**. Set a lower metric on the primary connection so its default route is chosen.
+
+## Autoconnect and inspection
+- `nmcli con mod eth0 connection.autoconnect yes` makes a profile come up at boot.
+- `nmcli -f ipv4 con show eth0` shows all IPv4 settings of a profile; `nmcli dev show eth0 | grep -i dns` shows the DNS it applies.
+
+#D 64
+## What bonding is
+**Bonding** combines two or more network cards into one logical interface (`bond0`) for **redundancy** (survive a cable/switch failure) or **more bandwidth**. On RHEL 9/10 use bonding — the older "teaming" (teamd) was removed. The member interfaces are called **ports**, and the bond that controls them is the **controller**.
+
+## Bond modes
+The bonding **mode** decides how the ports are used:
+- **active-backup (mode 1)** — one port is active at a time; if it fails, another takes over. Needs **no** special switch configuration — the safe default for redundancy.
+- **802.3ad (mode 4, LACP)** — aggregates ports for throughput, but the switch must be configured for it.
+- **balance-rr (mode 0)** — round-robin across ports.
+The `miimon` option sets how often (in milliseconds) the link is checked for failover, e.g. `miimon=100`.
+
+## Building a bond with nmcli
+- Create the bond: `nmcli con add type bond con-name bond0 ifname bond0 bond.options "mode=active-backup,miimon=100"` (add `ipv4.addresses`/`ipv4.method manual` for a static IP).
+- Add each NIC as a port: `nmcli con add type ethernet con-name bond0-p1 ifname eth1 master bond0` (repeat for eth2). Ports have no IP of their own.
+- Bring it up with `nmcli con up bond0`.
+
+## Checking and testing failover
+- `cat /proc/net/bonding/bond0` shows the mode, each port's link state, and which port is currently active.
+- To test failover, bring the active port down (`nmcli con down bond0-p1`) and confirm the bond switches to the other while connectivity continues (`ping`).
+
+#D 65
+## Zones as trust levels
+firewalld organises rules into **zones**, each a trust level bound to interfaces or source addresses. `public` is the cautious default; `trusted` allows everything; `drop` silently discards. `firewall-cmd --get-active-zones` shows which interfaces/sources map to which zone, and `--set-default-zone=` changes the default.
+
+## Masquerading (source NAT)
+When a host **routes** traffic for a private network out to the internet, it must translate the private source addresses to its own — this is **masquerading** (source NAT):
+- `firewall-cmd --permanent --add-masquerade` enables it. It is required whenever the host acts as a gateway/router for other machines.
+
+## Port forwarding
+firewalld can redirect traffic arriving on one port to another port (or host):
+- `firewall-cmd --permanent --add-forward-port=port=80:proto=tcp:toport=8080` sends incoming port 80 to a service on 8080. Forwarding to another **host** also needs masquerade.
+
+## Rich rules
+For precise control — matching a specific source, logging, rate-limiting — use a **rich rule**:
+- `firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.66" log prefix="DROP66 " level="info" drop'` logs and drops traffic from one host.
+- Remember **reject** replies "refused" while **drop** stays silent (the host appears offline). Always follow permanent changes with `firewall-cmd --reload`.
+
+#D 66
+## What nftables is
+**nftables** is the modern Linux packet-filtering framework that replaced the old iptables. Importantly, **firewalld uses nftables as its backend** — so on a normal RHEL system you manage the firewall through firewalld, and nftables is what actually enforces the rules underneath. You would write raw nftables rules only on a host **not** using firewalld; mixing the two on one host causes conflicts.
+
+## Tables, chains and rules
+nftables is organised in three levels:
+- A **table** (with a **family** such as `inet` for both IPv4+IPv6) holds chains.
+- A **chain** holds rules. A **base chain** must declare a **type**, a **hook** (input/forward/output) and a **priority**, plus a default **policy** (accept or drop).
+- **Rules** match traffic and take an action.
+Example base chain: `type filter hook input priority 0; policy drop;`.
+
+## Writing and viewing a ruleset
+- `nft list ruleset` shows the entire active ruleset (with firewalld running, you see firewalld's generated tables here).
+- Build one by hand: `nft add table inet filter`, then `nft add chain inet filter input '{ type filter hook input priority 0; policy drop; }'`, then rules like `nft add rule inet filter input tcp dport 22 accept` and `nft add rule inet filter input ct state established,related accept`.
+- `nft -a list table inet filter` shows rule **handles**; delete one with `nft delete rule inet filter input handle N`.
+
+## Persistence
+To load a ruleset at boot, save it to `/etc/nftables.conf` (starting with `#!/usr/sbin/nft -f` and `flush ruleset`) and enable the `nftables` service: `systemctl enable --now nftables`.
+
+#D 67
+## Software bridges
+A **bridge** (`br0`) acts like a virtual switch in software, most commonly used to connect **virtual machines** to the physical network so they appear on the LAN directly. Build one with nmcli:
+- `nmcli con add type bridge con-name br0 ifname br0` (add an IP as needed), then attach a NIC as a port: `nmcli con add type ethernet con-name br0-port ifname eth1 master br0`. The bridge, not the NIC, then holds the IP.
+
+## VLANs
+A **VLAN** (Virtual LAN) lets one physical NIC carry several isolated networks, each tagged with an 802.1Q **VLAN ID**. The switch port must be a **trunk** that allows those VLANs:
+- `nmcli con add type vlan con-name vlan20 ifname eth0.20 dev eth0 id 20 ipv4.addresses 192.168.20.5/24 ipv4.method manual` creates VLAN 20 on eth0 (the interface name convention is `device.vlanid`).
+
+## Static routing and IP forwarding
+- Persist a route in a profile: `nmcli con mod eth0 +ipv4.routes "10.10.0.0/16 192.168.1.254"`. A bare `ip route add` is lost on reboot.
+- To let a host **forward** packets between networks (act as a router), enable IP forwarding persistently: put `net.ipv4.ip_forward=1` in `/etc/sysctl.d/99-forward.conf` and apply with `sysctl --system`. Combine with masquerade when routing to the internet.
+- **Policy routing** with `ip rule` can choose different routing tables based on the source address, for advanced multi-uplink setups.
+
+#D 68
+## A methodical troubleshooting order
+When "I can't reach a server", resist guessing and work **up the stack** in order — each step tells you the next:
+1. **Link** — is the interface up with an IP? `ip -br a`, `ip -br link`.
+2. **Route** — is there a default gateway? `ip route`.
+3. **Gateway** — can you reach it? `ping -c2 <gateway>`.
+4. **DNS** — does the name resolve? `getent hosts <name>` or `dig <name>`.
+5. **Service/port** — is the remote port open? `nc -zv host 443`.
+Whichever step fails tells you which layer to fix.
+
+## The key diagnostic tools
+- `ss -tulpn` lists listening TCP/UDP ports with the owning process (t=TCP, u=UDP, l=listening, p=process, n=numeric) — the modern replacement for `netstat`.
+- `ip -br a` / `ip route` give a quick health check of addresses and routing.
+- `getent hosts name` resolves a name using the system's full order (files then DNS), reflecting exactly what applications see — better than a raw DNS query when `/etc/hosts` is involved.
+- `mtr` combines ping and traceroute to show per-hop loss over time; `ethtool eth0` shows link speed, duplex and whether the link is detected.
+
+## Reading the results
+- `ping` reaches an IP but a name fails → a **DNS** problem, not connectivity.
+- A local `curl localhost` works but another host cannot connect → the **firewall**.
+- A service refuses to **bind** to a new port with "Permission denied" → **SELinux** (label the port).
+- Watch NetworkManager's own logs during changes with `journalctl -u NetworkManager -f`, and capture a stubborn connection with `tcpdump` — a SYN with no reply means blocked, a RST means refused. Methodical layering beats random rebooting every time.

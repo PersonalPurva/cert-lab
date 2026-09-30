@@ -1,0 +1,104 @@
+#D 51
+## What an LVM snapshot is
+A **snapshot** captures a logical volume at a moment in time so you can roll back to it later. It is clever about space: it uses **copy-on-write**, meaning it starts almost empty and only stores the **original** version of blocks that change on the source volume afterward. So a snapshot begins tiny and grows as the origin is modified.
+
+## Creating and using a snapshot
+- `lvcreate -s -n datasnap -L 1G /dev/vgdata/lvdata` creates a 1 GiB snapshot of lvdata (`-s` = snapshot; the origin is the last argument).
+- `lvs -a -o +origin,data_percent` shows snapshots with their **Origin** and **Data%** columns. Watch Data% closely.
+- **If a snapshot fills to 100%, it becomes invalid and is dropped** — so size it for the amount of change you expect during its life. (lvm.conf can enable auto-extend.)
+
+## Rolling back with merge
+To restore the origin to the snapshot's state, **merge** the snapshot back:
+- `lvconvert --merge /dev/vgdata/datasnap`. If the origin is currently in use, the merge completes at the next activation/reboot; after merging, the snapshot is removed automatically. Unmount the origin first for an immediate merge.
+
+## Snapshots as backup sources
+A common professional use is taking a **consistent backup**: snapshot the volume (freezing a moment), mount the snapshot read-only, back it up with tar while the real volume keeps changing, then remove the snapshot. Remember snapshots are a fast local "undo", **not** a substitute for real off-machine backups.
+
+#D 52
+## Thin provisioning
+Normally an LV reserves its full size up front. **Thin provisioning** lets logical volumes share a common **thin pool** and consume space only as they actually write data — so you can present more logical space than physically exists (over-provisioning):
+- `lvcreate --type thin-pool -L 1G -n tpool vgdata` creates the pool.
+- `lvcreate -V 5G -T vgdata/tpool -n tvol` creates a thin volume whose **virtual** size (5 G) exceeds the pool (1 G).
+The risk: if the **pool** fills, writes to any thin volume fail. Watch the pool's Data% and Meta% with `lvs`, and extend the **pool** in time with `lvextend -L +1G vgdata/tpool`.
+
+## Striped volumes for speed
+A **striped** LV spreads data across several physical volumes so reads and writes happen in parallel — faster I/O, but **no redundancy** (losing one PV loses the volume):
+- `lvcreate --type striped -i 2 -I 64 -L 1G -n fast vgdata` uses `-i` stripes across 2 PVs with a `-I` 64 KiB stripe size.
+
+## RAID logical volumes for redundancy
+LVM can build RAID levels directly:
+- `raid1` (`lvcreate --type raid1 -m 1 -L 500M -n safe vgdata`) mirrors data across two legs and survives one device failing (`-m 1` = one mirror copy).
+- `raid5` (`--type raid5 -i 3`) stripes with parity across at least 3 devices and tolerates one failure.
+Inspect the underlying devices and sync state with `lvs -a -o +devices,segtype,sync_percent`.
+
+#D 53
+## Stratis: pooled storage made simple
+**Stratis** is a newer local storage manager that layers on top of LVM and device-mapper to give you pools and thin XFS filesystems with simple commands, without managing PVs/VGs/LVs by hand. Manage it with the `stratis` command and the `stratisd` service:
+- `stratis pool create mypool /dev/vdb` builds a pool; `stratis pool add-data mypool /dev/vdc` grows it live.
+- `stratis filesystem create mypool data` makes a filesystem at `/dev/stratis/mypool/data`.
+Because the device is not ready until `stratisd` runs, its `/etc/fstab` line needs the option `x-systemd.requires=stratisd.service` so the mount waits for the service.
+
+## VDO: deduplication and compression
+**LVM-VDO** stores data with inline **deduplication** (identical blocks stored once) and **compression**, so a volume can hold far more logical data than its physical size — ideal for backups and VM images with lots of repetition:
+- `lvcreate --type vdo -n vdolv -L 10G -V 30G vgdata` creates a VDO volume; check savings with `lvs -o+vdo_used_size,data_percent`.
+
+## Recovering LVM metadata
+LVM automatically backs up each volume group's metadata to `/etc/lvm/backup` (current) and `/etc/lvm/archive` (historical). If you damage a VG — say you delete an LV by mistake — you can restore it:
+- `vgcfgbackup vgdata` writes current metadata to a file.
+- `vgcfgrestore -f /etc/lvm/archive/vgdata_XXXX.vg vgdata` restores from an archive (then reactivate with `vgchange -ay vgdata`).
+To physically move a VG's disks to another machine, deactivate its LVs and use `vgexport`, then `vgimport` on the new host.
+
+#D 54
+## How SELinux denials are logged
+When SELinux blocks something in enforcing mode, it records an **AVC** (Access Vector Cache) denial in `/var/log/audit/audit.log`. Reading and understanding these is the core troubleshooting skill:
+- `ausearch -m AVC -ts recent` searches for recent denials (`-m AVC` filters the message type, `-ts recent` the time window).
+- Pipe a denial to `audit2why` for a plain-language explanation of **why** it happened — often pointing at a boolean or a wrong context.
+
+## audit2allow and custom modules (last resort)
+If no boolean or correct label fixes a legitimate denial, you can generate a small custom policy **module** that permits exactly those actions:
+- `audit2allow -a -M mymodule` reads the denials and produces `mymodule.pp` (always review the human-readable `mymodule.te` it also writes).
+- `semodule -i mymodule.pp` loads it; `semodule -l` lists loaded modules; `semodule -r mymodule` removes it.
+This is a **last resort** — always try labels and booleans first, because they are the intended fix.
+
+## Guided fixes and targeted permissive mode
+- `sealert -a /var/log/audit/audit.log` (from setroubleshoot-server) analyses denials and prints suggested commands.
+- `semanage permissive -a httpd_t` puts a **single** domain (here the web server) into permissive mode so you can collect all its denials while the rest of the system stays enforcing — much safer than `setenforce 0`. Remove it afterward with `semanage permissive -d httpd_t`.
+
+## The right order to fix a denial
+For a real problem, work through: (1) is the **file context** correct? fix with `restorecon`; (2) is a **boolean** needed? set it; (3) is a **port** label needed? add it. Only if none of those apply do you build a custom module. Fixing labels — never disabling SELinux — is always the exam-correct answer.
+
+#D 55
+## chcon vs semanage fcontext (again, because it matters)
+This distinction is the heart of SELinux file management:
+- `chcon -t type file` changes a label **now** but does not survive a relabel — temporary.
+- `semanage fcontext -a -t type 'regex'` records a **permanent** rule in policy; `restorecon -Rv path` then applies it. Always prefer semanage + restorecon.
+File-context rules use regular expressions; `'/web(/.*)?'` covers the directory `/web` and everything under it.
+
+## Managing port labels
+To let a service use a non-default port, add the port to the correct type:
+- `semanage port -a -t http_port_t -p tcp 8888` (use `-m` to modify a port that already has a different type).
+- `semanage port -l | grep http` lists the ports a type already covers; `semanage port -l -C` shows only your changes.
+
+## Booleans in depth
+Booleans switch optional policy behaviour on and off without editing policy:
+- `getsebool -a | grep httpd` lists them; `setsebool -P httpd_can_network_connect on` enables one permanently (`-P` = persistent). Common ones let the web server reach the network or read home directories.
+- `semanage boolean -l -C` reviews only the ones you changed.
+
+## Confined users
+SELinux can also limit what a **login** may do, beyond normal permissions, by mapping Linux users to SELinux users (`user_u`, `staff_u`, `sysadm_u`):
+- `semanage login -a -s staff_u operator` maps the Linux user `operator` to the `staff_u` SELinux user; `semanage login -l` shows the mappings. A user mapped to `user_u`, for example, is confined even if they gain root-like tools. Check a logged-in user's context with `id -Z`.
+
+#D 56
+## Move vs copy, and restorecon
+A recap that catches everyone: **moving** a file with `mv` preserves its **old** context, so a service may be denied; **copying** picks up the destination's default. The universal fix is `restorecon -Rv /path`, which sets each file to the type the policy defines — persistent and correct, unlike a manual `chcon`.
+- `matchpathcon /web/index.html` (or `restorecon -n -v` for a dry run) shows the **expected** label so you can spot a mismatch against `ls -Z`.
+
+## Relabeling the whole filesystem
+After widespread context damage (or a password reset), you can trigger a **full relabel** on the next boot:
+- `touch /.autorelabel` then reboot — the system relabels everything and removes the flag. It can take a few minutes.
+- `restorecon -Rnv /var/www` is a safe **dry run** that lists what would change without changing anything; drop the `-n` to apply.
+
+## SELinux and containers
+Container isolation is reinforced by SELinux. When you mount a host directory into a container you must relabel it so the container process (type `container_t`) may access it:
+- `podman run -v /srv/data:/data:Z ...` — the **:Z** relabels the host directory with a **private** container context (`container_file_t`) for that one container; lowercase **:z** labels it **shared** among containers.
+- For a permanent host label, use `semanage fcontext -a -t container_file_t '/srv/data(/.*)?'` and `restorecon`. This layering — namespaces plus SELinux — is why rootless containers on RHEL are considered well isolated.

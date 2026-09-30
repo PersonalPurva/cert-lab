@@ -1,0 +1,100 @@
+#D 22
+## Exploiting without a framework
+Frameworks are convenient, but a good tester can exploit and manage access with basic tools, which also helps in restricted environments.
+- **Netcat (nc)** is the "swiss army knife": `nc -lvnp 4444` starts a **listener** on your attacker machine (`-l` listen, `-v` verbose, `-n` no DNS, `-p` port), waiting for a target to connect back for a reverse shell (authorised labs only).
+- A **reverse shell** connects from the target to your listener — it traverses many firewalls that block inbound — while a **bind shell** listens on the target.
+
+## Stabilising a shell
+A raw shell breaks on interactive prompts and Ctrl+C. **Upgrade a "dumb" shell to a full TTY** so you get job control, tab completion and reliable interactive tools:
+- `python3 -c 'import pty;pty.spawn("/bin/bash")'`, then background with Ctrl+Z and run `stty raw -echo; fg` for a proper terminal.
+
+## File transfer and vetting exploits
+- Move files with a quick HTTP server: `python3 -m http.server 8000` on the attacker, then `wget`/`curl` on the target; or use netcat both ways.
+- `searchsploit <service> <version>` searches the local Exploit-DB copy for a PoC.
+Before running any public exploit, **read and understand what it does and test it in a lab** — untrusted exploit code can be destructive or backdoored. You can also drive web exploits purely with `curl`, demonstrating issues like IDOR or SQL injection from the command line.
+
+#D 23
+## Active Directory as a target
+On Windows networks, **Active Directory (AD)** is the crown jewel — compromising it can grant control over the entire domain, and therefore most corporate resources. Testing it stays strictly authorised and scoped, because domain-wide actions can disrupt the whole organisation.
+
+## Common AD attack techniques
+- **Kerberoasting** — requesting service accounts' Kerberos tickets and cracking them offline for their passwords; defended with long (25+ char) service-account passwords or gMSA.
+- **AS-REP roasting** — targeting accounts with Kerberos pre-authentication disabled; enable pre-auth and use strong passwords.
+- **Pass-the-ticket** — reusing Kerberos tickets to authenticate as a user without their password.
+- **Golden ticket** — forging a Kerberos TGT using the `krbtgt` hash for broad, persistent access; rotating the `krbtgt` password (twice) invalidates forged tickets.
+
+## Mapping and defending AD
+- **BloodHound** collects AD relationships (sessions, group memberships, ACLs, trusts) and graphs the shortest **attack path** to Domain Admin, so you target the weakest edge.
+- Enumeration tools (`enum4linux`, LDAP queries) reveal domain users, groups and structure.
+The AD hardening you recommend: a **tiered admin** model (separate Domain Admin accounts not used daily), **LAPS**, strong/gMSA service accounts, MFA on admin access, disabling legacy protocols, and monitoring for Kerberoasting and DCSync.
+
+#D 24
+## Automating a tester's workflow
+Automation brings consistency, speed and fewer errors across many targets — turning a repeatable process into one command. But a buggy script can hit out-of-scope hosts or cause load at scale, so add **scope checks** and rate limits, and test scripts first.
+
+## Useful building blocks
+- Loop over targets: `for ip in $(cat targets.txt); do ping -c1 -W1 $ip >/dev/null && echo "$ip up"; done`.
+- Parse output: `grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' scan.txt | sort -u` extracts unique IPs; `awk '/445\/open/{print $2}'` pulls hosts with a port open.
+- Decode data: `base64 -d` decodes captured strings; a Python one-liner URL-encodes or decodes payloads.
+- A no-tools port check: `bash -c 'echo > /dev/tcp/host/22 && echo open'`.
+
+## Structured output and safety
+Keep tool output **structured** (JSON/CSV/XML) so it's easy to parse, diff and feed into the report. A scoped sweep script should refuse any IP outside the authorised range before scanning. And automate **evidence collection** — a script that timestamps and saves `id`, `ss`, `ps` and `sudo -l` on a foothold captures reproducible proof for the report in one command.
+
+#D 25
+## Attacking data stores and APIs
+Databases and APIs hold the data attackers ultimately want, so they get focused testing on authorised systems.
+- **Weak or default database credentials** (e.g. `root` with no/weak password) are a frequent, high-impact way in — connect with the DB client and enumerate contents (`SHOW DATABASES;`).
+- **SQL injection** can extract schema and data — e.g. a `UNION SELECT` against `information_schema` reveals table names; the fix is always parameterized queries plus a least-privilege DB account.
+
+## API-specific issues
+- **Missing authentication** — endpoints that return data without requiring a login.
+- **Broken object-level authorization (BOLA/IDOR)** — changing an ID lets one user access another's objects; enforce per-object authorization server-side.
+- **Verbose errors** — full stack traces leak internal details; return generic messages.
+- **No rate limiting** — enables brute-force and credential stuffing; add rate limiting, lockout and MFA.
+Interact with APIs using `curl` (`-i` to see headers and status, `-X POST` with a JSON body), checking auth, input handling and error verbosity.
+
+## Reporting data findings
+The remediations tie together: require authentication and per-object authorization, rate-limit sensitive endpoints, return generic errors, validate input, use parameterized queries, and run the database under a least-privilege account. Each recommendation maps directly to an observed weakness so developers can act on it.
+
+#D 26
+## Understanding evasion (to improve detection)
+In an authorised test, understanding evasion helps you assess how well the client **detects and responds** — the goal is better detection, not staying permanently hidden. This is the purple-team purpose.
+- Attackers **live off the land** (LOLBins), using built-in tools like PowerShell or `certutil` to avoid dropping detectable malware.
+- **Timestomping** alters file timestamps to hinder forensics.
+- **Obfuscating/encoding** payloads evades signature-based detection — but behaviour-based **EDR** is harder to evade.
+- **Beaconing** to command-and-control shows up as regular, periodic connections to an unusual destination.
+
+## Turning evasion into recommendations
+When a technique is **not** detected, you report the **detection gap** so the client can add monitoring. For each technique you tested, give the detection the client should have:
+- LOLBins → EDR command-line and parent/child process alerts.
+- Log tampering → central/immutable logs plus integrity monitoring; alert on log-clearing events.
+- Beaconing → NetFlow analysis and threat-intel matching.
+The best defensive recommendation is depth: **centralized logging + EDR + behaviour analytics + tuned alerts**. Detection depth matters more than any single tool, and forwarding logs off-host in real time stops an attacker quietly erasing evidence.
+
+#D 27
+## Knowing your tools
+A tester should know the core toolkit, what each tool does, and its basic syntax, so you reach for the right one instantly:
+- **nmap** — network/service discovery (`nmap -sV <target>`).
+- **gobuster / ffuf** — web content discovery and fuzzing (`gobuster dir -u http://<t> -w <wordlist>`; `ffuf -u http://<t>/FUZZ -w <wordlist>`).
+- **hashcat / John the Ripper** — offline hash cracking (`hashcat -m 0 hashes.txt <wordlist>` where `-m` picks the hash type).
+- **Burp Suite / OWASP ZAP** — intercept and modify web traffic.
+- **Wireshark / tcpdump** — capture and analyse packets.
+- **BloodHound** — map Active Directory attack paths.
+- **searchsploit** — search the local Exploit-DB.
+
+## Chaining tools
+Real work chains tools together: `nmap` finds an open web port → `gobuster` discovers a hidden endpoint → `curl` interacts with that specific vulnerable endpoint. Keeping a **personal cheat sheet** of your ten most-used commands, with a one-line note each, means you can recall them under time pressure — which matters both on the job and on the exam's performance-based questions.
+
+#D 28
+## Approaching the PT0-003 exam
+The Pentest+ exam includes **performance-based questions (PBQs)** that require you to analyse tool output, choose or complete commands, or work through a scenario — so hands-on command familiarity is exactly what wins points. As with any timed exam, **flag** the slow PBQs, secure the quick multiple-choice points first, then return.
+
+## How to reason through questions
+- When asked for the **NEXT step** in a methodology, choose the one that logically follows the phase order — you *enumerate before you exploit*, and you *report at the end*.
+- When given **tool output**, read it carefully and pick the action it actually supports.
+- The professional's first consideration in any scenario is **scope and authorisation** — that instinct is almost always the right answer.
+- When two exploits both work, the safest choice is the **lower-impact** one that proves the risk without disrupting the target.
+
+## What ties it together
+Every engagement — and the exam — comes back to a clear, prioritised **report** with evidence and remediation, which is what creates value for the client. Combine that with the phase order, the right tool for each task, and an unwavering commitment to staying in scope and doing no harm, and you have the mindset the certification is really testing. Practising the labs and command drills alongside this theory is what builds the hands-on confidence the PBQs reward.

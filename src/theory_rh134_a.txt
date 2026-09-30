@@ -1,0 +1,165 @@
+#D 22
+## What a shell script is
+A **shell script** is just a text file containing the same commands you would type in the terminal, saved so you can run them again as one command. Instead of typing ten steps every time, you put them in a file and run the file. This is how administrators automate repetitive work.
+
+## The shebang and making a script runnable
+The first line of a script should be the **shebang**: `#!/bin/bash`. The `#!` tells the kernel which interpreter (here bash) should run the file. Without it, the system may not know how to execute your script.
+A fresh text file is not executable, so you must give it the execute permission:
+- `chmod +x script.sh` makes it runnable.
+- Run it with `./script.sh` (the `./` means "in the current directory"), or put it in a directory on your PATH like `/usr/local/bin/` so you can call it by name from anywhere.
+
+## Variables and command substitution
+A **variable** stores a value. Assign with no spaces around the `=`: `name="Purva"` (writing `name = "Purva"` fails because bash thinks `name` is a command). Read it back with a `$`: `echo "$name"`. Always quote variables in double quotes so spaces stay intact.
+**Command substitution** captures the output of a command into a variable: `today=$(date +%F)` stores today's date. The `$( )` form is preferred over the older backticks.
+
+## Positional parameters (script inputs)
+When you run `./greet.sh Purva`, the script receives that word as an input:
+- `$1`, `$2`, `$3` … are the first, second, third arguments.
+- `$0` is the script's own name.
+- `$#` is the **number** of arguments given.
+- `$@` is **all** the arguments (quote it as `"$@"` to keep each intact).
+This lets one script behave differently depending on what you pass it.
+
+## Exit status
+Every command returns an **exit status**: `0` means success, any other number means failure. The special variable `$?` holds the status of the **last** command, so you can test whether it worked. In your own scripts, `exit 0` ends with success and `exit 1` (or any non-zero) signals an error. Send error messages to standard error with `>&2` by convention.
+
+#D 23
+## Making decisions with if
+Scripts become useful when they can **decide**. The `if` statement runs code only when a test is true:
+```
+if [ "$x" = "yes" ]; then
+  echo ok
+else
+  echo no
+fi
+```
+The spaces inside `[ ]` are required, and the block ends with `fi` (if spelled backwards). `[ ]` is actually the `test` command in disguise.
+
+## Writing tests
+Tests come in two flavours:
+- **Numbers**: `-eq` (equal), `-ne` (not equal), `-lt` (less than), `-le`, `-gt` (greater than), `-ge`. Example: `[ "$n" -gt 5 ]`. Note that inside `[ ]`, the symbol `>` means redirection, not comparison — so use `-gt`.
+- **Strings**: `=` and `!=`. `[ -z "$s" ]` is true when the string is empty; `[ -n "$s" ]` when it is not.
+- **Files**: `-f file` (a regular file exists), `-d dir` (a directory), `-e` (exists, any type), `-r`/`-w`/`-x` (readable/writable/executable), `-s` (not empty).
+
+## Looping with for and while
+A **loop** repeats work. The `for` loop steps through a list:
+```
+for i in 1 2 3; do echo $i; done
+```
+The list can be numbers (`{1..5}`), files (`for f in /etc/*.conf`), or command output. A `while` loop repeats **as long as** a condition is true — the classic pattern reads a file line by line:
+```
+while read line; do echo "$line"; done < users.txt
+```
+This safely handles each line even if it contains spaces.
+
+## Combining commands and case
+`&&` runs the next command only if the previous **succeeded**; `||` runs it only if the previous **failed** — e.g. `[ -r /etc/hosts ] && echo yes`. For choosing between many fixed values, `case` is cleaner than a chain of ifs, and each branch ends with `;;`, with the whole block closed by `esac`.
+
+#D 24
+## Two ways to schedule work
+Sometimes a task should run **later** or **repeatedly** without you being there. RHEL offers two classic tools:
+- **at** runs a command **once** at a future time.
+- **cron** runs commands **repeatedly** on a schedule.
+(A third, modern option — systemd timers — is covered on the next day.)
+
+## Scheduling a one-off job with at
+`at` reads the command from standard input and runs it once:
+- `echo "command" | at now + 5 minutes` schedules it 5 minutes from now. Other time forms: `at 16:30`, `at 9am tomorrow`, `at noon + 2 days`.
+- `atq` (or `at -l`) lists pending jobs; `at -c 3` shows the full script of job 3; `atrm 3` (or `at -d 3`) deletes it.
+- The `atd` service must be running for jobs to fire.
+
+## Recurring jobs with cron
+Each user has a **crontab** (cron table). Edit yours with `crontab -e`; list it with `crontab -l`; remove it with `crontab -r`. As root you can manage another user's with `-u`: `crontab -e -u natasha`.
+A crontab line has **five time fields** then the command:
+```
+minute  hour  day-of-month  month  day-of-week   command
+```
+- `*` means "every". `30 14 * * *` = 14:30 every day. `*/10 * * * *` = every 10 minutes. `0 2 * * 0` = 02:00 every Sunday (0 or 7 = Sunday). `30 23 1,15 * *` = 23:30 on the 1st and 15th (commas list values, dashes give ranges).
+
+## System crontabs
+Besides per-user crontabs, the system has `/etc/crontab` and drop-in files in `/etc/cron.d/`. These have one **extra** field — the **user** to run as — between the time and the command:
+```
+30 2 * * 0  root  /usr/local/bin/backup.sh
+```
+There are also ready-made directories `/etc/cron.hourly`, `/etc/cron.daily`, etc., where any script is run on that schedule. Who may use cron is controlled by `/etc/cron.allow` and `/etc/cron.deny`.
+
+#D 25
+## systemd timers: the modern scheduler
+A **systemd timer** does the same job as cron but is integrated with systemd, so it gets logging, dependencies and better control. A timer always comes in **two files** with the same base name:
+- a **.service** unit that says *what* to run,
+- a **.timer** unit that says *when* to run it.
+The timer starts its matching service. Put both in `/etc/systemd/system/`.
+
+## Writing a timer
+The `.timer` file's key line is `OnCalendar=`, which uses the format `DayOfWeek Year-Month-Day Hour:Minute:Second`:
+- `OnCalendar=*-*-* 02:00:00` runs every day at 02:00. Shortcuts like `daily`, `weekly`, `hourly` also work.
+- `OnBootSec=15min` runs 15 minutes after boot; pair it with `OnUnitActiveSec=1h` to then repeat every hour.
+- `Persistent=true` means if the machine was **off** at the scheduled time, the job runs soon after the next boot (like anacron).
+The `[Install]` section should say `WantedBy=timers.target`, and you enable the **timer** (not the service): `systemctl enable --now backup.timer`.
+
+## Managing and checking timers
+- `systemctl list-timers` shows all timers with their next and last run times.
+- `systemd-analyze calendar "Mon..Fri *-*-* 09:00"` checks what a calendar expression means and when it fires next — great for testing before you commit.
+- After creating or editing any unit file, run `systemctl daemon-reload` so systemd re-reads it.
+
+## Temporary files with systemd-tmpfiles
+systemd can also create and clean up temporary files/directories using rules in `/etc/tmpfiles.d/*.conf`. A rule like `d /run/myapp 0755 root root 1d` means "create this directory at boot and delete files in it older than 1 day". Apply now with `systemd-tmpfiles --create` and clean with `systemd-tmpfiles --clean`.
+
+#D 26
+## Tuning profiles with tuned
+Different workloads want different settings — a laptop wants power saving, a database server wants throughput. The **tuned** service bundles these into **profiles** so you can switch with one command:
+- `tuned-adm active` shows the current profile.
+- `tuned-adm list` lists all available profiles.
+- `tuned-adm recommend` suggests the best profile for this machine (on a VM it usually recommends `virtual-guest`).
+- `tuned-adm profile virtual-guest` applies a profile; the choice persists while the tuned service is enabled.
+Make sure the service runs: `systemctl enable --now tuned`.
+
+## Process priority: the nice value
+Every process has a **nice value** from **−20** (highest priority, takes the most CPU) to **19** (lowest, most generous to others). The default is 0. A "nicer" process (higher number) yields CPU to others.
+- `nice -n 10 command` starts a command with nice value +10.
+- `renice -n 5 -p 1234` changes running PID 1234 to nice value 5.
+- Only **root** can lower a nice value (give higher priority / a negative number); a normal user can only raise their own processes' nice value.
+- The nice value shows in the **NI** column of `top` and `ps -o pid,ni,comm`.
+
+## Pinning to CPUs (context)
+For controlled tests you can bind a process to specific CPUs with `taskset -c 0 command`. Combined with nice, this shows clearly how priority affects CPU sharing when two processes compete on the same core.
+
+#D 27
+## What SELinux is and why it exists
+Standard permissions (rwx) are **discretionary** — the file owner decides access. **SELinux** (Security-Enhanced Linux) adds a second, **mandatory** layer that the system enforces regardless of the owner. Even if a service is tricked into misbehaving, SELinux policy limits what it can touch. It is a major reason RHEL is considered secure, and the exam expects you to keep it **enforcing** and fix problems, not switch it off.
+
+## The three modes
+SELinux has three modes:
+- **Enforcing** — policy is applied and violations are blocked (and logged).
+- **Permissive** — policy is **not** enforced, but violations are still **logged**. Useful for troubleshooting.
+- **Disabled** — off entirely (avoid on the exam).
+Check the mode with `getenforce` or the fuller `sestatus`. Switch temporarily with `setenforce 0` (permissive) or `setenforce 1` (enforcing) — but note `setenforce` can only toggle between enforcing and permissive, not fully disable. The **permanent** setting lives in `/etc/selinux/config` (the `SELINUX=` line); fully disabling requires a reboot.
+
+## Security contexts and the type
+Every file and process carries an SELinux **context** of the form `user:role:type:level`, for example `system_u:object_r:httpd_sys_content_t:s0`. In the everyday "targeted" policy, the part that matters most is the **type** (ending in `_t`). Policy rules say which process types may access which file types — e.g. the web server runs as `httpd_t` and is only allowed to read files labelled `httpd_sys_content_t`.
+- `ls -Z file` shows a file's context; `ps -eZ | grep httpd` shows process contexts; `id -Z` shows your own.
+
+## Why moving files breaks things
+This is the classic beginner trap: when you **move** a file with `mv`, it **keeps its original context**, which may be wrong for its new location — so a service is denied access. **Copying** (`cp`) usually gives the destination's default context. The correct fix is to relabel to the policy default with `restorecon` (covered next day). A denial in permissive mode is allowed but logged, which is exactly how you diagnose these problems safely.
+
+#D 28
+## Fixing file contexts permanently
+When a file has the wrong SELinux type, you need to relabel it — and make that relabel **stick** even after a full filesystem relabel. There are two tools, and using the right one matters:
+- `chcon -t type file` changes the label **now**, but it is **temporary** — a relabel or `restorecon` will revert it. Avoid it for anything permanent.
+- `semanage fcontext -a -t httpd_sys_content_t '/web(/.*)?'` **records** a rule in the policy so the path always gets that type. The `(/.*)?` is a regular expression meaning "this directory and everything under it".
+- `restorecon -Rv /web` then **applies** the recorded rules to the files, setting each to its correct type (`-R` recursive, `-v` verbose). The exam answer is almost always **semanage fcontext + restorecon**, never chcon.
+
+## SELinux booleans: on/off switches
+Some policy behaviour is optional and controlled by **booleans** — named on/off switches. For example `httpd_enable_homedirs` lets the web server read users' home directories.
+- `getsebool -a | grep httpd` lists httpd-related booleans and their state; `semanage boolean -l` adds a description.
+- `setsebool -P httpd_enable_homedirs on` turns one **on permanently** (the `-P` writes it to disk; without `-P` the change is lost at reboot).
+- `semanage boolean -l -C` shows only the booleans you have changed from their defaults.
+
+## SELinux port labels
+SELinux also controls which **ports** a service may use. If you make a service listen on a non-standard port, SELinux will block the bind until the port is labelled correctly:
+- `semanage port -l | grep http` shows which ports carry the `http_port_t` type (80, 443, 8008, 8009, 8443 by default).
+- `semanage port -a -t http_port_t -p tcp 8888` **adds** port 8888 as an http port. If the port already has another type, use `-m` (modify) instead of `-a`.
+The `semanage` command comes from the **policycoreutils-python-utils** package — install it if `semanage` is missing.
+
+## Reading denials
+When something is blocked, the reason is logged as an **AVC denial** in `/var/log/audit/audit.log`. Search recent ones with `ausearch -m AVC -ts recent`, and get a plain-language explanation and suggested fix with `sealert -a /var/log/audit/audit.log` (from the setroubleshoot-server package). A methodical order — check the file context, the port label, then the relevant boolean — solves the large majority of SELinux problems without ever disabling it.

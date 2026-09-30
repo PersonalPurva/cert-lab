@@ -1,0 +1,984 @@
+<title>Linux Cert Lab</title>
+<meta name="description" content="Practice hub for RHCSA, Pentest+ and Security+ — daily questions, quizzes and hands-on labs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: single reading column; sticky header with course + mode tabs; terminal-styled cards. */
+:root{
+  --mono:"IBM Plex Mono",ui-monospace,"Cascadia Code",Consolas,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --bg:#f4f2ee; --surface:#ffffff; --surface2:#faf8f4;
+  --fg:#1c1a17; --muted:#6b6459; --faint:#938b7d;
+  --border:#e0dbd1; --border2:#cfc8ba;
+  --accent:#0f7a52; --accent-weak:#e2f2ea; --accent-ink:#0a5a3c;
+  --good:#0f7a52; --good-weak:#e2f2ea;
+  --bad:#c0392b; --bad-weak:#fbe9e7;
+  --warn:#a86a12; --warn-weak:#fbefda;
+  --term-bg:#1d2b26; --term-fg:#cfe8dd; --term-comment:#7fa394; --term-prompt:#5dd6a0;
+  --shadow:0 1px 2px rgba(28,26,23,.06),0 4px 16px rgba(28,26,23,.05);
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14130f; --surface:#1c1b17; --surface2:#211f1a;
+  --fg:#ece7dd; --muted:#a49c8d; --faint:#7c7466;
+  --border:#302d26; --border2:#403c33;
+  --accent:#4ecb91; --accent-weak:#12271e; --accent-ink:#7fe0af;
+  --good:#4ecb91; --good-weak:#12271e;
+  --bad:#e8776a; --bad-weak:#2c1613;
+  --warn:#d9a441; --warn-weak:#2a2010;
+  --term-bg:#10201a; --term-fg:#cfe8dd; --term-comment:#6f9384; --term-prompt:#5dd6a0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#14130f; --surface:#1c1b17; --surface2:#211f1a;
+  --fg:#ece7dd; --muted:#a49c8d; --faint:#7c7466;
+  --border:#302d26; --border2:#403c33;
+  --accent:#4ecb91; --accent-weak:#12271e; --accent-ink:#7fe0af;
+  --good:#4ecb91; --good-weak:#12271e;
+  --bad:#e8776a; --bad-weak:#2c1613;
+  --warn:#d9a441; --warn-weak:#2a2010;
+  --term-bg:#10201a; --term-fg:#cfe8dd; --term-comment:#6f9384; --term-prompt:#5dd6a0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.55;
+  font-size:15px;-webkit-text-size-adjust:100%}
+.wrap{max-width:780px;margin:0 auto;padding-inline:16px;padding-block:0 96px}
+a{color:var(--accent-ink)}
+h1,h2,h3{text-wrap:balance;margin:0}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+code{font-family:var(--mono)}
+
+/* header */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bg);
+  border-bottom:1px solid var(--border);margin-bottom:18px}
+.hrow{max-width:780px;margin:0 auto;padding:12px 16px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-weight:600;font-size:15px;letter-spacing:-.3px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
+.spacer{flex:1}
+.selwrap{position:relative}
+select.course{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--fg);
+  background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 30px 7px 11px;
+  appearance:none;cursor:pointer;max-width:60vw}
+.selwrap::after{content:"▾";position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  color:var(--faint);pointer-events:none;font-size:11px}
+.iconbtn{background:var(--surface);border:1px solid var(--border2);border-radius:8px;width:34px;height:34px;
+  display:grid;place-items:center;color:var(--muted);font-size:15px;line-height:1}
+.iconbtn:hover{color:var(--fg);border-color:var(--faint)}
+.tabs{max-width:780px;margin:0 auto;padding:10px 16px 0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{white-space:nowrap;border:none;background:none;color:var(--muted);font-weight:600;font-size:13.5px;
+  padding:8px 12px 12px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.active{color:var(--fg);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--fg)}
+
+/* generic card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.pad{padding:18px}
+.muted{color:var(--muted)}
+.faint{color:var(--faint)}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;font-weight:600;
+  padding:3px 8px;border-radius:999px;border:1px solid var(--border2);color:var(--muted);background:var(--surface2)}
+.pill.rh124{color:#b6512f;border-color:#e7c3b3;background:#fbeee7}
+.pill.rh134{color:#2f6fb6;border-color:#b3cce7;background:#e7f0fb}
+.pill.ex200{color:var(--accent-ink);border-color:var(--border2);background:var(--accent-weak)}
+.pill.dom{color:var(--accent-ink);border-color:var(--border2);background:var(--accent-weak)}
+.pill.dom.d2{color:#a15a1f;background:#fbeee2;border-color:#e8cdb0}
+.pill.dom.d4{color:#8a3ea8;background:#f4e9fb;border-color:#ddc4ec}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.dom.d2{color:#e0a877;background:#2a1d10;border-color:#4a331c}
+:root:not([data-theme="light"]) .pill.dom.d4{color:#cfa0e6;background:#211430;border-color:#3d2851}}
+:root[data-theme="dark"] .pill.dom.d2{color:#e0a877;background:#2a1d10;border-color:#4a331c}
+:root[data-theme="dark"] .pill.dom.d4{color:#cfa0e6;background:#211430;border-color:#3d2851}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.rh124{color:#e8a084;background:#2a1712;border-color:#4a2c20}
+:root:not([data-theme="light"]) .pill.rh134{color:#8fbdf0;background:#121f2e;border-color:#26405c}}
+:root[data-theme="dark"] .pill.rh124{color:#e8a084;background:#2a1712;border-color:#4a2c20}
+:root[data-theme="dark"] .pill.rh134{color:#8fbdf0;background:#121f2e;border-color:#26405c}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--border2);
+  background:var(--surface);color:var(--fg);font-weight:600;font-size:14px;padding:10px 16px;border-radius:10px}
+.btn:hover{border-color:var(--faint)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.primary{color:#08130d}}
+:root[data-theme="dark"] .btn.primary{color:#08130d}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+
+/* terminal block */
+.term{background:var(--term-bg);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:13px;
+  color:var(--term-fg);overflow-x:auto;line-height:1.7;white-space:pre;-webkit-overflow-scrolling:touch}
+.term .cmt{color:var(--term-comment)}
+.term .pr{color:var(--term-prompt);user-select:none}
+.termcap{font-family:var(--mono);font-size:11px;color:var(--faint);margin:0 0 6px;display:flex;gap:6px;align-items:center}
+
+/* progress ring */
+.ring{--p:0;width:44px;height:44px;border-radius:50%;flex:none;
+  background:conic-gradient(var(--accent) calc(var(--p)*1%),var(--border) 0);
+  display:grid;place-items:center}
+.ring::before{content:"";width:34px;height:34px;border-radius:50%;background:var(--surface)}
+.ring span{position:absolute;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted)}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 14px}
+.stat .n{font-family:var(--mono);font-size:24px;font-weight:600;letter-spacing:-1px;line-height:1}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:5px}
+
+/* day grid */
+.daygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.daycard{text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px;
+  display:flex;gap:11px;align-items:center;color:inherit}
+.daycard:hover{border-color:var(--faint);box-shadow:var(--shadow)}
+.daycard .dn{font-family:var(--mono);font-size:11px;color:var(--faint);font-weight:600}
+.daycard .dt{font-size:13px;font-weight:600;margin-top:2px;line-height:1.3}
+.daycard.done{background:var(--accent-weak);border-color:var(--border2)}
+
+/* question */
+.qmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.qtext{font-size:17px;font-weight:600;line-height:1.4}
+.opts{display:flex;flex-direction:column;gap:9px;margin-top:16px}
+.opt{display:flex;gap:11px;align-items:flex-start;text-align:left;width:100%;
+  background:var(--surface);border:1.5px solid var(--border2);border-radius:11px;padding:12px 14px;color:inherit;font-size:14.5px}
+.opt:hover:not(:disabled){border-color:var(--faint)}
+.opt .k{font-family:var(--mono);font-weight:600;color:var(--faint);flex:none}
+.opt.correct{border-color:var(--good);background:var(--good-weak)}
+.opt.correct .k{color:var(--good)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-weak)}
+.opt.wrong .k{color:var(--bad)}
+.opt:disabled{cursor:default}
+.cmdin{width:100%;font-family:var(--mono);font-size:14px;padding:12px 14px;border-radius:11px;
+  border:1.5px solid var(--border2);background:var(--surface2);color:var(--fg);margin-top:16px}
+.cmdin:focus{outline:none;border-color:var(--accent)}
+.cmdin.correct{border-color:var(--good);background:var(--good-weak)}
+.cmdin.wrong{border-color:var(--bad);background:var(--bad-weak)}
+.explain{margin-top:16px;border-left:3px solid var(--accent);background:var(--surface2);
+  border-radius:0 10px 10px 0;padding:12px 14px;font-size:14px}
+.explain code{background:var(--accent-weak);padding:1px 5px;border-radius:5px;font-size:12.5px}
+.verdict{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:13px;font-family:var(--mono)}
+.verdict.g{color:var(--good)} .verdict.b{color:var(--bad)}
+.accepts{margin-top:10px;font-size:12.5px}
+.accepts .a{font-family:var(--mono);background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;padding:4px 8px;margin:3px 4px 0 0;display:inline-block;color:var(--muted)}
+.progbar{height:5px;background:var(--border);border-radius:99px;overflow:hidden;margin:2px 0 0}
+.progbar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+
+/* labs */
+.lab{margin-top:12px}
+.lab .scenario{font-size:15px;line-height:1.55}
+details.disc{margin-top:12px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
+details.disc>summary{list-style:none;cursor:pointer;padding:11px 14px;font-weight:600;font-size:13.5px;
+  display:flex;align-items:center;gap:8px;color:var(--muted)}
+details.disc>summary::-webkit-details-marker{display:none}
+details.disc>summary .chev{margin-left:auto;color:var(--faint);transition:transform .2s}
+details.disc[open]>summary .chev{transform:rotate(90deg)}
+details.disc[open]>summary{color:var(--fg);border-bottom:1px solid var(--border)}
+details.disc .body{padding:6px 14px 14px}
+/* theory */
+details.theory{border-color:var(--accent);}
+details.theory>summary{color:var(--accent-ink);background:var(--accent-weak)}
+.theorybody{padding:4px 16px 18px}
+.th-h{font-size:14.5px;font-weight:700;margin:18px 0 7px;color:var(--fg);letter-spacing:-.2px}
+.th-h:first-child{margin-top:8px}
+.th-p{font-size:14.5px;line-height:1.62;color:var(--fg);margin:0 0 10px}
+.theorybody .th-ul{margin:0 0 12px;padding-left:20px}
+.theorybody .th-ul li{font-size:14px;line-height:1.55;margin:5px 0;color:var(--fg)}
+.theorybody code{background:var(--surface2);border:1px solid var(--border);padding:1px 5px;border-radius:5px;font-size:12.5px}
+.theorybody strong{font-weight:700}
+.hintline{font-size:13.5px;padding:8px 0;border-bottom:1px dashed var(--border);color:var(--muted)}
+.hintline:last-child{border:none}
+.check{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:13.5px;font-family:var(--mono)}
+.check input{margin-top:3px;accent-color:var(--accent);flex:none}
+
+/* daily / hero */
+.hero{background:linear-gradient(150deg,var(--surface),var(--surface2));border:1px solid var(--border);
+  border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+.streakrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.flame{font-family:var(--mono);font-size:32px;font-weight:600;letter-spacing:-1px;color:var(--accent);line-height:1}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);font-size:12.5px;padding:9px 15px;
+  border-radius:999px;z-index:60;box-shadow:var(--shadow);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-2px)}
+.sync{font-family:var(--mono);font-size:10.5px;color:var(--faint);display:inline-flex;align-items:center;gap:5px}
+.sync .d{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.sync.on .d{background:var(--good)}
+.sync.local .d{background:var(--warn)}
+
+.empty{text-align:center;color:var(--muted);padding:40px 16px}
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:26px 0 12px}
+.section-title h2{font-size:15px;font-family:var(--mono);letter-spacing:-.2px}
+hr.sep{border:none;border-top:1px solid var(--border);margin:22px 0}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;padding:1px 5px;color:var(--muted)}
+@media(max-width:520px){.stats{grid-template-columns:repeat(3,1fr)}.stat .n{font-size:20px}}
+</style>
+
+<header class="top">
+  <div class="hrow">
+    <div class="brand"><span class="dot"></span>Linux&nbsp;Cert&nbsp;Lab</div>
+    <div class="spacer"></div>
+    <div class="selwrap"><select class="course" id="courseSel"></select></div>
+    <button class="iconbtn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+
+<main class="wrap" id="app"></main>
+<div class="toast" id="toast"></div>
+
+<script id="course-data" type="application/json">/*__DATA__*/</script>
+<script>
+"use strict";
+/* ---------- state ---------- */
+const state = {
+  data:null, courseId:null, tab:'today',
+  progress:{ items:{}, labs:{}, daily:{}, streak:0, lastActive:null },
+  db:null, uid:null, dbDoc:null, saveTimer:null, dirty:false, syncMode:'local'
+};
+const $ = (s,r=document)=>r.querySelector(s);
+const el = (t,c,txt)=>{const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e;};
+const app = $('#app');
+
+/* ---------- persistence ---------- */
+const LS_KEY = 'linuxcertlab.progress.v1';
+function loadLocal(){
+  try{const r=localStorage.getItem(LS_KEY);if(r){const p=JSON.parse(r);state.progress=Object.assign(state.progress,p);}}catch(e){}
+}
+function saveLocal(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify(state.progress));}catch(e){}
+}
+function markDirty(){
+  state.dirty=true; saveLocal();
+  if(state.dbDoc){
+    clearTimeout(state.saveTimer);
+    state.saveTimer=setTimeout(flushDb,900);
+  }
+}
+async function flushDb(){
+  if(!state.dbDoc||!state.dirty)return;
+  state.dirty=false;
+  try{ await state.dbDoc.set(JSON.parse(JSON.stringify(state.progress))); }
+  catch(e){ state.dirty=true; }
+}
+async function initCloud(){
+  try{
+    const user = await (window.claude&&window.claude.use?window.claude.use('user'):null);
+    const db = await (window.claude&&window.claude.use?window.claude.use('db'):null);
+    if(!db){ setSync('local'); return; }
+    state.db=db;
+    let uid = user? await user.id() : null;
+    if(!uid){ setSync('local'); return; }
+    state.uid=uid;
+    state.dbDoc = db.doc('data/users/'+uid+'/progress');
+    // one-time merge: pull server, merge local into it
+    state.dbDoc.onSnapshot(snap=>{
+      const remote = snap.exists ? snap.data() : null;
+      if(remote){
+        // merge: union of items/labs, prefer any recorded status
+        mergeProgress(remote);
+        renderTab();
+      }
+      setSync('cloud');
+    }, err=>{ setSync('local'); });
+    // push our local state up so a fresh device seeds the cloud
+    markDirty();
+  }catch(e){ setSync('local'); }
+}
+function mergeProgress(remote){
+  const p=state.progress;
+  // union of items: keep the stronger status (correct > wrong > seen) from either side
+  const merged = Object.assign({}, remote.items||{});
+  for(const k in (p.items||{})) merged[k] = pickBetter(p.items[k], merged[k]);
+  p.items=merged;
+  const ml=Object.assign({}, remote.labs||{});
+  for(const k in (state.progress.labs||{})) ml[k]=ml[k]||state.progress.labs[k];
+  p.labs=ml;
+  p.daily=Object.assign({}, remote.daily||{}, p.daily||{});
+  p.streak=Math.max(remote.streak||0, p.streak||0);
+  p.lastActive=laterDate(remote.lastActive, p.lastActive);
+  saveLocal();
+}
+function pickBetter(a,b){
+  const rank=s=>s==='correct'?2:s==='wrong'?1:0;
+  if(!a)return b; if(!b)return a;
+  return rank(a.status)>=rank(b.status)?a:b;
+}
+function laterDate(a,b){ if(!a)return b; if(!b)return a; return a>b?a:b; }
+function setSync(mode){
+  state.syncMode=mode;
+  const s=$('#syncBadge'); if(s){ s.className='sync '+(mode==='cloud'?'on':'local');
+    s.querySelector('.t').textContent = mode==='cloud'?'Synced to your account':'Saved on this device'; }
+}
+
+/* ---------- helpers ---------- */
+function course(){ return state.data.courses.find(c=>c.id===state.courseId); }
+function isRedHat(){ return ['rhcsa','rh124','rh134'].includes(state.courseId); } // practical, reboot-graded exam
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function itemKey(dayNum,q,i){ return state.courseId+':'+dayNum+':'+q.type+':'+i; }
+function labKey(dayNum,i){ return state.courseId+':'+dayNum+':L'+i; }
+function normCmd(s){ return s.trim().replace(/\s+/g,' ').replace(/\s*;\s*/g,'; '); }
+function dayProgress(day){
+  let tot=0,done=0;
+  day.questions.forEach((q,i)=>{tot++; const s=state.progress.items[itemKey(day.day,q,i)]; if(s&&s.status)done++;});
+  day.labs.forEach((l,i)=>{tot++; if(state.progress.labs[labKey(day.day,i)])done++;});
+  return {tot,done,pct:tot?Math.round(done/tot*100):0};
+}
+function courseProgress(){
+  const c=course(); let tot=0,done=0,correct=0,seen=0;
+  c.days.forEach(d=>{
+    d.questions.forEach((q,i)=>{tot++;const s=state.progress.items[itemKey(d.day,q,i)];if(s&&s.status){done++;seen++;if(s.status==='correct')correct++;}});
+    d.labs.forEach((l,i)=>{tot++;if(state.progress.labs[labKey(d.day,i)])done++;});
+  });
+  return {tot,done,correct,seen,pct:tot?Math.round(done/tot*100):0};
+}
+
+/* render a terminal-style block from lines that may contain # comments */
+function termBlock(lines,caption){
+  const wrap=el('div');
+  if(caption){const c=el('div','termcap');c.append(el('span','',caption));wrap.append(c);}
+  const t=el('div','term');
+  lines.forEach((ln,idx)=>{
+    if(idx)t.append(document.createTextNode('\n'));
+    renderTermLine(t,ln);
+  });
+  wrap.append(t);
+  return wrap;
+}
+function renderTermLine(t,ln){
+  // split trailing comment (# ...) not inside quotes — simple heuristic
+  const isComment = ln.trim().startsWith('#');
+  if(isComment){ const s=el('span','cmt',ln); t.append(s); return; }
+  const hashIdx = findComment(ln);
+  const pr=el('span','pr','$ '); t.append(pr);
+  if(hashIdx>=0){
+    t.append(document.createTextNode(ln.slice(0,hashIdx)));
+    t.append(el('span','cmt',ln.slice(hashIdx)));
+  }else{
+    t.append(document.createTextNode(ln));
+  }
+}
+function findComment(ln){
+  let q=null;
+  for(let i=0;i<ln.length;i++){
+    const ch=ln[i];
+    if(q){ if(ch===q)q=null; }
+    else if(ch==="'"||ch==='"')q=ch;
+    else if(ch==='#'&&i>0&&/\s/.test(ln[i-1]))return i;
+  }
+  return -1;
+}
+/* inline markup: `code`, **bold**, and legacy <b>..</b> */
+function richText(str){
+  const frag=document.createDocumentFragment();
+  const parts=str.split(/(`[^`]+`|\*\*[^*]+\*\*|<b>|<\/b>)/g);
+  let bold=false;
+  parts.forEach(p=>{
+    if(p==='<b>'){bold=true;return;} if(p==='</b>'){bold=false;return;}
+    if(!p)return;
+    let node;
+    if(p.startsWith('`')&&p.endsWith('`'))node=el('code',null,p.slice(1,-1));
+    else if(p.startsWith('**')&&p.endsWith('**'))node=el('strong',null,p.slice(2,-2));
+    else node=document.createTextNode(p);
+    if(bold){const b=el('strong');b.append(node);node=b;}
+    frag.append(node);
+  });
+  return frag;
+}
+function pillFor(courseTag){
+  const map={RH124:'rh124',RH134:'rh134',EX200:'ex200'};
+  let cls=map[courseTag];
+  if(cls===undefined){
+    const m=/^(\d)/.exec(courseTag||'');
+    cls = m ? 'dom d'+m[1] : '';   // CompTIA domain tags like "4 Exploitation"
+  }
+  const p=el('span','pill '+cls); p.textContent=courseTag; return p;
+}
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._tmr); t._tmr=setTimeout(()=>t.classList.remove('show'),1600);
+}
+
+/* ---------- question card ---------- */
+function questionCard(day,q,idx,onAnswered){
+  const key=itemKey(day.day,q,idx);
+  const prev=state.progress.items[key];
+  const card=el('div','card pad');
+  const meta=el('div','qmeta');
+  meta.append(pillFor(day.course));
+  meta.append(el('span','pill',q.type==='cmd'?'⌨ command':'◉ multiple choice'));
+  meta.append(el('span','eyebrow','Day '+day.day));
+  card.append(meta);
+  card.append(el('div','qtext',q.q));
+
+  let answered=false;
+  const finish=(correct)=>{
+    if(answered)return; answered=true;
+    recordItem(key,correct);
+    showExplain();
+    if(onAnswered)onAnswered(correct);
+  };
+  const showExplain=()=>{
+    const ex=el('div','explain');
+    const v=el('div','verdict '+(state.progress.items[key].status==='correct'?'g':'b'));
+    v.textContent = state.progress.items[key].status==='correct'?'✓ Correct':'✗ Not quite';
+    ex.append(v);
+    const exbody=el('div');exbody.append(richText(q.explain));ex.append(exbody);
+    card.append(ex);
+  };
+
+  if(q.type==='mcq'){
+    const opts=el('div','opts');
+    q.options.forEach((o,i)=>{
+      const b=el('button','opt');
+      b.append(el('span','k',String.fromCharCode(65+i)));
+      b.append(el('span',null,o));
+      b.onclick=()=>{
+        if(answered)return;
+        Array.from(opts.children).forEach(c=>c.disabled=true);
+        opts.children[q.answer].classList.add('correct');
+        if(i!==q.answer)b.classList.add('wrong');
+        finish(i===q.answer);
+      };
+      opts.append(b);
+    });
+    card.append(opts);
+  }else{
+    const inp=el('input','cmdin');
+    inp.type='text'; inp.placeholder='type the command…'; inp.autocapitalize='off';
+    inp.autocomplete='off'; inp.spellcheck=false;
+    card.append(inp);
+    const row=el('div','row'); row.style.marginTop='12px';
+    const check=el('button','btn primary sm','Check');
+    const reveal=el('button','btn sm','Show answer');
+    row.append(check,reveal); card.append(row);
+    const doCheck=()=>{
+      if(answered)return;
+      const val=normCmd(inp.value);
+      const ok=q.accept.some(a=>normCmd(a)===val);
+      inp.disabled=true; check.disabled=true;
+      inp.classList.add(ok?'correct':'wrong');
+      const acc=el('div','accepts');
+      acc.append(el('div','faint','Accepted:'));
+      q.accept.forEach(a=>acc.append(el('span','a',a)));
+      card.insertBefore(acc,row.nextSibling);
+      finish(ok);
+    };
+    check.onclick=doCheck;
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')doCheck();});
+    reveal.onclick=()=>{ if(answered)return; inp.value=q.accept[0]; doCheck(); };
+  }
+  return card;
+}
+function recordItem(key,correct){
+  state.progress.items[key]={status:correct?'correct':'wrong',ts:Date.now()};
+  bumpStreak();
+  markDirty();
+}
+function bumpStreak(){
+  const t=todayStr(), la=state.progress.lastActive;
+  if(la===t)return;
+  const y=new Date(Date.now()-864e5).toISOString().slice(0,10);
+  state.progress.streak = (la===y)?(state.progress.streak||0)+1:1;
+  state.progress.lastActive=t;
+}
+
+/* ---------- TABS ---------- */
+const TABS=[['today','Today'],['days','Days'],['quiz','Quiz'],['labs','Labs'],['exam','Exam'],['stats','Progress']];
+function renderTabs(){
+  const nav=$('#tabs'); nav.innerHTML='';
+  TABS.forEach(([id,label])=>{
+    const b=el('button','tab'+(state.tab===id?' active':''),label);
+    b.onclick=()=>{state.tab=id;renderTabs();renderTab();window.scrollTo(0,0);};
+    nav.append(b);
+  });
+}
+function renderTab(){
+  app.innerHTML='';
+  ({today:renderToday,days:renderDays,quiz:renderQuiz,labs:renderLabs,exam:renderExam,stats:renderStats}[state.tab]||renderToday)();
+}
+
+/* ---------- TODAY ---------- */
+function dailyIndexFor(dateStr){
+  // deterministic pick across all questions of the course, rotating by day-of-epoch
+  const c=course();
+  const flat=[]; c.days.forEach(d=>d.questions.forEach((q,i)=>flat.push([d,q,i])));
+  const epochDay=Math.floor(new Date(dateStr+'T00:00:00Z').getTime()/864e5);
+  // stir with course id so different courses show different daily Qs
+  let seed=epochDay; for(const ch of state.courseId)seed=(seed*31+ch.charCodeAt(0))>>>0;
+  return {flat, pick:flat[seed%flat.length]};
+}
+function renderToday(){
+  const c=course();
+  const hero=el('div','hero');
+  const cp=courseProgress();
+  const top=el('div','streakrow');
+  const stk=el('div');
+  stk.append(el('div','flame','🔥 '+(state.progress.streak||0)));
+  stk.append(el('div','faint','day streak'));
+  top.append(stk);
+  const sb=el('div'); sb.style.flex='1';
+  sb.append(el('div','eyebrow',c.short+' · '+cp.pct+'% complete'));
+  const pb=el('div','progbar');const pbi=el('i');pbi.style.width=cp.pct+'%';pb.append(pbi);pb.style.marginTop='6px';sb.append(pb);
+  const sc=el('div','sync '+(state.syncMode==='cloud'?'on':'local'));sc.id='syncBadge';sc.style.marginTop='8px';
+  sc.append(el('span','d'));sc.append(el('span','t',state.syncMode==='cloud'?'Synced to your account':'Saved on this device'));
+  sb.append(sc);
+  top.append(sb);
+  hero.append(top);
+  app.append(hero);
+
+  // daily question
+  const dq=dailyIndexFor(todayStr());
+  const [day,q,idx]=dq.pick;
+  const st=el('div','section-title');st.append(el('h2',null,'⌚ Question of the day'));
+  const dstamp=el('span','faint mono');dstamp.style.fontSize='11px';dstamp.textContent=todayStr();
+  st.append(dstamp);app.append(st);
+  const alreadyKey='daily:'+todayStr();
+  const card=questionCard(day,q,idx,(correct)=>{
+    state.progress.daily[todayStr()]=correct?'correct':'wrong'; markDirty();
+    toast(correct?'Nice — daily done ✓':'Reviewed — try tomorrow’s');
+  });
+  app.append(card);
+
+  // continue / jump-in
+  const st2=el('div','section-title');st2.append(el('h2',null,'↩ Pick up where you left off'));app.append(st2);
+  const grid=el('div','daygrid');
+  const next=firstUnfinishedDay();
+  [next, ...c.days.filter(d=>d!==next).slice(0,3)].filter(Boolean).slice(0,4).forEach(d=>grid.append(dayCardEl(d)));
+  app.append(grid);
+
+  // quick actions — practice first
+  const st3=el('div','section-title');st3.append(el('h2',null,'⌨ Practice now'));app.append(st3);
+  const qa=el('div','row');
+  const b0=el('button','btn primary','⌨ Command drill');b0.onclick=()=>{state.quizCfg={scope:'cmd',n:20};state.tab='quiz';renderTabs();startQuiz();};
+  const b2=el('button','btn','🧪 Random lab');b2.onclick=()=>{state.tab='labs';renderTabs();renderLabs(true);};
+  const b1=el('button','btn','⚡ Mixed quiz');b1.onclick=()=>{state.quizCfg={scope:'all',n:10};state.tab='quiz';renderTabs();startQuiz();};
+  qa.append(b0,b2,b1);app.append(qa);
+  const hint=el('div','faint');hint.style.fontSize='11.5px';hint.style.marginTop='8px';
+  hint.textContent='Command drill = type the real command from a task, checked against every valid form. '+cmdCount()+' in '+c.short+'.';
+  app.append(hint);
+}
+function firstUnfinishedDay(){
+  const c=course();
+  return c.days.find(d=>dayProgress(d).pct<100)||c.days[0];
+}
+
+/* ---------- DAYS ---------- */
+function dayCardEl(d){
+  const p=dayProgress(d);
+  const b=el('button','daycard'+(p.pct===100?' done':''));
+  const ring=el('div','ring');ring.style.setProperty('--p',p.pct);
+  const rs=el('span',null,p.pct+'%');ring.append(rs);
+  const txt=el('div');txt.style.minWidth='0';
+  txt.append(el('div','dn','DAY '+String(d.day).padStart(2,'0')));
+  txt.append(el('div','dt',d.title));
+  b.append(ring,txt);
+  b.onclick=()=>openDay(d.day);
+  return b;
+}
+function renderDays(){
+  const c=course();
+  const intro=el('div','card pad');
+  intro.append(el('div','eyebrow',c.name));
+  intro.append(el('div','qtext',c.days.length+'-day plan'));
+  intro.append(el('div','muted','Work one day at a time. Each day has multiple-choice questions, type-the-command drills, and hands-on labs mapped to a real exam objective.'));
+  intro.style.marginBottom='16px';
+  app.append(intro);
+  const grid=el('div','daygrid');
+  c.days.forEach(d=>grid.append(dayCardEl(d)));
+  app.append(grid);
+}
+function openDay(dayNum){
+  const c=course(); const d=c.days.find(x=>x.day===dayNum);
+  state.tab='days';renderTabs();app.innerHTML='';
+  const back=el('button','btn sm','← All days');back.onclick=renderDays;app.append(back);
+  const head=el('div','card pad');head.style.margin='14px 0';
+  const mt=el('div','qmeta');mt.append(pillFor(d.course));mt.append(el('span','eyebrow','Day '+d.day+' of '+c.days.length));head.append(mt);
+  head.append(el('h2',null,d.title));head.style.marginBottom='4px';
+  const ob=el('div','muted');ob.style.marginTop='6px';ob.append(el('span','faint','Exam objective — '));ob.append(document.createTextNode(d.objective));head.append(ob);
+  const p=dayProgress(d);const pb=el('div','progbar');pb.style.marginTop='12px';const pbi=el('i');pbi.style.width=p.pct+'%';pb.append(pbi);head.append(pb);
+  app.append(head);
+
+  if(d.theory && d.theory.length) app.append(theoryCard(d));
+
+  if(d.questions.length){
+    const st=el('div','section-title');st.append(el('h2',null,'Questions'));
+    st.append(el('span','faint mono',d.questions.length+'')); app.append(st);
+    d.questions.forEach((q,i)=>{const card=questionCard(d,q,i);card.style.marginBottom='12px';app.append(card);});
+  }
+  if(d.labs.length){
+    const st=el('div','section-title');st.append(el('h2',null,'🧪 Hands-on labs'));
+    st.append(el('span','faint mono',d.labs.length+''));app.append(st);
+    d.labs.forEach((l,i)=>app.append(labCard(d,l,i)));
+  }
+  const done=el('button','btn primary','✓ Mark day complete');done.style.marginTop='20px';
+  done.onclick=()=>{ d.questions.forEach((q,i)=>{const k=itemKey(d.day,q,i);if(!state.progress.items[k])state.progress.items[k]={status:'seen',ts:Date.now()};});
+    d.labs.forEach((l,i)=>state.progress.labs[labKey(d.day,i)]=true); bumpStreak(); markDirty(); toast('Day '+d.day+' marked complete'); openDay(dayNum); };
+  app.append(done);
+  window.scrollTo(0,0);
+}
+
+/* ---------- THEORY ---------- */
+function theoryCard(d){
+  const det=el('details','disc theory');det.open=true;
+  const sm=el('summary');sm.append(el('span',null,'📖 Theory & concepts'));
+  sm.append(el('span','faint mono',(d.theory.length)+' topics'));sm.append(el('span','chev','›'));
+  det.append(sm);
+  const body=el('div','body theorybody');
+  d.theory.forEach(sec=>{
+    body.append(el('h3','th-h',sec.h));
+    let ul=null;
+    sec.blocks.forEach(b=>{
+      if(b.t==='li'){
+        if(!ul){ul=el('ul','th-ul');body.append(ul);}
+        const li=el('li');li.append(richText(b.x));ul.append(li);
+      }else{
+        ul=null;
+        const pp=el('p','th-p');pp.append(richText(b.x));body.append(pp);
+      }
+    });
+  });
+  det.append(body);
+  return det;
+}
+
+/* ---------- LAB CARD ---------- */
+function labCard(d,l,i){
+  const key=labKey(d.day,i);
+  const card=el('div','card pad lab');card.style.marginBottom='12px';
+  const mt=el('div','qmeta');mt.append(el('span','pill','🧪 lab'));mt.append(el('span','eyebrow','Day '+d.day));
+  if(state.progress.labs[key])mt.append(el('span','pill ex200','✓ done'));
+  card.append(mt);
+  card.append(el('div','qtext',l.title));
+  const sc=el('div','scenario');sc.style.marginTop='8px';sc.append(richText(l.scenario));card.append(sc);
+
+  if(l.hints&&l.hints.length){
+    const dh=el('details','disc');const sm=el('summary');sm.append(el('span',null,'💡 Hints'));sm.append(el('span','chev','›'));dh.append(sm);
+    const body=el('div','body');l.hints.forEach(h=>{const hl=el('div','hintline');hl.append(richText(h));body.append(hl);});dh.append(body);card.append(dh);
+  }
+  const ds=el('details','disc');const sm2=el('summary');sm2.append(el('span',null,'⌨ Solution steps'));sm2.append(el('span','chev','›'));ds.append(sm2);
+  const body2=el('div','body');body2.append(termBlock(l.steps,'run these on your lab / practice VM'));ds.append(body2);card.append(ds);
+
+  if(l.verify&&l.verify.length){
+    const dv=el('details','disc');const sm3=el('summary');sm3.append(el('span',null,'✅ Verify it worked'));sm3.append(el('span','chev','›'));dv.append(sm3);
+    const body3=el('div','body');body3.append(termBlock(l.verify,'expected: these succeed'));dv.append(body3);card.append(dv);
+  }
+  const row=el('div','row');row.style.marginTop='14px';
+  const mark=el('button','btn sm'+(state.progress.labs[key]?'':' primary'),state.progress.labs[key]?'↺ Mark not done':'✓ I completed this lab');
+  mark.onclick=()=>{state.progress.labs[key]=!state.progress.labs[key];if(state.progress.labs[key])bumpStreak();markDirty();
+    toast(state.progress.labs[key]?'Lab done ✓':'Marked not done');
+    if(state.tab==='days')openDay(d.day); else renderTab();};
+  row.append(mark);card.append(row);
+  return card;
+}
+
+/* ---------- LABS TAB ---------- */
+function renderLabs(randomOne){
+  const c=course();
+  const allLabs=[];c.days.forEach(d=>d.labs.forEach((l,i)=>allLabs.push([d,l,i])));
+  if(randomOne){
+    const pick=allLabs[Math.floor(Math.random()*allLabs.length)];
+    const back=el('button','btn sm','← All labs');back.onclick=()=>renderLabs();app.append(back);
+    const st=el('div','section-title');st.append(el('h2',null,'🎲 Random lab'));app.append(st);
+    app.append(labCard(pick[0],pick[1],pick[2]));
+    const again=el('button','btn','🎲 Another');again.style.marginTop='12px';again.onclick=()=>{app.innerHTML='';renderLabs(true);};
+    app.append(again);return;
+  }
+  const head=el('div','card pad');head.style.marginBottom='14px';
+  head.append(el('div','eyebrow','Hands-on'));
+  head.append(el('div','qtext',allLabs.length+' practical labs'));
+  head.append(el('div','muted','Every lab is a real terminal task: read the scenario, try it on your VM, then reveal the steps and verify. This is how EX200 is actually graded.'));
+  const rr=el('button','btn sm primary','🎲 Surprise me');rr.style.marginTop='12px';rr.onclick=()=>{app.innerHTML='';renderLabs(true);};
+  head.append(rr);
+  app.append(head);
+  // group by day
+  c.days.forEach(d=>{
+    if(!d.labs.length)return;
+    const st=el('div','section-title');
+    const h=el('h2',null,'Day '+d.day+' · '+d.title);h.style.fontSize='13px';st.append(h);
+    st.append(el('span','faint mono',d.labs.length+''));app.append(st);
+    d.labs.forEach((l,i)=>app.append(labCard(d,l,i)));
+  });
+}
+
+/* ---------- QUIZ ---------- */
+function renderQuiz(){
+  if(state.quizActive){renderQuizRun();return;}
+  const c=course();
+  const head=el('div','card pad');
+  head.append(el('div','eyebrow','Quiz mode'));
+  head.append(el('div','qtext','Build a quiz'));
+  head.append(el('div','muted','Random questions with instant feedback and a score. Pick "⌨ Commands only" to drill just the type-the-command questions — the fastest way to build muscle memory before the exam.'));
+  app.append(head);
+
+  const cfg=el('div','card pad');cfg.style.marginTop='14px';
+  cfg.append(el('div','eyebrow','How many questions'));
+  const nrow=el('div','row');nrow.style.margin='10px 0 18px';
+  const ns=[10,20,30,50];let chosenN=state.quizCfg?state.quizCfg.n:10;
+  ns.forEach(n=>{const b=el('button','btn sm'+(n===chosenN?' primary':''),n+'');b.onclick=()=>{chosenN=n;Array.from(nrow.children).forEach(x=>x.className='btn sm');b.className='btn sm primary';};nrow.append(b);});
+  cfg.append(nrow);
+  cfg.append(el('div','eyebrow','What to practice'));
+  const drow=el('div','row');drow.style.margin='10px 0 4px';
+  let scope=(state.quizCfg&&state.quizCfg.scope)||'all';
+  const mkScope=(id,label)=>{const b=el('button','btn sm'+(scope===id?' primary':''),label);b.dataset.s=id;
+    b.onclick=()=>{scope=id;Array.from(drow.children).forEach(x=>{x.className='btn sm'+(x.dataset.s===id?' primary':'');});};return b;};
+  drow.append(mkScope('all','All questions'));
+  drow.append(mkScope('cmd','⌨ Commands only'));
+  drow.append(mkScope('weak','My weak spots'));
+  if(state.courseId==='rhcsa'){
+    drow.append(mkScope('rh124','RH124 topics'));
+    drow.append(mkScope('rh134','RH134 topics'));
+  }
+  cfg.append(drow);
+  const cnt=el('div','faint mono');cnt.style.fontSize='11px';cnt.style.marginTop='10px';
+  cnt.textContent=cmdCount()+' command drills available in '+c.short;
+  cfg.append(cnt);
+  app.append(cfg);
+
+  const go=el('button','btn primary','Start quiz →');go.style.marginTop='18px';
+  go.onclick=()=>{state.quizCfg={n:chosenN,scope};startQuiz();};
+  app.append(go);
+}
+function cmdCount(){ const c=course(); let n=0; c.days.forEach(d=>d.questions.forEach(q=>{if(q.type==='cmd')n++;})); return n; }
+function startQuiz(){
+  const c=course();let pool=[];
+  c.days.forEach(d=>d.questions.forEach((q,i)=>pool.push([d,q,i])));
+  const sc=state.quizCfg?state.quizCfg.scope:'all';
+  if(sc==='rh124')pool=pool.filter(([d])=>d.course==='RH124');
+  else if(sc==='rh134')pool=pool.filter(([d])=>d.course==='RH134');
+  else if(sc==='cmd')pool=pool.filter(([d,q])=>q.type==='cmd');
+  else if(sc==='weak')pool=pool.filter(([d,q,i])=>{const s=state.progress.items[itemKey(d.day,q,i)];return !s||s.status==='wrong';});
+  if(!pool.length){ c.days.forEach(d=>d.questions.forEach((q,i)=>{if(!pool.length)pool.push([d,q,i]);})); }
+  shuffle(pool);
+  const n=Math.min(state.quizCfg?state.quizCfg.n:10,pool.length);
+  state.quiz={items:pool.slice(0,n),idx:0,correct:0,answered:false};
+  state.quizActive=true;state.tab='quiz';renderTabs();renderQuizRun();
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
+function renderQuizRun(){
+  const qz=state.quiz;
+  if(qz.idx>=qz.items.length){renderQuizResult();return;}
+  const total=qz.items.length;
+  const bar=el('div');bar.style.marginBottom='14px';
+  const info=el('div','row');info.style.justifyContent='space-between';
+  info.append(el('span','eyebrow','Question '+(qz.idx+1)+' / '+total));
+  info.append(el('span','mono faint','score '+qz.correct));
+  bar.append(info);
+  const pb=el('div','progbar');pb.style.marginTop='6px';const pbi=el('i');pbi.style.width=(qz.idx/total*100)+'%';pb.append(pbi);bar.append(pb);
+  app.append(bar);
+  const [day,q,idx]=qz.items[qz.idx];
+  qz.answered=false;
+  const card=questionCard(day,q,idx,(correct)=>{
+    if(correct)qz.correct++; qz.answered=true;
+    next.disabled=false; next.classList.add('primary');
+  });
+  app.append(card);
+  const next=el('button','btn','Skip →');next.style.marginTop='16px';
+  next.onclick=()=>{qz.idx++;app.innerHTML='';renderQuizRun();window.scrollTo(0,0);};
+  app.append(next);
+  const quit=el('button','btn sm','End quiz');quit.style.marginTop='10px';quit.style.marginLeft='8px';
+  quit.onclick=()=>{state.quizActive=false;renderQuiz();};
+  next.after(quit);
+}
+function renderQuizResult(){
+  const qz=state.quiz;const pct=Math.round(qz.correct/qz.items.length*100);
+  state.quizActive=false;
+  const card=el('div','hero');card.style.textAlign='center';
+  card.append(el('div','flame',pct+'%'));
+  card.append(el('div','qtext',qz.correct+' / '+qz.items.length+' correct'));
+  const msg=pct>=80?'Exam-ready on this set 🎯':pct>=60?'Solid — review the misses':'Keep drilling, you’ll get there';
+  card.append(el('div','muted',msg));
+  const row=el('div','row');row.style.justifyContent='center';row.style.marginTop='16px';
+  const again=el('button','btn primary','↻ New quiz');again.onclick=()=>renderQuiz();
+  const weak=el('button','btn','Drill weak spots');weak.onclick=()=>{state.quizCfg={n:10,scope:'weak'};startQuiz();};
+  row.append(again,weak);card.append(row);
+  app.append(card);
+}
+
+/* ---------- EXAM ---------- */
+function renderExam(){
+  if(state.examActive){renderExamRun();return;}
+  const c=course();
+  const head=el('div','card pad');
+  head.append(el('div','eyebrow','Timed practical drill'));
+  head.append(el('div','qtext','Timed lab exam'));
+  const p=el('div','muted');
+  const txt = isRedHat()
+    ? 'EX200 is 100% hands-on with a 210/300 pass mark. This picks a set of real labs, starts a timer, and gives you a self-graded checklist — just like the real thing. Do them on your RHEL VM, then tick what actually works after a reboot.'
+    : 'A timed set of hands-on tasks with a self-graded checklist. Do each one on your practice VM, then tick what actually works. The written exam is multiple-choice, but the performance-based questions reward exactly this kind of command practice.';
+  p.append(document.createTextNode(txt));
+  head.append(p);
+  app.append(head);
+  const cfg=el('div','card pad');cfg.style.marginTop='14px';
+  cfg.append(el('div','eyebrow','Exam length'));
+  const row=el('div','row');row.style.margin='10px 0';
+  const opts=[[8,'45 min'],[12,'90 min'],[18,'2.5 hr (full)']];let picked=12;
+  opts.forEach(([n,lbl])=>{const b=el('button','btn sm'+(n===12?' primary':''),lbl+' · '+n+' tasks');b.onclick=()=>{picked=n;Array.from(row.children).forEach(x=>x.className='btn sm');b.className='btn sm primary';};row.append(b);});
+  cfg.append(row);app.append(cfg);
+  const go=el('button','btn primary','▶ Start exam');go.style.marginTop='16px';
+  go.onclick=()=>startExam(picked);app.append(go);
+}
+function startExam(n){
+  const c=course();const labs=[];c.days.forEach(d=>d.labs.forEach((l,i)=>labs.push([d,l,i])));
+  shuffle(labs);
+  state.exam={items:labs.slice(0,n),checks:{},start:Date.now(),dur:n*450*1000};
+  state.examActive=true;renderExamRun();
+}
+function renderExamRun(){
+  const ex=state.exam;
+  const bar=el('div','card pad');bar.style.marginBottom='14px';
+  bar.style.position='sticky';bar.style.top='calc(96px + env(safe-area-inset-top,0px))';bar.style.zIndex='10';
+  const trow=el('div','row');trow.style.justifyContent='space-between';trow.style.alignItems='center';
+  const tleft=el('div');tleft.append(el('div','eyebrow','Time remaining'));
+  const clock=el('div','flame');clock.id='examClock';clock.style.fontSize='26px';tleft.append(clock);
+  trow.append(tleft);
+  const done=Object.values(ex.checks).filter(Boolean).length;
+  const sc=el('div');sc.style.textAlign='right';
+  sc.append(el('div','eyebrow','Tasks passed'));
+  const scf=el('div','flame',done+' / '+ex.items.length);scf.style.fontSize='26px';sc.append(scf);
+  trow.append(sc);bar.append(trow);
+  const endb=el('button','btn sm','Finish & score');endb.style.marginTop='10px';endb.onclick=finishExam;bar.append(endb);
+  app.append(bar);
+
+  ex.items.forEach(([d,l,i],n)=>{
+    const key=d.day+':'+i;
+    const card=el('div','card pad');card.style.marginBottom='12px';
+    const mt=el('div','qmeta');mt.append(el('span','pill','Task '+(n+1)));mt.append(pillFor(d.course));mt.append(el('span','eyebrow','Day '+d.day));card.append(mt);
+    card.append(el('div','qtext',l.title));
+    const scn=el('div','scenario');scn.style.marginTop='8px';scn.append(richText(l.scenario));card.append(scn);
+    const ds=el('details','disc');const sm=el('summary');sm.append(el('span',null,'⌨ Reveal solution (costs you exam realism!)'));sm.append(el('span','chev','›'));ds.append(sm);
+    const body=el('div','body');body.append(termBlock(l.steps));if(l.verify)body.append(termBlock(l.verify,'verify'));ds.append(body);card.append(ds);
+    const chk=el('label','check');const cb=el('input');cb.type='checkbox';cb.checked=!!ex.checks[key];
+    cb.onchange=()=>{ex.checks[key]=cb.checked;app.querySelector('#examClock');renderExamHead();};
+    chk.append(cb);chk.append(el('span',null,'This task works after a reboot'));card.append(chk);
+    app.append(card);
+  });
+  startExamClock();
+}
+function renderExamHead(){
+  // cheap refresh of the passed counter
+  const ex=state.exam;const done=Object.values(ex.checks).filter(Boolean).length;
+  const nodes=app.querySelectorAll('.flame');if(nodes[1])nodes[1].textContent=done+' / '+ex.items.length;
+}
+function startExamClock(){
+  clearInterval(state._exTmr);
+  const tick=()=>{
+    const ex=state.exam;const left=ex.start+ex.dur-Date.now();
+    const c=$('#examClock');if(!c){clearInterval(state._exTmr);return;}
+    if(left<=0){c.textContent='00:00';clearInterval(state._exTmr);return;}
+    const m=Math.floor(left/60000),s=Math.floor(left%60000/1000);
+    c.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    if(left<300000)c.style.color='var(--bad)';
+  };
+  tick();state._exTmr=setInterval(tick,1000);
+}
+function finishExam(){
+  clearInterval(state._exTmr);
+  const ex=state.exam;const done=Object.values(ex.checks).filter(Boolean).length;
+  const score=Math.round(done/ex.items.length*300);
+  // record completed labs
+  ex.items.forEach(([d,l,i])=>{if(ex.checks[d.day+':'+i])state.progress.labs[labKey(d.day,i)]=true;});
+  bumpStreak();markDirty();
+  state.examActive=false;app.innerHTML='';
+  const rhcsa=isRedHat();
+  const pct=Math.round(done/ex.items.length*100);
+  const card=el('div','hero');card.style.textAlign='center';
+  card.append(el('div','eyebrow',rhcsa?'Simulated score (300 scale)':'Tasks passed'));
+  const cf=el('div','flame',rhcsa?score+'':pct+'%');cf.style.fontSize='48px';card.append(cf);
+  const pass=rhcsa?score>=210:pct>=80;
+  const v=el('div','verdict '+(pass?'g':'b'));v.style.fontSize='16px';v.style.justifyContent='center';
+  v.textContent=pass?(rhcsa?'✓ PASS (≥210 needed)':'✓ Strong (aim ≥80%)'):(rhcsa?'✗ Below 210 — keep going':'✗ Below 80% — keep going');card.append(v);
+  card.append(el('div','muted',done+' of '+ex.items.length+' tasks passed. '+(rhcsa?'On the real exam, only what persists after reboot counts.':'Practising these tasks builds the hands-on skill the performance-based questions test.')));
+  const again=el('button','btn primary','↻ New exam');again.style.marginTop='16px';again.onclick=()=>{state.tab='exam';renderTabs();renderExam();};
+  card.append(again);app.append(card);
+}
+
+/* ---------- STATS ---------- */
+function renderStats(){
+  const c=course();const cp=courseProgress();
+  const head=el('div','card pad');
+  head.append(el('div','eyebrow',c.name));
+  head.append(el('div','qtext','Your progress'));
+  app.append(head);
+  const stats=el('div','stats');stats.style.margin='14px 0';
+  const acc=cp.seen?Math.round(cp.correct/cp.seen*100):0;
+  [['n',cp.pct+'%','Course complete'],['n',(state.progress.streak||0)+'','Day streak'],['n',acc+'%','Answer accuracy']]
+    .forEach(([_,n,l])=>{const s=el('div','stat');s.append(el('div','n',n));s.append(el('div','l',l));stats.append(s);});
+  app.append(stats);
+  const stats2=el('div','stats');stats2.style.marginBottom='14px';
+  let labsDone=0,labsTot=0;c.days.forEach(d=>d.labs.forEach((l,i)=>{labsTot++;if(state.progress.labs[labKey(d.day,i)])labsDone++;}));
+  [[cp.seen,'Questions answered'],[cp.correct,'Answered correctly'],[labsDone+'/'+labsTot,'Labs completed']]
+    .forEach(([n,l])=>{const s=el('div','stat');s.append(el('div','n',n+''));s.append(el('div','l',l));stats2.append(s);});
+  app.append(stats2);
+
+  // per-day heat list
+  const st=el('div','section-title');st.append(el('h2',null,'By day'));app.append(st);
+  c.days.forEach(d=>{
+    const p=dayProgress(d);
+    const rowc=el('button','daycard');rowc.style.width='100%';
+    const ring=el('div','ring');ring.style.setProperty('--p',p.pct);ring.append(el('span',null,p.pct+'%'));
+    const t=el('div');t.style.minWidth='0';t.style.flex='1';
+    t.append(el('div','dn','DAY '+String(d.day).padStart(2,'0')+' · '+d.course));
+    t.append(el('div','dt',d.title));
+    rowc.append(ring,t);rowc.onclick=()=>openDay(d.day);
+    rowc.style.marginBottom='8px';app.append(rowc);
+  });
+
+  const hr=el('hr','sep');app.append(hr);
+  const reset=el('button','btn sm','⟲ Reset all progress');
+  reset.onclick=()=>{ if(confirmReset())return; };
+  app.append(reset);
+  const note=el('div','faint');note.style.fontSize='11px';note.style.marginTop='8px';
+  note.textContent = state.syncMode==='cloud'?'Progress is synced to your Claude account and follows you across devices.':'Progress is saved in this browser. Open on your account to sync across devices.';
+  app.append(note);
+}
+let resetArmed=false;
+function confirmReset(){
+  if(!resetArmed){resetArmed=true;toast('Tap reset again to confirm');setTimeout(()=>resetArmed=false,3000);return true;}
+  state.progress={items:{},labs:{},daily:{},streak:0,lastActive:null};saveLocal();markDirty();resetArmed=false;
+  toast('Progress reset');renderStats();return true;
+}
+
+/* ---------- course select + theme ---------- */
+function buildCourseSelect(){
+  const sel=$('#courseSel');sel.innerHTML='';
+  state.data.courses.forEach(c=>{const o=el('option');o.value=c.id;o.textContent=c.name;sel.append(o);});
+  sel.value=state.courseId;
+  sel.onchange=()=>{state.courseId=sel.value;try{localStorage.setItem('linuxcertlab.course',sel.value);}catch(e){}
+    state.quizActive=false;state.examActive=false;state.tab='today';renderTabs();renderTab();};
+}
+function initTheme(){
+  const btn=$('#themeBtn');
+  let cur=null;try{cur=localStorage.getItem('linuxcertlab.theme');}catch(e){}
+  if(cur)document.documentElement.setAttribute('data-theme',cur);
+  btn.onclick=()=>{
+    const now=document.documentElement.getAttribute('data-theme');
+    const mq=window.matchMedia('(prefers-color-scheme:dark)').matches;
+    let nextT = now==='dark'?'light':now==='light'?'dark':(mq?'light':'dark');
+    document.documentElement.setAttribute('data-theme',nextT);
+    try{localStorage.setItem('linuxcertlab.theme',nextT);}catch(e){}
+  };
+}
+
+/* ---------- boot ---------- */
+async function boot(){
+  loadLocal();initTheme();
+  let data=null;
+  try{data=JSON.parse($('#course-data').textContent);}catch(e){}
+  if(!data||!data.courses||!data.courses.length){
+    app.innerHTML='<div class="empty">Could not load the question bank. Try reopening the page.</div>';return;
+  }
+  state.data=data;
+  let saved=null;try{saved=localStorage.getItem('linuxcertlab.course');}catch(e){}
+  state.courseId = (saved&&data.courses.some(c=>c.id===saved))?saved:data.courses[0].id;
+  buildCourseSelect();renderTabs();renderTab();
+  initCloud();
+  window.addEventListener('beforeunload',()=>{if(state.dirty)flushDb();});
+}
+boot();
+</script>

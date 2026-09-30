@@ -1,0 +1,476 @@
+#D 16|4 Operations|Firewalls, IDS/IPS and network security tools|Configure and interpret common security appliances.
+Q What is the difference between an IDS and an IPS?
++ An IDS detects and alerts; an IPS can also block the traffic inline
+- An IPS only alerts
+- They are identical
+- An IDS is hardware only
+E IPS sits inline and can drop packets; IDS observes a copy and warns.
+Q A "next-generation firewall" (NGFW) adds what over a traditional firewall?
++ Application awareness, IPS, and often user identity and TLS inspection
+- Only faster ports
+- Just NAT
+- Physical locks
+E It filters by application and content, not just port/IP.
+Q A stateful firewall differs from a stateless one because it:
++ Tracks the state of connections and allows return traffic automatically
+- Blocks everything
+- Ignores connection state
+- Only works on Wi-Fi
+E Stateless filters each packet in isolation; stateful understands sessions.
+Q A WAF specifically protects:
++ Web applications from attacks like SQL injection and XSS
+- The whole network at layer 3
+- Wireless clients
+- Physical doors
+E A Web Application Firewall inspects HTTP requests.
+Q Signature-based detection catches:
++ Known threats matching a defined pattern
+- Only brand-new attacks
+- Physical intrusions
+- Encrypted traffic content
+E Anomaly/behavior-based detection is needed for unknown (zero-day) threats.
+Q A network "tap" or SPAN port is used to:
++ Copy traffic to a monitoring/IDS tool without disrupting it
+- Block traffic
+- Encrypt traffic
+- Assign IPs
+E It feeds the IDS a mirror of the traffic.
+Q "Fail-closed" vs "fail-open" for a security device: fail-closed means:
++ If the device fails, traffic is blocked (security over availability)
+- Traffic flows freely on failure
+- The device restarts
+- Nothing changes
+E Choose based on whether availability or security matters more for that link.
+Q Port security on a switch limits:
++ Which/how many MAC addresses may use a switch port
+- Internet bandwidth
+- The number of VLANs
+- Wi-Fi channels
+E It helps stop rogue devices and MAC flooding.
+C Scan your own lab host to see which TCP ports are open (authorized use only).
+A nmap localhost
+A nmap 127.0.0.1
+E Only scan systems you own or are authorized to test.
+T Read firewall logs
+S On a Linux host with firewalld, enable logging of denied packets and generate one, then find it.
+X firewall-cmd --set-log-denied=all
+X firewall-cmd --reload
+X # from another host, hit a closed port, then:
+X journalctl | grep -i 'FINAL_REJECT\|denied' | tail
+V a blocked connection appears in the log
+T Tune a noisy rule (concept)
+S An IDS fires 500 alerts/day for a benign internal scanner. Describe how to reduce the noise without going blind.
+X # add a tuned exception for the scanner's known IP + scan signature
+X # keep alerting if that IP does something outside its normal pattern
+X # document the exception so it can be reviewed
+V real threats from that host would still alert
+
+#D 17|4 Operations|Incident response|Apply the incident-response process and its phases.
+Q What is the correct order of the incident-response phases (NIST)?
++ Preparation, Detection & Analysis, Containment, Eradication & Recovery, Lessons Learned
+- Detection, Preparation, Recovery, Containment
+- Containment, Preparation, Detection, Recovery
+- Recovery, Lessons Learned, Detection, Preparation
+E Preparation comes first; lessons learned closes the loop.
+Q "Containment" aims to:
++ Stop the incident from spreading while preserving evidence
+- Delete all affected systems immediately
+- Notify the press
+- Restore backups first
+E Isolate hosts, block C2, disable accounts — but keep evidence intact.
+Q Eradication means:
++ Removing the threat (malware, backdoors, compromised accounts) from the environment
+- Turning off logging
+- Paying a ransom
+- Buying new hardware
+E After eradication comes recovery (restoring clean systems).
+Q Why is a "lessons learned" meeting important?
++ It improves future preparation and prevents repeat incidents
+- It assigns blame
+- It is legally required to skip
+- It restores data
+E Update playbooks, controls, and training based on what happened.
+Q A "runbook" or "playbook" is:
++ A step-by-step procedure for responding to a specific incident type
+- A list of passwords
+- A backup schedule
+- A network diagram only
+E Playbooks make response fast and consistent.
+Q "Tabletop exercise" means:
++ A discussion-based drill walking through a hypothetical incident
+- A live attack on production
+- A physical penetration test
+- A backup restore test
+E It tests the plan and people without touching real systems.
+Q During an incident, who typically declares the incident and coordinates?
++ The incident commander / IR lead
+- Any user
+- The attacker
+- The auditor
+E Clear roles prevent chaos during response.
+Q Why avoid immediately powering off a compromised machine?
++ You may lose volatile evidence in RAM (running processes, keys, connections)
+- It voids the warranty
+- It is faster to leave on
+- Nothing is lost
+E Consider isolating from the network first, then capture memory if needed.
+C On Linux, quickly capture the current network connections and processes for evidence.
+A ss -tulpanE
+A ss -tulpan
+E Also grab `ps aux` and running services before changing anything.
+T Run a mini IR
+S A workstation is beaconing to a bad IP. Walk through the five phases in one line each for this case.
+X # Prep: playbook + contacts ready
+X # Detect/Analyze: confirm beacon in flow logs, identify process
+X # Contain: isolate host from network, block IP at firewall
+X # Eradicate/Recover: remove malware/persistence, re-image, restore data
+X # Lessons: how did it get in? add control + training
+V each phase has a concrete action for this case
+T Preserve volatile evidence
+S On a suspect Linux host, collect volatile data in the right order (most volatile first) without rebooting.
+X date; uptime
+X ss -tulpan > /root/ir-connections.txt
+X ps aux > /root/ir-processes.txt
+X who > /root/ir-users.txt
+X # then image memory/disk with proper tools before shutdown
+V you captured connections and processes before touching the disk
+T Order of volatility
+S List the order you would collect evidence from most to least volatile.
+X # 1 CPU registers/cache  2 RAM  3 network state/connections
+X # 4 running processes  5 disk  6 remote logs / backups  7 archival media
+V your order matches order-of-volatility
+
+#D 18|4 Operations|Digital forensics|Apply forensic concepts: chain of custody, acquisition, integrity.
+Q "Chain of custody" documents:
++ Who handled evidence, when, and what they did — to keep it admissible
+- The network path of an attack
+- The order of firewall rules
+- A backup rotation
+E A broken chain of custody can make evidence unusable in court.
+Q Why hash evidence before and after acquisition?
++ To prove the copy is identical to the original and was not altered
+- To encrypt it
+- To compress it
+- To speed up analysis
+E Matching hashes demonstrate integrity of the forensic image.
+Q What is a "write blocker"?
++ A device/tool that lets you read a drive without changing it
+- A firewall
+- A password
+- A backup tool
+E It preserves the original evidence during acquisition.
+Q "Legal hold" means:
++ Preserving relevant data because litigation or investigation is anticipated
+- Deleting data on a schedule
+- Encrypting all data
+- Holding a suspect
+E Normal deletion/retention is suspended for the relevant data.
+Q Which is the best practice for forensic analysis?
++ Work on a verified copy (image), never the original evidence
+- Analyze the live original
+- Reformat and re-scan
+- Delete logs first
+E You keep the original pristine and analyze the image.
+Q "Order of volatility" tells you to collect first:
++ The most volatile data (RAM, network state) before it disappears
+- The least volatile data
+- Backups first
+- Nothing; order does not matter
+E Data in memory vanishes on power loss.
+Q e-Discovery refers to:
++ Identifying and producing electronic evidence for legal proceedings
+- Finding new websites
+- A vulnerability scanner
+- A backup type
+E It ties into legal hold and data retention.
+Q Metadata in a file can reveal:
++ Author, timestamps, GPS, device info useful in an investigation
+- Only the file size
+- Nothing useful
+- The encryption key
+E Timestamps and authorship often matter in forensics.
+C Create a verified image of a file/partition and record its hash for the evidence log.
+A sha256sum evidence.img
+E Record the hash immediately after imaging; re-verify before analysis.
+T Practice evidence integrity
+S Image a small file, hash the original and the copy, and show they match; then log it as a chain-of-custody entry.
+X sha256sum original.dat > custody.log
+X cp original.dat evidence.copy
+X sha256sum evidence.copy >> custody.log
+X # add: date, collector name, source, method to custody.log
+V both hashes match and the log has who/when/what
+T Extract file metadata
+S Pull timestamps and metadata from a file as an investigator would.
+X stat suspicious.jpg
+X # if available: exiftool suspicious.jpg  (author, GPS, camera, timestamps)
+V you can report at least three metadata fields
+T Write a chain-of-custody form
+S Draft the fields a chain-of-custody form must contain.
+X # case ID, item description, collected by, date/time, location
+X # hash value, transferred to (name/sig), reason, storage location
+V the form would survive a courtroom challenge
+
+#D 19|4 Operations|Resilience, backups and recovery|Apply resilience and recovery concepts (RTO, RPO, backup types).
+Q What does RTO (Recovery Time Objective) define?
++ The maximum acceptable time to restore a service after an outage
+- How much data you can lose
+- The backup size
+- The encryption strength
+E RTO = "how fast must we be back?"
+Q What does RPO (Recovery Point Objective) define?
++ The maximum acceptable amount of data loss, measured in time
+- How fast you recover
+- The number of backups
+- The uptime percentage
+E RPO = "how much data can we afford to lose?" It drives backup frequency.
+Q A full backup:
++ Copies all selected data every time
+- Copies only changes since the last full
+- Copies changes since any backup
+- Is stored only in RAM
+E Simple to restore but large and slow.
+Q An incremental backup copies:
++ Only data changed since the last backup of any type
+- Everything each time
+- Changes since the last full only
+- Nothing
+E Fast backups, but restore needs the full plus every increment in order.
+Q A differential backup copies:
++ All changes since the last FULL backup
+- Only changes since the last backup
+- Everything each time
+- The OS only
+E Restore needs just the full plus the latest differential.
+Q The "3-2-1" backup rule means:
++ 3 copies, on 2 different media, with 1 copy off-site
+- 3 backups per day
+- 2 admins, 1 key
+- 3-2-1 countdown to delete
+E A modern variant adds "1 offline/immutable" to survive ransomware.
+Q High availability (HA) is achieved with:
++ Redundancy and failover so service continues if a component fails
+- A single powerful server
+- Daily backups only
+- Encryption
+E Clusters, load balancers, and redundant power/network provide HA.
+Q Why test backups regularly?
++ An untested backup may be corrupt or incomplete when you need it
+- To use disk space
+- It is not necessary
+- To slow the network
+E "You don't have a backup until you've restored it."
+C On Linux, create a compressed, dated backup of /etc for safekeeping.
+A tar -czf /backup/etc-$(date +%F).tar.gz /etc
+E Store a copy off-site and test the restore.
+T Choose RTO/RPO
+S For an online store's order database, propose an RTO and RPO and the backup strategy that meets them.
+X # RPO 15 min -> transaction log backups every 15 min (or replication)
+X # RTO 1 hr -> warm standby + tested restore runbook
+V the backup frequency matches the RPO
+T Backup and verify restore
+S Back up a directory, delete a file, and restore just that file to prove the backup works.
+X tar -czf /tmp/docs.tar.gz ~/docs
+X rm ~/docs/important.txt
+X tar -xzf /tmp/docs.tar.gz -C / home/$USER/docs/important.txt 2>/dev/null || tar -xzf /tmp/docs.tar.gz -C ~ --strip-components=1 docs/important.txt
+X ls ~/docs/important.txt
+V the file is restored from backup
+T Plan for ransomware resilience
+S List the backup properties that let you recover from ransomware without paying.
+X # off-site + offline/immutable copy attackers can't reach or encrypt
+X # versioned backups (restore to a point before infection)
+X # tested restores + documented RTO
+V the plan survives an attacker with domain admin
+
+#D 20|3 Architecture|Secure protocols and services|Select secure protocols and replace insecure ones.
+Q Which protocol securely replaces Telnet for remote administration?
++ SSH (port 22)
+- FTP
+- HTTP
+- SNMPv1
+E Telnet sends everything in plaintext; SSH is encrypted.
+Q HTTPS uses which protocol to encrypt web traffic?
++ TLS
+- SSLv2
+- Telnet
+- SMTP
+E Modern HTTPS uses TLS 1.2/1.3; SSL is deprecated.
+Q Which is the secure way to transfer files?
++ SFTP or FTPS (encrypted), not plain FTP
+- FTP on port 21
+- TFTP
+- Telnet
+E SFTP runs over SSH; FTPS adds TLS to FTP.
+Q Which protocol secures email transport between servers?
++ SMTP with STARTTLS (SMTPS)
+- Plain SMTP on 25 only
+- POP3 without TLS
+- Telnet
+E Also use IMAPS/POP3S for clients, and SPF/DKIM/DMARC for authenticity.
+Q SNMPv3 improves on earlier versions by adding:
++ Authentication and encryption
+- Faster polling only
+- More OIDs
+- Nothing
+E SNMPv1/v2c send community strings in plaintext.
+Q DNSSEC provides:
++ Integrity/authenticity of DNS records via digital signatures
+- Encryption of DNS queries
+- Faster lookups
+- Password protection
+E It stops forged records; DoH/DoT add confidentiality.
+Q Which port does HTTPS use by default?
++ 443
+- 80
+- 22
+- 25
+E 80 = HTTP, 22 = SSH, 25 = SMTP, 443 = HTTPS.
+Q LDAPS secures directory queries by:
++ Wrapping LDAP in TLS
+- Using a longer password
+- Running on UDP
+- Disabling authentication
+E Plain LDAP (389) exposes directory traffic; LDAPS uses 636.
+C Test whether a mail server offers STARTTLS encryption.
+A openssl s_client -starttls smtp -connect mail.example.com:587
+E If TLS negotiates, the server supports encrypted mail transport.
+T Replace insecure services
+S For a legacy setup using Telnet, FTP, and HTTP, name the secure replacement and the port for each.
+X # Telnet(23) -> SSH(22)
+X # FTP(21) -> SFTP(22) or FTPS(990/explicit)
+X # HTTP(80) -> HTTPS(443) with TLS 1.2+
+V each insecure service has a secure, encrypted replacement
+T Verify TLS version and ciphers
+S Check which TLS versions and ciphers a web server accepts and flag any weak ones.
+X openssl s_client -connect example.com:443 -tls1_2 </dev/null 2>/dev/null | grep -i protocol
+X nmap --script ssl-enum-ciphers -p 443 example.com
+V you can state whether TLS 1.0/1.1 are (insecurely) enabled
+
+#D 21|3 Architecture|Wireless and mobile security|Secure wireless networks and mobile/endpoint devices.
+Q Which is the strongest common Wi-Fi security standard?
++ WPA3
+- WEP
+- WPA
+- Open
+E WEP is broken; WPA2 is okay; WPA3 is current best (SAE handshake).
+Q Why is WEP considered insecure?
++ Its weak RC4/IV design lets attackers recover the key quickly
+- It is too slow
+- It uses AES
+- It requires a password
+E WEP should never be used; it can be cracked in minutes.
+Q WPA2-Enterprise differs from WPA2-Personal by using:
++ 802.1X/RADIUS for per-user authentication instead of a shared passphrase
+- A longer shared password
+- No encryption
+- A hidden SSID only
+E Enterprise gives each user unique credentials and easy revocation.
+Q Hiding the SSID (network name) provides:
++ Very little real security (it is easily discovered)
+- Strong encryption
+- Per-user authentication
+- MAC filtering
+E It is "security by obscurity," not a real control.
+Q What is MDM (Mobile Device Management) used for?
++ Enforcing security policy on mobile devices (encryption, PIN, remote wipe)
+- Making phones faster
+- A wireless protocol
+- A backup app only
+E MDM/UEM manages and secures fleets of devices.
+Q "BYOD" introduces risk because:
++ Personal devices are outside full corporate control yet access company data
+- Company devices are unmanaged
+- It bans mobile devices
+- It only affects servers
+E Containerization separates work and personal data on BYOD.
+Q A captive portal is:
++ A web page that forces authentication/acceptance before granting network access
+- A firewall
+- A VPN
+- A rogue AP
+E Common on guest Wi-Fi; not a strong security control by itself.
+Q Remote wipe is important because:
++ A lost/stolen device's data can be erased to prevent exposure
+- It speeds up the phone
+- It backs up data
+- It blocks Wi-Fi
+E Paired with full-device encryption and a screen lock.
+C Scan for nearby Wi-Fi networks and their security type (your own area, lawful use).
+A nmcli device wifi list
+E Note which networks still use WEP/WPA vs WPA2/WPA3.
+T Secure a home/office AP (checklist)
+S Write the settings you would apply to a wireless router to secure it.
+X # WPA3 (or WPA2-AES) with a long passphrase
+X # change default admin password; disable WPS
+X # update firmware; disable remote admin
+X # separate guest network (VLAN) for visitors/IoT
+V a war-driver gains nothing easy
+T Enterprise Wi-Fi design (concept)
+S Explain how WPA2/WPA3-Enterprise authenticates a user and why it beats a shared key for a company.
+X # client -> AP -> RADIUS (802.1X/EAP) validates the user's own credentials/cert
+X # unique creds: revoke one user without changing everyone's password
+V you can describe the 802.1X flow at a high level
+
+#D 22|4 Operations|Data protection and DLP|Classify data and apply protection controls.
+Q Data classification (public, internal, confidential, restricted) exists to:
++ Apply the right level of protection based on sensitivity
+- Make data bigger
+- Speed up storage
+- Delete old data
+E You spend the strongest controls on the most sensitive data.
+Q "Data at rest" refers to:
++ Data stored on disk/media (protected mainly by encryption)
+- Data moving across a network
+- Data being processed in RAM
+- Deleted data
+E At rest = storage; in transit = network; in use = memory/processing.
+Q "Data in transit" is best protected by:
++ Encryption such as TLS
+- Full-disk encryption
+- Shredding
+- Access logging only
+E TLS/IPsec protect data as it crosses the network.
+Q What does a DLP system do?
++ Detects and blocks sensitive data from leaving the organization
+- Encrypts backups
+- Scans for malware only
+- Manages passwords
+E Data Loss Prevention inspects email, uploads, and endpoints for regulated data.
+Q "Tokenization" protects data by:
++ Replacing sensitive values with non-sensitive tokens mapped in a secure vault
+- Encrypting the whole disk
+- Hashing passwords
+- Compressing files
+E Common for payment card data; the real value never leaves the vault.
+Q "Data masking" is used to:
++ Hide parts of data (e.g., show only last 4 digits) for non-privileged views
+- Delete data
+- Encrypt backups
+- Speed up queries
+E Useful in test environments and customer-service screens.
+Q A data "owner" is responsible for:
++ Classifying the data and deciding who may access it
+- Running the servers
+- Physically storing the disks
+- Only backups
+E The custodian implements the controls the owner defines.
+Q "Right to be forgotten" comes from which kind of regulation?
++ Privacy regulation (e.g., GDPR)
+- A firewall standard
+- An encryption algorithm
+- A backup policy
+E Data-subject rights require you to locate and delete personal data on request.
+C Find files that may contain card numbers before they leak (simple DLP-style scan).
+A grep -rEl '[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}' /data
+E A real DLP tool adds validation (Luhn check) and context.
+T Classify and label data
+S For a folder with an HR salary sheet, a public brochure, and a customer list, assign a classification and one control each.
+X # salary sheet -> Confidential -> encrypt + restrict to HR group
+X # brochure -> Public -> integrity check, no confidentiality needed
+X # customer list -> Restricted (PII) -> encrypt, DLP, access logging
+V each item's controls match its sensitivity
+T Protect data three ways
+S Demonstrate protection for data at rest, in transit, and in use (conceptually) on one file.
+X # at rest: encrypt with LUKS/openssl
+X # in transit: send over scp/TLS, never plain FTP
+X # in use: restrict process privileges + memory, limit who can open it
+V you addressed all three states

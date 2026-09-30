@@ -1,0 +1,702 @@
+#D 11|4 Exploitation|Network-based attacks|Test network protocols and services on authorized targets.
+Q An on-path (MITM) position lets a tester:
++ Observe and potentially modify traffic between two hosts (authorized lab only)
+- Only read public data
+- Crack hashes offline
+- Patch systems
+E Demonstrates the risk of unencrypted protocols; do it only in scope.
+Q Why is a service using plaintext (Telnet, FTP, HTTP) a finding?
++ Credentials and data can be captured by anyone on the path
+- It is faster
+- It is encrypted
+- It is required
+E Recommend encrypted replacements (SSH, SFTP, HTTPS).
+Q SMB relay attacks abuse:
++ Authentication being relayed to another host that trusts it
+- DNS caching
+- TLS certificates
+- Password length
+E SMB signing and disabling legacy auth mitigate relay.
+Q "LLMNR/NBT-NS poisoning" works because:
++ Windows falls back to these name-resolution protocols that attackers can answer
+- DNS is encrypted
+- The firewall is off
+- SMB is disabled
+E Disabling LLMNR/NBT-NS removes this local-network attack path.
+Q A key defense a tester recommends against sniffing is:
++ Encrypt everything in transit (TLS/IPsec) and segment the network
+- Longer passwords only
+- Faster switches
+- Disabling logging
+E Encryption makes captured traffic useless.
+Q SNMP write access with a default community string could allow:
++ Changing device configuration (a serious finding)
+- Nothing
+- Only reading uptime
+- Faster polling
+E Recommend SNMPv3 with auth+privacy and no default strings.
+Q Why coordinate any DoS-style test carefully?
++ It can take down production; usually it is out of scope unless explicitly authorized
+- It never causes harm
+- It is always allowed
+- It is required in every test
+E Most engagements forbid DoS.
+Q Network segmentation limits a tester (and attacker) by:
++ Preventing easy movement between zones after a foothold
+- Encrypting disks
+- Blocking phishing
+- Speeding the network
+E You then report where segmentation is missing.
+C On an authorized lab, capture traffic on an interface to show a plaintext-protocol finding.
+A sudo tcpdump -i eth0 -A 'tcp port 21 or tcp port 23 or tcp port 80'
+E Lab/authorized networks only. Shows why encrypted protocols matter.
+T Demonstrate a plaintext-credential finding (lab)
+S On your isolated lab, capture a Telnet or FTP login and show the credentials in the clear, then write the remediation.
+X sudo tcpdump -i eth0 -A 'tcp port 21' -c 100 -w ftp.pcap
+X # log into the lab FTP; then read the capture for USER/PASS
+X # remediation: replace FTP with SFTP/FTPS; disable plaintext services
+V you captured credentials in a lab and recommended encryption
+T Identify name-resolution exposure (concept)
+S Explain how LLMNR/NBT-NS poisoning captures hashes on a Windows LAN and the two settings that stop it.
+X # attacker answers broadcast name queries, victim sends auth to attacker
+X # fixes: disable LLMNR (GPO) + disable NBT-NS on adapters; enable SMB signing
+V you can describe the attack and its mitigations
+T Recommend network hardening
+S List four network-layer recommendations from a test that captured plaintext and saw flat networking.
+X # encrypt all protocols (SSH/SFTP/HTTPS/LDAPS)
+X # segment with VLANs + firewall between zones
+X # disable LLMNR/NBT-NS; enable SMB signing
+X # SNMPv3 only, no default community strings
+V each recommendation ties to an observed weakness
+
+#D 12|4 Exploitation|Wireless security testing|Test Wi-Fi security on networks you own or are authorized to assess.
+Q Testing Wi-Fi requires:
++ Ownership or explicit written authorization for that specific network
+- Just being nearby
+- A public SSID
+- No permission
+E Attacking others' Wi-Fi (deauth/injection) is illegal.
+Q WEP is a finding because it:
++ Uses a broken cipher/IV scheme that can be cracked quickly
+- Is too new
+- Uses WPA3
+- Requires a certificate
+E Recommend WPA2-AES at minimum, ideally WPA3.
+Q Capturing a WPA2 handshake lets a tester:
++ Attempt offline cracking of the passphrase (authorized network only)
+- Read live traffic instantly
+- Bypass WPA3
+- Change the SSID
+E Strong passphrases make offline cracking impractical.
+Q An "evil twin" attack demonstrates the risk of:
++ Users connecting to a rogue AP impersonating a trusted SSID
+- Strong encryption
+- Wired networks
+- DNSSEC
+E Recommend 802.1X/WPA3 and client validation.
+Q Monitor mode on a wireless adapter is needed to:
++ Capture raw 802.11 frames for analysis (authorized testing)
+- Speed up the internet
+- Encrypt traffic
+- Assign IPs
+E Not all adapters support it; an external adapter is often required.
+Q WPS is a finding because:
++ Its PIN can be brute-forced to recover the Wi-Fi passphrase
+- It is encrypted end to end
+- It uses WPA3
+- It disables Wi-Fi
+E Recommend disabling WPS.
+Q WPA2-Enterprise (802.1X) improves security by:
++ Authenticating each user via RADIUS instead of a shared key
+- Hiding the SSID
+- Using WEP
+- Removing passwords
+E Per-user credentials are revocable without changing everyone's key.
+Q The best remediation after a Wi-Fi assessment is often:
++ WPA3 (or WPA2-AES), a strong passphrase, disable WPS, and separate guest/IoT VLANs
+- Hide the SSID only
+- MAC filtering only
+- Lower the signal
+E Layer real controls, not obscurity.
+C List nearby wireless networks and their security in your own area (lawful discovery).
+A nmcli device wifi list
+E Note which use WEP/WPA vs WPA2/WPA3; only test networks you own/are authorized for.
+T Assess your own lab Wi-Fi
+S On a Wi-Fi network you OWN, document the security type, whether WPS is on, and recommend improvements.
+X nmcli device wifi list
+X # check the router admin page: encryption type, WPS state, firmware version
+X # recommend: WPA3/WPA2-AES, disable WPS, strong passphrase, guest VLAN
+V you produced a mini wireless assessment for your own network
+T Explain handshake cracking resistance
+S Explain why a 20-character random passphrase makes WPA2 handshake cracking impractical.
+X # offline cracking speed x keyspace = infeasible time for long random keys
+X # weak/dictionary passphrases fall quickly; length + randomness win
+V you can justify the passphrase recommendation with reasoning
+T Rogue AP defense
+S List how an enterprise detects and prevents rogue/evil-twin APs.
+X # wireless IDS/WIPS monitoring for unknown BSSIDs/SSIDs
+X # 802.1X so clients validate the network (mutual auth)
+X # user training + managed device profiles
+V each control addresses rogue/evil-twin risk
+
+#D 13|4 Exploitation|Cloud and container attacks|Test cloud and container weaknesses (authorized accounts).
+Q A common cloud misconfiguration finding is:
++ Publicly readable/writable storage buckets exposing data
+- Encrypted backups
+- MFA enabled
+- Least privilege
+E Check bucket ACLs/policies first; public data is a frequent breach source.
+Q Over-privileged IAM roles are dangerous because:
++ A compromised credential inherits far more access than needed
+- They speed up the cloud
+- They are encrypted
+- They cannot be abused
+E Least privilege limits blast radius.
+Q The cloud "metadata service" (e.g., 169.254.169.254) can be abused via SSRF to:
++ Retrieve temporary credentials/role tokens from a vulnerable server
+- Read the client's laptop
+- Crack Wi-Fi
+- Patch the server
+E IMDSv2 and blocking SSRF mitigate this.
+Q A "container escape" finding means:
++ Breaking out of a container to the host, undermining isolation
+- Deleting a container
+- Scaling containers
+- A billing issue
+E Non-root containers, seccomp/AppArmor, and no privileged mode reduce it.
+Q Hard-coded secrets in a container image or repo are a finding because:
++ Anyone with the image/code obtains the credentials
+- They run faster
+- They are encrypted
+- They are required
+E Use a secrets manager and scan images/repos.
+Q Why enumerate cloud IAM during an authorized cloud test?
++ To find excessive permissions and privilege-escalation paths
+- To increase the bill
+- To disable logging
+- It is not useful
+E Misconfigured trust/role chaining enables escalation.
+Q "Shared responsibility" affects testing because:
++ Some layers belong to the provider and are out of scope
+- Everything is the tester's to attack
+- Nothing is testable
+- The provider tests for you
+E Stay within the customer-owned layers unless the provider authorizes more.
+Q A key remediation after a cloud test is often:
++ Least-privilege IAM, block public storage, enable logging/monitoring, use IMDSv2
+- Make buckets public
+- Remove MFA
+- Disable logging
+E Report concrete, provider-specific fixes.
+C List storage buckets in an authorized cloud account to review exposure.
+A aws s3 ls
+E Then check each bucket's public-access block and policy; authorized accounts only.
+T Audit cloud storage exposure (authorized)
+S In an authorized cloud account, find any publicly accessible storage and write the fix.
+X aws s3 ls
+X # for each bucket: check public access block + bucket policy + ACL
+X # fix: enable "block public access", tighten policy, enable access logging
+V you identified exposure (or confirmed none) and gave a fix
+T Review IAM for least privilege (concept)
+S Describe how you would find an over-privileged role and what you would recommend.
+X # enumerate roles/policies; look for wildcard "*" actions/resources
+X # recommend scoping to specific actions/resources + MFA + short sessions
+V you can spot and remediate an over-privileged role
+T Harden a container (checklist)
+S Give five hardening steps for a container found running as root and privileged.
+X # run as non-root USER; drop --privileged; add seccomp/AppArmor profile
+X # minimal base image; no secrets baked in; scan image for CVEs
+V the container no longer breaks host isolation easily
+
+#D 14|4 Exploitation|Social engineering and physical|Test the human and physical layers under authorization.
+Q Social-engineering tests are only ethical when:
++ Explicitly authorized in the ROE with agreed limits and care for staff wellbeing
+- The tester feels like it
+- The target is a competitor
+- Never
+E Scope who, how, and what is off-limits (no real HR harm).
+Q A phishing simulation measures:
++ How many users click/report, to improve training and controls
+- The firewall speed
+- The database size
+- The Wi-Fi range
+E The goal is improvement, not punishment.
+Q A "pretext" is:
++ A believable cover story used to gain trust or access
+- An exploit
+- A scanner
+- A payload
+E e.g., posing as IT support during an authorized test.
+Q Tailgating (piggybacking) during a physical test demonstrates:
++ Weak physical access control (following staff through secure doors)
+- Strong security
+- A network flaw
+- A crypto weakness
+E Recommend mantraps, badge discipline, and awareness.
+Q "Baiting" with a dropped USB tests whether:
++ Staff plug in unknown devices, enabling code execution
+- The network is fast
+- The disk is encrypted
+- The firewall works
+E Recommend disabling autorun and USB controls + training.
+Q Why capture metrics (click rate, report rate) in a phishing test?
++ To baseline and measure improvement over time
+- To embarrass users
+- To bill more
+- It is not needed
+E Report rate rising is a good sign of a security-aware culture.
+Q The strongest defense a tester recommends against social engineering is:
++ Ongoing awareness training plus verification procedures and MFA
+- A faster firewall
+- Longer cables
+- Disabling email
+E People are the target, so empower and train them.
+Q Vishing (voice phishing) in an authorized test might attempt to:
++ Convince staff to reveal info or reset credentials over the phone
+- Scan ports
+- Crack hashes
+- Sniff Wi-Fi
+E Recommend callback verification and identity checks.
+T Design a phishing simulation
+S Plan an authorized phishing test: pretext, target group, success metric, and the safeguards to avoid harm.
+X # pretext: "IT password reset"; group: 50 staff
+X # metric: click rate + report rate; landing page = training, not real capture
+X # safeguards: no real credential capture, opt-out for sensitive roles, debrief
+V the test improves security without harming staff
+T Physical access walkthrough (concept)
+S List the physical weaknesses you would check on an authorized on-site test and one fix each.
+X # tailgating -> mantrap + badge discipline
+X # unlocked server room -> access control + camera
+X # exposed network jacks -> port security/NAC
+X # dropped-USB susceptibility -> disable autorun + training
+V each observation has a matching control
+T Write the awareness recommendation
+S After a phishing test with a 30% click rate, write the improvement plan.
+X # targeted training for repeat clickers; simulated phishing quarterly
+X # easy "report phishing" button; MFA to blunt credential theft
+X # measure report rate as the key success metric
+V the plan raises reporting and lowers clicks over time
+
+#D 15|5 Post-exploit|Establishing a foothold and situational awareness|Understand what to do immediately after gaining authorized access.
+Q The first goal after gaining a foothold (authorized) is usually:
++ Situational awareness: who am I, where am I, what can I reach
+- Delete logs
+- Install ransomware
+- Leave immediately
+E Enumerate the local host and network before acting.
+Q "whoami" and checking privileges tells you:
++ The account context and whether you have elevated rights
+- The client's budget
+- The exploit used
+- The firewall brand
+E It guides whether you need privilege escalation next.
+Q Local enumeration after foothold includes checking:
++ Users, groups, running services, scheduled tasks, and network connections
+- Only the wallpaper
+- The BIOS version only
+- Nothing
+E You look for escalation and pivot opportunities.
+Q Why enumerate network reachability from the foothold?
++ To find internal hosts/services you can now reach for lateral movement
+- To slow the network
+- To encrypt traffic
+- It is not useful
+E The foothold changes what is reachable versus from outside.
+Q "Living off the land" means:
++ Using built-in system tools to avoid dropping detectable malware
+- Farming
+- Using only custom exploits
+- Physical access
+E It reduces footprint and evades signature detection.
+Q Why document every command run during post-exploitation?
++ For the report, reproducibility, and to enable full cleanup
+- To bill more
+- To hide activity
+- It is optional
+E A clear log lets the client verify and remediate.
+Q Checking scheduled tasks/cron after foothold helps find:
++ Privilege-escalation and persistence opportunities (and existing malware)
+- The Wi-Fi password
+- The report template
+- Nothing
+E Writable scripts run by root/SYSTEM are classic escalation paths.
+Q A professional limits post-exploitation activity to:
++ What is necessary to demonstrate impact within scope
+- Everything possible
+- Destroying data
+- Permanent backdoors
+E Prove risk, then stop and document.
+C On a Linux foothold, quickly gather who you are and your privileges (authorized lab).
+A id
+A whoami
+E Follow with sudo -l to see what you may run as root.
+T Local enumeration script (lab)
+S On an authorized Linux foothold, gather user, privileges, sudo rights, listening services, and cron jobs, saving output for the report.
+X id > enum.txt; whoami >> enum.txt
+X sudo -l >> enum.txt 2>&1
+X ss -tulpn >> enum.txt
+X cat /etc/crontab /etc/cron.d/* 2>/dev/null >> enum.txt
+V you have a situational-awareness snapshot for the report
+T Find internal reachability
+S From the foothold, identify other reachable internal hosts/services (authorized scope only).
+X ip route; ip neigh
+X for h in 10.0.0.{1..20}; do (ping -c1 -W1 $h >/dev/null && echo "$h up") & done; wait
+V you have a short list of reachable internal hosts in scope
+T Plan the next step
+S Based on enumeration showing you are a low-priv user with a writable root cron script, write your intended next action and why.
+X # target: the writable script executed by root -> privilege escalation
+X # action: demonstrate PoC escalation, capture proof, then clean up
+V your plan is scoped, justified, and reversible
+
+#D 16|5 Post-exploit|Privilege escalation (Linux)|Escalate privileges on authorized Linux systems and report fixes.
+Q A classic Linux privilege-escalation check is:
++ Finding SUID binaries that can be abused (GTFOBins)
+- Reading the MOTD
+- Checking the wallpaper
+- Pinging the gateway
+E find / -perm -4000 lists SUID binaries to review.
+Q "sudo -l" is useful because it shows:
++ Which commands the current user may run as root, some abusable
+- The root password
+- The kernel version
+- The firewall rules
+E A misconfigured NOPASSWD entry can be an instant escalation.
+Q A writable script executed by root (e.g., via cron) allows:
++ Escalation by inserting commands that run with root privileges
+- Nothing
+- Only reading files
+- Faster boot
+E Recommend correct ownership/permissions on scheduled scripts.
+Q An outdated kernel can allow escalation via:
++ A known local kernel exploit
+- A web vulnerability
+- A phishing email
+- A Wi-Fi attack
+E Patching and least privilege are the fixes.
+Q "Path hijacking" escalation abuses:
++ A privileged program calling a binary by name with an attacker-controlled PATH
+- DNS
+- TLS
+- The GUI
+E Use absolute paths and a clean environment in privileged scripts.
+Q Weak file permissions on /etc/shadow or a config could allow:
++ Reading hashes or altering privileged settings
+- Faster logins
+- Nothing
+- Encryption
+E Recommend correct permissions and auditing.
+Q Capabilities (getcap) matter because:
++ A binary with cap_setuid or similar can escalate without the SUID bit
+- They speed up I/O
+- They are decorative
+- They block escalation
+E Review file capabilities during enumeration.
+Q After demonstrating escalation, the tester must:
++ Document it, capture proof, and remediate/clean up any changes
+- Keep root access hidden
+- Delete user data
+- Install a rootkit
+E Prove impact responsibly, then restore state.
+C List SUID binaries on an authorized Linux host to look for escalation paths.
+A find / -perm -4000 -type f 2>/dev/null
+E Cross-reference results with GTFOBins; report and fix risky ones.
+T Escalate via a misconfiguration (lab)
+S On a lab box, find one escalation path (SUID, sudo NOPASSWD, or writable root cron), demonstrate it, and write the fix.
+X sudo -l 2>&1; find / -perm -4000 -type f 2>/dev/null
+X ls -l /etc/cron.d/* /etc/crontab 2>/dev/null
+X # exploit the one misconfig (PoC), capture id showing uid=0, then:
+X # fix: correct permissions/ownership, remove NOPASSWD, patch
+V you gained root in the lab and documented the fix
+T Enumerate with a helper (concept)
+S Explain what an enumeration script (e.g., linpeas-style) checks for and why you still verify manually.
+X # checks SUID, sudo, cron, kernel, writable files, creds in configs
+X # manual verification avoids false positives and confirms exploitability
+V you can list the main categories it checks
+T Report escalation findings
+S Write the finding + remediation for a writable root cron script you exploited.
+X # Finding: /etc/cron.d/backup runs a world-writable script as root -> local root
+X # Impact: any local user gains root
+X # Remediation: chown root:root, chmod 700 the script; audit cron dir perms
+V a sysadmin could fix it from your write-up
+
+#D 17|5 Post-exploit|Privilege escalation (Windows)|Escalate privileges on authorized Windows systems and report fixes.
+Q A common Windows privilege-escalation check is:
++ Misconfigured service permissions (unquoted paths, weak ACLs, writable service binaries)
+- The desktop wallpaper
+- The Recycle Bin size
+- The mouse speed
+E Services running as SYSTEM with weak config are prime targets.
+Q "Unquoted service path" escalation abuses:
++ A service path with spaces and no quotes, letting a planted binary run as SYSTEM
+- A quoted path
+- An encrypted disk
+- A firewall rule
+E Fix by quoting the ImagePath.
+Q "AlwaysInstallElevated" being enabled allows:
++ Any user to install an MSI as SYSTEM
+- Faster updates
+- Nothing
+- Disk encryption
+E A dangerous policy; disable it.
+Q Windows access tokens matter because:
++ Token impersonation/theft can let a process act as a higher-privilege account
+- They speed logins
+- They are decorative
+- They block escalation
+E Certain privileges (SeImpersonate) enable known escalation techniques.
+Q Stored credentials in the registry or files can allow:
++ Reuse to access higher-privilege accounts or other systems
+- Faster boot
+- Nothing
+- Encryption
+E Recommend credential hygiene and not storing secrets in plaintext.
+Q "DLL hijacking/search-order" escalation abuses:
++ A privileged process loading a DLL from a writable/attacker-controlled location
+- A quoted path
+- TLS
+- The GUI theme
+E Fix with correct search paths and folder ACLs.
+Q A tool commonly used to enumerate Windows priv-esc paths is:
++ WinPEAS / PowerUp (authorized use)
+- Notepad
+- Paint
+- Calculator
+E They automate the checks; still validate manually.
+Q After demonstrating Windows escalation, you should:
++ Capture proof (whoami /priv, SYSTEM shell), then remediate and clean up
+- Keep a hidden admin account
+- Delete the SAM
+- Encrypt the disk
+E Prove it, document it, restore state.
+C On an authorized Windows host, show your privileges to look for escalation opportunities.
+A whoami /priv
+E Look for SeImpersonatePrivilege and similar; enumerate services next.
+T Enumerate Windows escalation (lab)
+S On an authorized Windows lab VM, list your privileges and check for unquoted service paths and weak service ACLs.
+X whoami /priv
+X wmic service get name,pathname,startmode | findstr /i /v "C:\Windows\\"
+X # note any unquoted path with spaces or writable service binary
+V you identified at least one potential escalation vector
+T Report a service-path finding
+S Write the finding + fix for an unquoted service path you found.
+X # Finding: service "App Backup" ImagePath is unquoted (C:\Program Files\App Backup\svc.exe)
+X # Impact: a planted C:\Program.exe could run as SYSTEM
+X # Fix: quote the ImagePath; restrict folder write permissions
+V an admin could fix it directly
+T Credential-hygiene recommendations
+S List four Windows recommendations that reduce credential-based escalation.
+X # LAPS for local admin passwords; no plaintext creds in scripts/registry
+X # least privilege + separate admin accounts; enable Credential Guard
+V each reduces credential theft/reuse
+
+#D 18|5 Post-exploit|Lateral movement and pivoting|Move through an authorized network to demonstrate impact.
+Q Lateral movement means:
++ Using a compromised host to reach and compromise other in-scope systems
+- Staying on one host
+- Scanning the internet
+- Writing the report
+E It shows how far an attacker could get from one foothold.
+Q "Pivoting" is:
++ Routing your traffic through a compromised host to reach otherwise unreachable networks
+- Rotating logs
+- Changing IP addresses randomly
+- Encrypting disks
+E e.g., a foothold in the DMZ used to reach the internal LAN (in scope).
+Q Pass-the-hash enables lateral movement by:
++ Authenticating to other hosts with a captured hash, no plaintext needed
+- Cracking every password
+- Encrypting traffic
+- Disabling SMB
+E Recommend unique local admin passwords (LAPS) and SMB signing.
+Q Why is network segmentation the key defense against lateral movement?
++ It stops a single foothold from freely reaching other zones
+- It encrypts email
+- It speeds the network
+- It blocks phishing
+E Microsegmentation + least privilege contain a breach.
+Q "Credential dumping" during a test demonstrates:
++ That reusable credentials can be harvested to move laterally
+- Nothing
+- Faster logins
+- Disk speed
+E Recommend Credential Guard, LAPS, and monitoring.
+Q A "jump/pivot host" reachable to many segments is high value because:
++ Compromising it grants broad reach across the network
+- It is decorative
+- It is always patched
+- It cannot be abused
+E Harden and closely monitor administrative jump hosts.
+Q Why keep lateral movement strictly in scope?
++ Reaching out-of-scope or third-party systems is illegal and harmful
+- It is faster
+- It is required everywhere
+- Scope does not apply post-foothold
+E Scope applies at every phase, always.
+Q A tester demonstrates lateral movement, then:
++ Documents the path and recommends segmentation and credential controls
+- Leaves backdoors on each host
+- Deletes data
+- Hides the activity
+E The value is the reported attack path and its fixes.
+C Set up a pivot (SSH dynamic port forward) through an authorized foothold host.
+A ssh -D 1080 user@foothost
+E Then route in-scope tools through the SOCKS proxy (e.g., proxychains) to reach internal hosts.
+T Demonstrate a pivot (authorized lab)
+S Using an authorized foothold, reach an internal-only lab host through it and prove connectivity.
+X ssh -D 1080 -N user@foothost &          # SOCKS proxy through the foothold
+X proxychains nmap -sT -Pn 10.0.50.5      # reach internal host via pivot
+V you reached an internal host only accessible through the foothold
+T Map an attack path
+S Document a three-hop path (external -> DMZ -> app server -> DB) and the one control that best breaks it.
+X # external phish -> DMZ web host -> reused creds -> app server -> DB
+X # best break: segment DMZ from internal + unique creds (LAPS) + MFA
+V one control interrupts the chain
+T Recommend anti-lateral-movement controls
+S List four controls that limit lateral movement and credential reuse.
+X # network segmentation/microsegmentation
+X # LAPS (unique local admin passwords) + SMB signing
+X # least privilege + tiered admin; MFA on admin access
+X # EDR + monitoring for credential dumping/anomalous logons
+V each control maps to a technique you used
+
+#D 19|5 Post-exploit|Persistence and cleanup|Understand persistence for realism, and always clean up.
+Q In an authorized test, persistence is used to:
++ Demonstrate how an attacker could maintain access (only if in scope) and to test detection
+- Keep secret access after the engagement
+- Damage the client
+- Avoid the report
+E Anything you add must be documented and removed at the end.
+Q Common Linux persistence mechanisms include:
++ Cron jobs, systemd services, SSH authorized_keys, and modified startup scripts
+- Changing the wallpaper
+- Renaming files
+- Clearing the screen
+E Defenders monitor these locations for unexpected changes.
+Q Common Windows persistence mechanisms include:
++ Scheduled tasks, services, registry Run keys, and startup folders
+- The Recycle Bin
+- Screen savers only
+- The mouse settings
+E EDR and autoruns tools detect these.
+Q Why must every persistence artifact be documented?
++ So it can be fully removed and the client can verify a clean environment
+- To leave a backdoor
+- To bill more
+- It is optional
+E Leaving hidden access would be unethical and dangerous.
+Q "Cleanup" at the end of an engagement means:
++ Removing tools, accounts, implants, and changes you introduced
+- Deleting client logs
+- Wiping the disk
+- Encrypting everything
+E Restore systems to their prior state and confirm with the client.
+Q Why should you NOT delete the client's logs after testing?
++ Logs are the client's evidence and needed for detection review; deleting them is harmful
+- They slow the system
+- They are encrypted
+- It is required
+E Attackers clear logs; ethical testers preserve them and note their own activity.
+Q Testing whether your actions were detected helps the client by:
++ Measuring their detection/response (purple-team value)
+- Hiding your tracks
+- Avoiding the report
+- Nothing
+E Note which actions triggered (or should have triggered) alerts.
+Q A persistence finding in the report should include:
++ How it was established, where, and how to detect/remove similar techniques
+- Only that it worked
+- The exploit binary only
+- Nothing
+E Give defenders detection and removal guidance.
+C List cron-based persistence locations to review on an authorized Linux host.
+A ls -la /etc/cron.d /etc/cron.daily /var/spool/cron 2>/dev/null
+E Also check ~/.ssh/authorized_keys and systemd user services for unexpected entries.
+T Establish and remove persistence (lab)
+S On an authorized lab host, add a benign persistence mechanism, confirm it, then fully remove it and verify.
+X # add (lab): a marked cron entry, e.g. '# PENTEST-TEST' comment + harmless job
+X crontab -l
+X # remove it and confirm nothing remains
+X crontab -l | grep -c PENTEST-TEST     # should be 0 after cleanup
+V the system is returned to its original state
+T Detection review (purple)
+S For two persistence techniques, describe how a defender would detect each.
+X # cron/systemd changes -> file integrity monitoring + config audits
+X # SSH authorized_keys change -> alert on key additions + EDR
+V each technique has a detection method
+T Engagement cleanup checklist
+S Write the end-of-engagement cleanup checklist.
+X # remove test accounts, tools, implants, persistence
+X # restore any changed configs; confirm services normal
+X # deliver artifacts list to client; verify clean state together
+V nothing you introduced remains on client systems
+
+#D 20|1 Engagement|Reporting and communication|Deliver clear, actionable, professional results.
+Q The most important deliverable of a penetration test is:
++ A clear, prioritized report with findings, impact, evidence, and remediation
+- The exploit code
+- A raw scanner dump
+- A verbal summary only
+E The report is what creates value and drives fixes.
+Q An executive summary should be written for:
++ Non-technical leadership: overall risk, business impact, key recommendations
+- Only engineers
+- The attacker
+- Nobody
+E It communicates risk in business terms.
+Q Each technical finding should include:
++ Description, affected assets, severity, evidence, impact, and remediation
+- Only a CVSS number
+- Only a screenshot
+- Just the title
+E Reproducibility and clear fixes are essential.
+Q Why rank findings by risk in the report?
++ So the client fixes the most dangerous issues first
+- To fill pages
+- To confuse the reader
+- It is not needed
+E Prioritization turns a list into an action plan.
+Q "Retesting" after remediation confirms:
++ That the fixes actually resolved the findings
+- The tester's hours
+- The exploit still works forever
+- Nothing
+E Offer or schedule a retest to validate remediation.
+Q Sensitive report data (credentials, exploit detail) should be:
++ Handled securely, shared only with authorized parties, and deleted per agreement
+- Posted publicly
+- Emailed unencrypted
+- Kept forever anywhere
+E Protect the report as you would the client's crown jewels.
+Q A good remediation recommendation is:
++ Specific, actionable, and prioritized (not just "be more secure")
+- Vague
+- Only "patch everything"
+- Missing
+E Tie each fix to the finding it resolves.
+Q During the engagement, critical findings should be:
++ Communicated to the client promptly, not held until the final report
+- Kept secret until the end always
+- Never mentioned
+- Posted online
+E A critical, actively exploitable issue warrants an immediate heads-up.
+T Write a finding
+S Write a complete finding for "default credentials on the admin panel": title, severity, affected asset, evidence, impact, and remediation.
+X # Title: Default credentials on admin panel (Critical)
+X # Asset: https://app.lab/admin
+X # Evidence: logged in with admin/admin (screenshot, timestamp)
+X # Impact: full administrative control, data exposure
+X # Remediation: force credential change, enforce strong pw + MFA, lockout
+V a reader could reproduce and fix it
+T Draft an executive summary
+S Write a 5-sentence executive summary for a test that found 2 critical, 3 high, and several medium issues.
+X # state overall risk posture in business terms
+X # highlight the most serious business impacts (data exposure)
+X # note quick wins and strategic recommendations
+X # mention what was in scope and the retest offer
+V a non-technical leader understands the risk and next steps
+T Plan a retest
+S Describe how and when you would retest to confirm the client's fixes.
+X # after client remediates, re-run the specific tests for each finding
+X # confirm each is resolved; update finding status to closed/open
+X # deliver a short retest report
+V each original finding gets a pass/fail verdict

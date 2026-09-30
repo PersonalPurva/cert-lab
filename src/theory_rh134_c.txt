@@ -1,0 +1,99 @@
+#D 36
+## What a boot target is
+systemd groups the system into **targets** — named states that pull in a set of services. A target is roughly the modern replacement for old "runlevels". The two you care about most:
+- **multi-user.target** — a full multi-user system with networking, but **no graphical desktop** (text login).
+- **graphical.target** — everything in multi-user plus the desktop.
+Special targets help with repair: **rescue.target** (single-user, root shell, local filesystems mounted) and **emergency.target** (the most minimal — only the root filesystem, mounted read-only).
+
+## Viewing and setting the default target
+- `systemctl get-default` shows which target the system boots into.
+- `systemctl set-default multi-user.target` changes it permanently (this just re-points the `/etc/systemd/system/default.target` symlink).
+- `systemctl isolate multi-user.target` switches to a target **right now** without rebooting, stopping anything not needed by it (run it from the console, since switching can stop your SSH session).
+
+## Booting into a target once
+To enter a target for a **single** boot (say, to repair something), interrupt the boot loader: at the GRUB menu press **e** to edit, find the line starting with `linux`, add `systemd.unit=rescue.target` at the end, and press **Ctrl+X** to boot. The change applies only to that boot.
+
+## The boot sequence
+Knowing the order tells you where to intervene when boot fails:
+1. **Firmware (BIOS/UEFI)** powers on and finds the boot device.
+2. **GRUB2** (the boot loader) loads and shows its menu.
+3. The **kernel and initramfs** load and mount the real root filesystem.
+4. **systemd** (PID 1) starts and brings the system up to the default target.
+
+#D 37
+## Recovering a lost root password
+If you don't know the root password, you regain access by interrupting the boot into the initramfs, before the real system takes over. This is a signature RHCSA task, and the steps are worth memorising:
+- Reboot and at the GRUB menu press **e**. On the line starting with `linux`, add **`rd.break`** at the end, then **Ctrl+X**.
+- You land in a tiny emergency shell where the real root filesystem is mounted **read-only** at `/sysroot`.
+- `mount -o remount,rw /sysroot` — remount it writable.
+- `chroot /sysroot` — make `/sysroot` act as `/` so paths like `/etc/shadow` are the real ones.
+- `passwd root` — set the new password.
+- `touch /.autorelabel` — **crucial**: the changed `/etc/shadow` needs the correct SELinux label, and this flag makes the next boot relabel the filesystem. Skipping it can lock everyone out.
+- `exit`, then `exit` again — the system relabels (this takes a few minutes) and reboots. Log in with the new password.
+
+## Repairing a broken /etc/fstab
+A bad line in `/etc/fstab` (a wrong UUID, a missing device) stops the boot and drops you into **emergency mode**, asking for the root password. To fix it:
+- Enter the root password. The root filesystem is mounted **read-only**, so run `mount -o remount,rw /` first.
+- Edit `/etc/fstab` to correct or comment out the bad line (check real UUIDs with `blkid`).
+- `systemctl daemon-reload` then `mount -a` to test the fix before rebooting.
+The lesson: after **every** fstab change, test with `mount -a` immediately — never discover the mistake at the next reboot.
+
+## Non-essential disks and nofail
+For a device that may not always be present (a removable disk, an NFS share), add the **`nofail`** mount option in fstab. Then, if the device is missing at boot, the system logs it and continues instead of dropping into emergency mode.
+
+#D 38
+## What the bootloader does
+**GRUB2** is the boot loader — the program that runs after the firmware, shows the menu of installed kernels, and loads the one you choose. Being able to edit its settings and kernel options is a required skill.
+
+## Editing kernel options safely with grubby
+Rather than hand-editing generated files, use `grubby` to manage kernel entries and their command-line options:
+- `grubby --default-kernel` shows which kernel boots by default; `grubby --info=ALL` lists every entry with its options.
+- `grubby --update-kernel=ALL --args="console=ttyS0"` adds a kernel argument to **all** kernels; use `--update-kernel=DEFAULT` to affect only the default one.
+- `grubby --remove-args="quiet"` removes an argument.
+- `grubby --set-default /boot/vmlinuz-<version>` makes a specific kernel the default.
+Changes take effect at the next boot; confirm with `cat /proc/cmdline` afterward. The individual menu entries live in `/boot/loader/entries/*.conf` (Boot Loader Specification files), which grubby edits for you.
+
+## Changing GRUB's behaviour
+Global settings like the menu timeout live in `/etc/default/grub` (e.g. `GRUB_TIMEOUT=10`). This file is a **source**, not the live config — after editing it you must regenerate the real config:
+- `grub2-mkconfig -o /boot/grub2/grub.cfg` rebuilds it (this path is correct for both BIOS and UEFI on RHEL 9/10).
+
+## One-time kernel options
+For a temporary change (testing), don't edit files at all — at the GRUB menu press **e**, add the option to the `linux` line, and press **Ctrl+X**. It applies to that boot only and is forgotten afterward.
+
+#D 39
+## What firewalld is
+**firewalld** is RHEL's firewall management service. It decides which incoming network connections are allowed. You manage it with the `firewall-cmd` command, and it organises rules into **zones** — each zone is a trust level (public, trusted, drop, internal, dmz…) that can be attached to network interfaces or source addresses.
+
+## The permanent vs runtime rule (the #1 gotcha)
+firewalld keeps two rule sets: the **runtime** rules (active now, lost at reboot) and the **permanent** rules (saved to disk, loaded at boot). This trips up everyone:
+- `firewall-cmd --add-service=http` changes only the **runtime** — gone after reboot.
+- `firewall-cmd --permanent --add-service=http` saves it **permanently** but does **not** apply it now.
+- The reliable pattern is: add with `--permanent`, then `firewall-cmd --reload` to make the permanent rules active immediately. `firewall-cmd --runtime-to-permanent` saves current runtime rules as permanent if you tested them live.
+
+## Common rules
+- Allow a named service: `firewall-cmd --permanent --add-service=http` (a service is a predefined set of ports; see `firewall-cmd --get-services`, defined in `/usr/lib/firewalld/services/*.xml`).
+- Open a specific port: `firewall-cmd --permanent --add-port=8080/tcp`.
+- Remove: `--remove-service=` / `--remove-port=`.
+- Inspect: `firewall-cmd --list-all` (current zone), `--list-all-zones` (all), `--get-default-zone`, `--get-active-zones`.
+
+## Zones and rich rules
+- Put a source address into a zone: `firewall-cmd --permanent --zone=trusted --add-source=192.168.122.12` gives that host full access.
+- For finer control, a **rich rule** combines source, service, action and logging: `firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.50.0/24" service name="ssh" reject'` refuses SSH from one subnet. Note **reject** replies "refused" while **drop** silently discards. `man firewalld.richlanguage` has copyable examples.
+
+#D 40
+## Security is layered — check all three
+When a network service does not work, three separate layers can be blocking it, and a real administrator checks each in order:
+1. **The service itself** — is it running, and listening on the right port? (`systemctl status`, `ss -tulpn`).
+2. **SELinux** — is the port labelled and are the file contexts correct? A "Permission denied" when a service tries to **bind** to a new port is usually SELinux, not the firewall.
+3. **The firewall** — is the port open to other machines? A service that works with `curl localhost` but not from another host points to the firewall.
+The firewall never stops a *local* service from starting; it only blocks *incoming* traffic. Keep this mental model and you will fix problems methodically instead of guessing.
+
+## Running a service on a non-standard port
+Putting, say, a web server on port 8888 needs all three layers aligned:
+- Configure the service to listen on 8888 (edit its config).
+- Tell SELinux the port is allowed: `semanage port -a -t http_port_t -p tcp 8888`.
+- Open the firewall: `firewall-cmd --permanent --add-port=8888/tcp && firewall-cmd --reload`.
+- Restart the service. Then test with `curl http://host:8888/` from another machine.
+
+## SSH on an extra port and diagnosing
+The same pattern applies to running sshd on an additional port: add `Port 2222` to the sshd config, label it with `semanage port -a -t ssh_port_t -p tcp 2222`, open `2222/tcp` in the firewall, and restart sshd. To diagnose, `ss -tlnp | grep 2222` confirms something is listening, and a capture with `tcpdump` shows whether a connection gets no reply (blocked) versus a reset (refused). The golden rule: fix contexts, ports and firewall rules — never "fix" a problem by turning SELinux or the firewall off.

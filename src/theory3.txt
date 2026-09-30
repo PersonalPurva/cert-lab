@@ -1,0 +1,151 @@
+#D 15
+## Why time matters
+A correct, synchronised clock is more important than beginners expect. Log timestamps, scheduled jobs, TLS certificates and cluster software all depend on accurate time. If two machines disagree on the time, investigating an incident by comparing their logs becomes almost impossible. RHEL keeps time in sync over the network using **NTP** (Network Time Protocol), implemented by the **chrony** service (`chronyd`).
+
+## timedatectl: the clock and time zone
+`timedatectl` is the single command for date, time and time zone:
+- `timedatectl` (or `timedatectl status`) shows the current time, the time zone, and whether NTP sync is active. Look for "System clock synchronized: yes".
+- `timedatectl list-timezones` lists all zone names; pipe to `grep Asia` to narrow it.
+- `timedatectl set-timezone Asia/Kolkata` sets the zone (this updates the `/etc/localtime` link).
+- `timedatectl set-ntp true` turns network time sync on (enabling and starting chronyd); `set-ntp false` turns it off.
+- `timedatectl set-time "2026-12-25 10:00:00"` sets the clock manually (only works with NTP off).
+
+## Configuring the chrony client
+chrony's config is `/etc/chrony.conf`. The important line names a time source:
+- `server classroom.example.com iburst` syncs from one specific server; `iburst` speeds up the first sync.
+- `pool 2.rhel.pool.ntp.org iburst` uses a pool name that resolves to many servers.
+After editing, apply with `systemctl restart chronyd` (and `enable` it for boot). To make a machine an NTP **server** for your LAN, add `allow 192.168.122.0/24`.
+
+## Checking that sync works
+- `chronyc sources` lists the time sources chrony is using. In the output, `^*` marks the server it is currently synced to, and `^?` means "not reachable yet" (wait a minute after a restart). Add `-v` for a legend.
+- `chronyc tracking` shows how accurate the local clock is and its offset from the reference.
+
+#D 16
+## How Linux networking is managed
+On RHEL, the network is controlled by **NetworkManager**, and you configure it with the `nmcli` command. NetworkManager stores each network setup as a **connection profile** (a saved configuration), separate from the physical **device** (the network card, like `eth0`). One device can have several profiles; you activate whichever one you need.
+
+## IP addresses, netmasks and gateways (the basics)
+- An **IP address** identifies a machine on a network, e.g. `192.168.122.11`.
+- A **netmask** (written as a prefix like `/24`) says how much of the address is the network part. `/24` equals `255.255.255.0`.
+- The **gateway** is the router the machine sends traffic to when the destination is on another network.
+- A **DNS server** turns names (like `servera`) into IP addresses.
+
+## Viewing the network with ip and nmcli
+- `ip a` (short for `ip addr`) shows every interface and its addresses; `ip -br a` gives one tidy line each. `ip route` shows the routing table, including the `default via …` gateway line.
+- `nmcli con show` lists connection profiles; add `--active` to see which are live. `nmcli device status` shows devices and which profile each uses.
+
+## Setting a static IP with nmcli
+The pattern is to **modify** a profile, then **bring it up**:
+- `nmcli con mod "profile" ipv4.addresses 192.168.122.11/24 ipv4.gateway 192.168.122.1 ipv4.dns 192.168.122.1 ipv4.method manual` sets a static configuration. `ipv4.method manual` is essential — without it the profile may keep using DHCP.
+- `nmcli con up "profile"` re-activates the profile so the changes take effect (they do **not** apply until you do this — and if you are connected over SSH, changing the IP will drop your session, so use the console).
+- Use `+ipv4.addresses` to add a second address without removing the first.
+Profiles are stored as keyfiles in `/etc/NetworkManager/system-connections/`.
+
+## Hostnames and local name resolution
+- `hostnamectl set-hostname server1.example.com` sets the machine's name permanently (writing `/etc/hostname`).
+- `/etc/hosts` is a simple local file mapping IP addresses to names; it is checked **before** DNS. Add a line like `192.168.122.12 server2` to reach a host by name without a DNS server. `getent hosts server2` shows what the system actually resolves.
+
+#D 17
+## IPv6 in brief
+The internet is running out of the older **IPv4** addresses (the `192.168.x.x` style), so **IPv6** was created with vastly more addresses, written in hex groups like `fd00:10::11`. You configure it almost the same way as IPv4:
+- `nmcli con mod eth0 ipv6.addresses fd00:10::11/64 ipv6.method manual` then `nmcli con up eth0`.
+- The IPv6 loopback (this machine) is `::1`, the IPv4 equivalent of `127.0.0.1`.
+- Addresses starting `fe80::` are **link-local** — created automatically on every interface and only valid on the local link. Your real routable address shows as "scope global" in `ip a`.
+
+## DNS: turning names into addresses
+DNS (Domain Name System) resolves names to IP addresses. Useful lookup tools:
+- `dig servera.example.com` gives detailed DNS answers; `dig servera +short` gives just the address. `dig example.com MX` looks up mail servers, `NS` name servers, `TXT` text records.
+- `host servera` is a simpler resolver; `nslookup` is another.
+- `getent hosts servera` resolves a name the way real applications do — using the full order in `/etc/nsswitch.conf` (usually files, then DNS) — so it reflects `/etc/hosts` **and** DNS.
+The DNS servers the system uses appear in `/etc/resolv.conf`, but on RHEL you set them through NetworkManager (`ipv4.dns`), not by editing that file directly.
+
+## A calm way to troubleshoot connectivity
+When something "can't connect", work up the stack in order instead of guessing:
+- **Link** — is the interface up with an IP? `ip -br a`, `ip -br link`.
+- **Route** — is there a default gateway? `ip route`.
+- **Gateway** — can you reach it? `ping -c2 <gateway>`.
+- **DNS** — does the name resolve? `getent hosts <name>` or `dig <name>`.
+- **Service** — is the remote port open? `ss -tulpn` locally, or `nc -zv host 443` to a remote port.
+`ss -tulpn` is the modern replacement for `netstat`: t=TCP, u=UDP, l=listening, p=process, n=numeric ports.
+
+#D 18
+## Software comes in packages
+Instead of copying files around, Linux installs software as **packages**. On RHEL these are **RPM** packages (`.rpm` files). Each package bundles the program plus information about what other packages it needs (its **dependencies**). Two tools work with them: the low-level `rpm` (queries and installs a single file) and the high-level `dnf` (resolves dependencies and downloads from repositories).
+
+## Querying with rpm
+`rpm` is best for asking questions about **already-installed** packages (the `-q` = query flag):
+- `rpm -qa` lists all installed packages (pipe to `grep` to search).
+- `rpm -qf /etc/ssh/sshd_config` says which package **owns** a given file.
+- `rpm -ql openssh-server` lists all files a package installed; `-qc` shows just its config files; `-qd` its documentation; `-qi` general info.
+- `rpm -qip file.rpm` and `-qlp file.rpm` query a `.rpm` **file** that is not installed yet (the `p` = package file).
+
+## Installing and removing with dnf
+`dnf` is what you use day to day because it handles dependencies and repositories:
+- `dnf install httpd` downloads httpd **and** anything it needs. `dnf install ./local.rpm` installs a local file but still pulls dependencies from repos (better than `rpm -ivh`, which just fails if something is missing).
+- `dnf remove httpd` uninstalls it (and packages that depend on it — read the list before confirming).
+- `dnf update` updates everything; `dnf search word` and `dnf provides */semanage` find packages (the second finds which package provides a command).
+- `dnf list installed`, `dnf info httpd`, and package **groups** via `dnf group list` / `dnf group install "Development Tools"`.
+
+## History and kernels
+- `dnf history` lists past transactions; `dnf history info last` details one; `dnf history undo last` reverses it.
+- Kernels are special "install-only" packages: a `dnf update` **adds** the new kernel alongside the old ones (used after a reboot) so you can still boot an older, working kernel from the GRUB menu if a new one misbehaves.
+
+#D 19
+## What a repository is
+A **repository** (repo) is a collection of packages that `dnf` can download from, plus an index of what's available. Without a repo, `dnf` has nowhere to fetch software. On the RHCSA exam you often have to point a machine at a repo yourself.
+
+## Configuring a DNF repository
+Repo definitions are `.repo` files in `/etc/yum.repos.d/`. A minimal working repo section needs just a few lines:
+- `[myrepo]` — a short id in square brackets.
+- `name=My Repo` — a human name.
+- `baseurl=…` — where the packages are. This can be `http://host/path`, or a local path as `file:///mnt/iso/BaseOS` (three slashes: `file://` + the absolute path).
+- `enabled=1` — turn it on.
+- `gpgcheck=0` (or `1` with a `gpgkey=` line) — whether to verify signatures.
+You can also add one with `dnf config-manager --add-repo <url>`, and enable/disable with `dnf config-manager --set-enabled`/`--set-disabled`. Check your work with `dnf repolist` (add `all` to include disabled ones), then install a package to prove it works.
+
+## Flatpak: a different kind of package
+**Flatpak** is a newer, cross-distribution way to install desktop **applications**, sandboxed and independent of the system packages. It uses **remotes** (its version of repositories):
+- `flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo` adds the popular Flathub remote.
+- `flatpak remotes` lists configured remotes; `flatpak remote-ls flathub` lists apps a remote offers.
+- `flatpak install flathub org.gnome.Calculator` installs an app system-wide (add `--user` to install only for you); `flatpak list` shows what is installed; `flatpak run <app-id>` starts one; `flatpak uninstall <app-id>` removes it.
+
+#D 20
+## Why archive and compress
+Bundling many files into one **archive** makes them easy to move or back up, and **compression** makes that bundle smaller. On Linux the classic tool is `tar` (tape archive), which can also compress by calling gzip, bzip2 or xz.
+
+## Reading tar's flags
+tar's letters combine, and beginners find them clearer once named:
+- **c** = create, **x** = extract, **t** = list (test contents), **f** = the archive **f**ilename (always needed), **v** = verbose (show files as they are processed).
+- Compression: **z** = gzip (`.tar.gz`), **j** = bzip2 (`.tar.bz2`), **J** = xz (`.tar.xz`).
+So `tar -czf /root/etc.tar.gz /etc` **c**reates a g**z**ipped archive **f**ile of `/etc`. `tar -xzf etc.tar.gz -C /tmp/restore` e**x**tracts it into a chosen directory (`-C` = change to that directory first). `tar -tzf etc.tar.gz` **lists** contents without extracting. Modern tar auto-detects compression on extract, so `z/j/J` is optional when reading.
+When tar prints "Removing leading '/'", it is storing paths **relative** so extracting never overwrites the originals by accident — they land under your current (or `-C`) directory.
+
+## Compressing single files
+- `gzip file` compresses `file` into `file.gz` (replacing the original); `gunzip file.gz` reverses it. `gzip -k` keeps the original.
+- `zip -r archive.zip folder` and `unzip archive.zip` handle the cross-platform ZIP format.
+
+## Copying files between machines securely
+- `scp file user@host:/path` copies over SSH (encrypted). Add `-r` for directories. Reverse the arguments to pull: `scp user@host:/path localfile`.
+- `sftp user@host` opens an interactive session (`get`, `put`, `ls`, `bye`).
+- `rsync -av source/ user@host:/dest/` efficiently syncs directories, copying only what changed. A **trailing slash** on the source means "the contents of source" go into dest, rather than the source folder itself — a classic gotcha.
+
+#D 21
+## Storage vocabulary
+Disks appear under `/dev` with names like `/dev/vda` (a whole disk) and `/dev/vda1` (a partition on it). A **filesystem** (like XFS or ext4) is the structure that lets a partition hold files. To use a filesystem you **mount** it onto an empty directory (the **mount point**); everything under that directory then lives on that filesystem.
+
+## Inspecting disks and usage
+- `lsblk` lists block devices as a tree (disks, partitions, sizes, mount points); `lsblk -f` adds filesystem type and **UUID**.
+- `df -h` shows free space on mounted filesystems in human-readable units; `df -hT` adds the type. Remember: `df` reports **filesystems**.
+- `du -sh /var/log` shows how much space files **use** (`-s` summary, `-h` human); `du -h --max-depth=1 /var` breaks it down by subdirectory.
+- `blkid` prints each filesystem's UUID and type — the UUID is a stable id you use in `/etc/fstab` because device names (`/dev/vdb1`) can change between boots.
+
+## Mounting and unmounting
+- `mount /dev/vdb1 /mnt/data` attaches a filesystem for now (the mount point directory must already exist).
+- `umount /mnt/data` detaches it. If it says "target is busy", something is using it — often your own shell sitting inside it. `cd` out, then find other users with `lsof /mnt/data` or `fuser -vm /mnt/data`.
+- `findmnt /mnt/data` confirms what is mounted where.
+Permanent mounts belong in `/etc/fstab` (covered in the storage days) using `UUID=` or `LABEL=` so they survive reboots.
+
+## Logging in on text consoles and switching users
+When there is no desktop, RHEL provides several text **consoles**. Switch between them with **Ctrl+Alt+F2** through **F6** (in a VM, send the keys from the VM window's menu). To see who is around and become another user:
+- `who` and `w` show who is logged in (`w` also shows what each person is running); `last` shows past logins.
+- `su - harry` becomes harry (needs harry's password); `sudo -i` gives a root login shell using **your** password (if you have sudo rights). Type `exit` to return to your own account.

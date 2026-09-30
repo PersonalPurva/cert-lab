@@ -1,0 +1,857 @@
+#D 22|RH134|Shell scripts: basics|Process script inputs ($1, $2, etc.) and process the output of shell commands within scripts.
+Q What should the first line of a bash script be?
++ #!/bin/bash
+- #bash
+- !#/bin/bash
+- //bin/bash
+E This "shebang" line tells the kernel which interpreter runs the file.
+C Make script.sh executable for everyone.
+A chmod +x script.sh
+A chmod a+x script.sh
+A chmod 755 script.sh
+E Run it as `./script.sh`, or put it in /usr/local/bin so it's on the PATH.
+Q Inside a script, what are $1, $# and $@?
++ The first argument, the number of arguments, and all arguments
+- The script name, the PID, and the exit code
+- The first line, the line count, and all lines
+- The user, the group, and the home directory
+E $0 is the script's own name. Quote "$@" so arguments with spaces stay intact.
+Q What does $? contain?
++ The exit status of the last command (0 means success)
+- The PID of the last background job
+- The number of arguments
+- The current user's UID
+E Check it right after the command, because every command overwrites it.
+C Store the output of the `hostname` command in a variable named host.
+A host=$(hostname)
+A host=`hostname`
+E Prefer $( ); it nests cleanly and is easier to read.
+Q What happens with `count = 5` in bash?
++ An error: bash tries to run a command named count
+- count is set to 5
+- count is set to " 5"
+- It compares count with 5
+E Assignments must have no spaces around the =.
+Q What is the difference between "$HOME" and '$HOME'?
++ Double quotes expand the variable; single quotes keep the text literally
+- Single quotes expand it; double quotes do not
+- Both expand it
+- Neither expands it
+E Use double quotes around variables to keep spaces intact and still expand them.
+C Print the number of arguments that were passed to the script.
+A echo $#
+A echo "$#"
+E Useful for checking that the user passed what the script needs.
+Q What does `exit 1` do in a script?
++ Ends the script immediately with exit status 1 (failure)
+- Skips the next line
+- Restarts the script
+- Logs out the user
+E By convention, 0 means success and anything else means an error.
+T Your first system-info script
+S Write /usr/local/bin/sysinfo that prints the hostname, kernel version, uptime and the number of logged-in users. Every user must be able to run it.
+X vim /usr/local/bin/sysinfo
+X # #!/bin/bash
+X # echo "Host:   $(hostname)"
+X # echo "Kernel: $(uname -r)"
+X # echo "Uptime: $(uptime -p)"
+X # echo "Users:  $(who | wc -l)"
+X chmod 755 /usr/local/bin/sysinfo
+V sysinfo
+T A script with arguments
+S Write /usr/local/bin/greet that prints "Hello, NAME" for its first argument. With no argument, print "Usage: greet NAME" to stderr and exit with status 1.
+X vim /usr/local/bin/greet
+X # #!/bin/bash
+X # if [ $# -eq 0 ]; then
+X #   echo "Usage: greet NAME" >&2
+X #   exit 1
+X # fi
+X # echo "Hello, $1"
+X chmod 755 /usr/local/bin/greet
+V greet Purva; greet; echo "exit code: $?"
+T Use command output in a script
+S Write /root/diskcheck.sh that reads how full / is (as a number) and prints "WARNING" if it is over 80, otherwise "OK".
+X vim /root/diskcheck.sh
+X # #!/bin/bash
+X # used=$(df --output=pcent / | tail -1 | tr -dc '0-9')
+X # if [ "$used" -gt 80 ]; then echo "WARNING: / is ${used}% full"; else echo "OK: / is ${used}% full"; fi
+X chmod 700 /root/diskcheck.sh
+V /root/diskcheck.sh
+T Dated backups
+S Write /root/backup-etc.sh that creates /root/backups/etc-YYYY-MM-DD.tar.gz using today's date, and prints the archive size.
+X vim /root/backup-etc.sh
+X # #!/bin/bash
+X # mkdir -p /root/backups
+X # file=/root/backups/etc-$(date +%F).tar.gz
+X # tar -czf "$file" /etc 2>/dev/null
+X # du -h "$file"
+X chmod 700 /root/backup-etc.sh
+V /root/backup-etc.sh && ls /root/backups
+
+#D 23|RH134|Shell scripts: conditions and loops|Conditionally execute code and use looping constructs to process files and command-line input.
+Q Which test is true when `file` exists and is a regular file?
++ [ -f file ]
+- [ -e -r file ]
+- [ -d file ]
+- [ file ]
+E -e exists (any type), -f regular file, -d directory, -r readable, -x executable, -s not empty.
+Q Which is the correct numeric comparison "a is greater than 5"?
++ [ "$a" -gt 5 ]
+- [ "$a" > 5 ]
+- [ $a gt 5 ]
+- [ "$a" => 5 ]
+E Numbers: -eq -ne -lt -le -gt -ge. Strings: = and !=. Inside [ ], `>` means redirection.
+C Write a one-line for loop that prints the numbers 1 to 5.
+A for i in {1..5}; do echo $i; done
+A for i in $(seq 1 5); do echo $i; done
+A for i in 1 2 3 4 5; do echo $i; done
+A for i in {1..5}; do echo "$i"; done
+E Loops can also go over files (`for f in /etc/*.conf`) or command output.
+Q What does `while read line; do echo "$line"; done < users.txt` do?
++ Reads users.txt one line at a time into $line
+- Reads the whole file into one variable
+- Waits for the user to type a line
+- Only reads the first line
+E This is the safe way to process a list of names from a file.
+Q When is `[ -z "$1" ]` true?
++ When $1 is empty or not given
+- When $1 is zero
+- When $1 is a file with size zero
+- When $1 is a directory
+E `-n` is the opposite: true when the string is not empty.
+Q In `cmd1 && cmd2 || cmd3`, when does cmd3 run?
++ When cmd1 fails, or when cmd1 succeeds and cmd2 fails
+- Only when cmd1 succeeds
+- Always
+- Never
+E && runs the next command on success, || on failure. For clear logic, use if/then/else.
+C Using the test brackets, print "yes" only if /etc/hosts is readable.
+A [ -r /etc/hosts ] && echo yes
+A test -r /etc/hosts && echo yes
+A [[ -r /etc/hosts ]] && echo yes
+E `test` and `[ ]` are the same builtin.
+Q Which if statement has correct syntax?
++ if [ "$x" = "yes" ]; then echo ok; fi
+- if [$x = yes] then echo ok fi
+- if ( $x == yes ) { echo ok }
+- if [ "$x" = "yes" ] echo ok; end
+E Spaces inside the brackets are required. Close with `fi`.
+Q Which word ends a case block?
++ esac
+- end
+- done
+- fi
+E case is spelled backwards; each branch ends with `;;`.
+T SGID file finder (exam style)
+S Write /usr/local/bin/mysearch that finds regular files under /usr that are smaller than 10 MiB and have the SGID bit set, and saves the list to /root/myfiles.
+X vim /usr/local/bin/mysearch
+X # #!/bin/bash
+X # find /usr -type f -size -10M -perm -2000 > /root/myfiles 2>/dev/null
+X chmod 755 /usr/local/bin/mysearch
+X mysearch
+V cat /root/myfiles
+T Create users from a list
+S Put the names alice, bob and carol in /root/newusers.txt, one per line. Write a script that creates each user who does not exist yet, sets the password "Change@123", and forces a password change at first login.
+X printf 'alice\nbob\ncarol\n' > /root/newusers.txt
+X vim /root/mkusers.sh
+X # #!/bin/bash
+X # while read u; do
+X #   if id "$u" &>/dev/null; then echo "$u exists"; continue; fi
+X #   useradd "$u"
+X #   echo 'Change@123' | passwd --stdin "$u" >/dev/null
+X #   chage -d 0 "$u"
+X #   echo "$u created"
+X # done < /root/newusers.txt
+X bash /root/mkusers.sh
+V id alice; chage -l bob | head -2
+T Argument-driven script
+S Write /root/switch.sh: with argument "all" print "All users"; with "none" print "No users"; with anything else, or nothing, print "Usage: switch.sh all|none" and exit 2.
+X vim /root/switch.sh
+X # #!/bin/bash
+X # if [ "$1" = "all" ]; then echo "All users"
+X # elif [ "$1" = "none" ]; then echo "No users"
+X # else echo "Usage: switch.sh all|none" >&2; exit 2
+X # fi
+X chmod 755 /root/switch.sh
+V /root/switch.sh all; /root/switch.sh none; /root/switch.sh x; echo $?
+T Batch rename with a loop
+S In /tmp/rename create file1.txt to file5.txt. Write a loop that renames every .txt file there to .bak.
+X mkdir -p /tmp/rename && touch /tmp/rename/file{1..5}.txt
+X for f in /tmp/rename/*.txt; do mv "$f" "${f%.txt}.bak"; done
+V ls /tmp/rename
+
+#D 24|RH134|Scheduling with at and cron|Schedule tasks using at and cron.
+C Schedule `date >> /tmp/date.txt` to run once, 5 minutes from now, with at.
+A echo "date >> /tmp/date.txt" | at now + 5 minutes
+A echo 'date >> /tmp/date.txt' | at now + 5 minutes
+A echo "date >> /tmp/date.txt" | at now +5 minutes
+A echo "date >> /tmp/date.txt" | at now + 5 min
+E Other time forms: `at 16:30`, `at 9am tomorrow`, `at noon + 2 days`.
+C List your pending at jobs.
+A atq
+A at -l
+E `at -c N` prints the full script of job N.
+C Delete at job number 3.
+A atrm 3
+A at -d 3
+E The atd service must be running for at jobs to run.
+Q What is the order of the five time fields in a crontab line?
++ minute, hour, day of month, month, day of week
+- hour, minute, day of month, month, day of week
+- minute, hour, month, day of month, day of week
+- second, minute, hour, day, month
+E Tip: `cat /etc/crontab` shows a reminder diagram of the fields.
+Q What does `*/10 * * * *` mean?
++ Every 10 minutes
+- At 10 minutes past every hour
+- Every 10 hours
+- On the 10th of every month
+E `10 * * * *` would be minute 10 of every hour.
+Q What does `30 14 * * 1-5` mean?
++ At 14:30, Monday to Friday
+- At 14:30 on days 1 to 5 of the month
+- Every 30 minutes from 14:00 to 17:00
+- At 30 minutes past 2 AM, Monday to Friday
+E Day of week: 0 or 7 = Sunday, 1 = Monday ... 6 = Saturday.
+C As root, edit the crontab of user natasha.
+A crontab -e -u natasha
+A crontab -u natasha -e
+E Never edit files in /var/spool/cron by hand.
+C As root, list natasha's cron jobs.
+A crontab -l -u natasha
+A crontab -u natasha -l
+E `crontab -r` deletes the whole crontab. Be careful.
+Q How are lines in /etc/crontab and /etc/cron.d/* different from a user crontab?
++ They have an extra field, the user name, before the command
+- They use seconds instead of minutes
+- They cannot use */N
+- They only run at boot
+E Example: `30 2 * * 0  root  /usr/local/bin/backup.sh`.
+T Cron jobs for a user (exam classic)
+S For natasha: run `/bin/echo hello` every day at 14:23, and run `logger "EX200 in progress"` every 2 minutes. Make sure the second one works by checking the logs.
+X crontab -e -u natasha
+X # 23 14 * * * /bin/echo hello
+X # */2 * * * * logger "EX200 in progress"
+X systemctl is-active crond
+V crontab -l -u natasha
+V sleep 130; grep 'EX200 in progress' /var/log/messages
+T One-time job with at
+S Schedule `touch /tmp/at-test` to run in 2 minutes. Look at the queue and the job's full script, then wait and check that the file appears.
+X systemctl enable --now atd
+X echo "touch /tmp/at-test" | at now + 2 minutes
+X atq
+X at -c <job-number> | tail -3
+V sleep 125; ls -l /tmp/at-test
+T System cron job
+S Every Sunday at 02:30, as root, archive /etc into /root/backups/weekly-etc.tar.gz. Use a file in /etc/cron.d.
+X echo '30 2 * * 0 root tar -czf /root/backups/weekly-etc.tar.gz /etc' > /etc/cron.d/weekly-etc
+X chmod 644 /etc/cron.d/weekly-etc
+V cat /etc/cron.d/weekly-etc
+T Control who may use cron
+S Stop harry from using crontab, test it, then allow him again.
+X echo harry >> /etc/cron.deny
+X su - harry -c 'crontab -l'     # "You (harry) are not allowed..."
+X sed -i '/^harry$/d' /etc/cron.deny
+V su - harry -c 'crontab -l'     # "no crontab for harry"
+
+#D 25|RH134|systemd timers and temporary files|Schedule tasks using systemd timer units; manage temporary files.
+Q Which unit files do you need for a systemd timer job?
++ A .timer unit and a .service unit with the same name
+- Only a .timer unit
+- A .cron unit
+- A .service unit with a Schedule= line
+E The timer starts the matching service. You can point it elsewhere with Unit=.
+Q What does `OnCalendar=*-*-* 02:00:00` mean?
++ Every day at 02:00
+- Every 2 hours
+- On the 2nd of every month
+- 2 minutes after boot
+E Format: DayOfWeek Year-Month-Day Hour:Minute:Second. `daily` means `*-*-* 00:00:00`.
+C List all timers with their next and last run times.
+A systemctl list-timers
+A systemctl list-timers --all
+E `--all` also shows inactive timers.
+C Check which times the calendar expression "Mon..Fri *-*-* 09:00" matches.
+A systemd-analyze calendar "Mon..Fri *-*-* 09:00"
+A systemd-analyze calendar 'Mon..Fri *-*-* 09:00'
+E It prints the normalized form and the next time it will fire.
+Q What does `Persistent=true` do in a timer?
++ If the system was off at the scheduled time, the job runs soon after the next boot
+- The timer can never be disabled
+- The job keeps running forever
+- The timer survives `systemctl daemon-reload`
+E This is similar to what anacron does for cron.
+Q Which target should a timer's [Install] section name?
++ WantedBy=timers.target
+- WantedBy=multi-user.target
+- WantedBy=default.target
+- WantedBy=cron.target
+E Then `systemctl enable --now name.timer`. Enable the timer, not the service.
+C Enable and start backup.timer now.
+A systemctl enable --now backup.timer
+E Check it with `systemctl list-timers backup.timer`.
+Q What does `OnBootSec=15min` mean in a timer?
++ Run the service 15 minutes after the system boots
+- Run every 15 minutes
+- Boot the system every 15 minutes
+- Wait 15 minutes before the service stops
+E Pair it with `OnUnitActiveSec=1h` to keep repeating every hour after that.
+Q What does the tmpfiles.d line `d /run/myapp 0755 root root 1d` do?
++ Creates the directory at boot and removes files in it older than 1 day
+- Deletes /run/myapp after 1 day
+- Makes /run/myapp read-only for 1 day
+- Creates a file named 1d
+E Apply it now with `systemd-tmpfiles --create`; clean with `systemd-tmpfiles --clean`.
+T Daily backup with a timer
+S Create a oneshot service etc-backup.service that runs `tar -czf /root/backups/etc-timer.tar.gz /etc`, and a timer that runs it every day at 02:00, even if the machine was off then. Enable the timer.
+X vim /etc/systemd/system/etc-backup.service
+X # [Unit]
+X # Description=Back up /etc
+X # [Service]
+X # Type=oneshot
+X # ExecStart=/usr/bin/tar -czf /root/backups/etc-timer.tar.gz /etc
+X vim /etc/systemd/system/etc-backup.timer
+X # [Unit]
+X # Description=Daily /etc backup
+X # [Timer]
+X # OnCalendar=*-*-* 02:00:00
+X # Persistent=true
+X # [Install]
+X # WantedBy=timers.target
+X mkdir -p /root/backups
+X systemctl daemon-reload
+X systemctl enable --now etc-backup.timer
+V systemctl list-timers etc-backup.timer
+V systemctl start etc-backup.service && ls -l /root/backups/etc-timer.tar.gz
+T Repeating timer after boot
+S Create a timer that runs a service writing the date to /var/log/tick.log 1 minute after boot and then every 5 minutes.
+X vim /etc/systemd/system/tick.service
+X # [Service]
+X # Type=oneshot
+X # ExecStart=/bin/sh -c 'date >> /var/log/tick.log'
+X vim /etc/systemd/system/tick.timer
+X # [Timer]
+X # OnBootSec=1min
+X # OnUnitActiveSec=5min
+X # [Install]
+X # WantedBy=timers.target
+X systemctl daemon-reload && systemctl enable --now tick.timer
+V systemctl list-timers tick.timer; cat /var/log/tick.log
+T Convert a cron job into a timer
+S natasha's cron job runs `logger "EX200 in progress"` every 2 minutes. Create a system timer that does the same thing, then check the journal.
+X vim /etc/systemd/system/ex200log.service
+X # [Service]
+X # Type=oneshot
+X # ExecStart=/usr/bin/logger "EX200 in progress (timer)"
+X vim /etc/systemd/system/ex200log.timer
+X # [Timer]
+X # OnCalendar=*:0/2
+X # [Install]
+X # WantedBy=timers.target
+X systemctl daemon-reload && systemctl enable --now ex200log.timer
+V journalctl --since "-5min" | grep 'EX200 in progress (timer)'
+T Temporary files with systemd-tmpfiles
+S Make systemd create /run/practice (mode 0750, root:root) at every boot and clean out files older than 30 seconds. Test the cleanup.
+X echo 'd /run/practice 0750 root root 30s' > /etc/tmpfiles.d/practice.conf
+X systemd-tmpfiles --create /etc/tmpfiles.d/practice.conf
+X touch /run/practice/oldfile
+X sleep 35
+X systemd-tmpfiles --clean /etc/tmpfiles.d/practice.conf
+V ls -la /run/practice
+
+#D 26|RH134|Tuning profiles and process priority|Manage tuning profiles and adjust process scheduling.
+C Show which tuned profile is active.
+A tuned-adm active
+E If it says no profile, check that the tuned service is running.
+C Show the profile that tuned recommends for this machine.
+A tuned-adm recommend
+E On a VM it usually recommends virtual-guest.
+C Switch to the virtual-guest profile.
+A tuned-adm profile virtual-guest
+E The choice is saved and survives reboots while the tuned service is enabled.
+C List all available tuned profiles.
+A tuned-adm list
+E Profiles live in /usr/lib/tuned/; custom ones go in /etc/tuned/.
+Q What is the range of nice values?
++ -20 (highest priority) to 19 (lowest priority)
+- 0 to 100
+- -19 to 20
+- 1 to 99
+E A higher nice value means the process is "nicer" to others and gets less CPU.
+Q What nice value does a new process get by default?
++ 0
+- 10
+- -20
+- 19
+E It inherits the nice value of its parent, usually 0.
+Q Who can lower a process's nice value (give it higher priority)?
++ Only root
+- The process owner
+- Any member of wheel without sudo
+- Anyone
+E Regular users can only raise the nice value of their own processes.
+C Start `sha1sum /dev/zero` in the background with a nice value of 10.
+A nice -n 10 sha1sum /dev/zero &
+A nice -n 10 sha1sum /dev/zero
+A nice -10 sha1sum /dev/zero &
+E `nice -10` means +10. For a negative value you need `nice -n -10`.
+C Change the nice value of PID 1234 to 5.
+A renice -n 5 -p 1234
+A renice -n 5 1234
+A renice 5 -p 1234
+A renice 5 1234
+E In top, press r and enter the PID and the new value.
+Q Which column shows the nice value in `top` and in `ps -o`?
++ NI
+- PR
+- NV
+- S
+E `ps -o pid,ni,comm` shows it. PR in top is the kernel priority derived from it.
+T Set the recommended tuning profile (exam classic)
+S Install and enable tuned if needed, then apply the profile it recommends, and confirm it.
+X dnf install -y tuned
+X systemctl enable --now tuned
+X tuned-adm recommend
+X tuned-adm profile $(tuned-adm recommend)
+V tuned-adm active
+V tuned-adm verify
+T See nice values in action
+S Run two `sha1sum /dev/zero` processes pinned to CPU 0, one with nice 0 and one with nice 19. Compare their %CPU in top, then kill both.
+X taskset -c 0 sha1sum /dev/zero &
+X taskset -c 0 nice -n 19 sha1sum /dev/zero &
+X ps -o pid,ni,%cpu,comm -C sha1sum
+X top        # watch %CPU, then q
+X pkill sha1sum
+V pgrep sha1sum || echo done
+T Change priority of a running process
+S Start `sleep 3000` as harry. As root, set its nice value to -5, then to 10. As harry, try to set it back to 0 and read the error.
+X su - harry -c 'sleep 3000 &'
+X renice -n -5 -p $(pgrep -u harry sleep)
+X renice -n 10 -p $(pgrep -u harry sleep)
+X su - harry -c "renice -n 0 -p $(pgrep -u harry sleep)"   # Permission denied
+V ps -o pid,ni,user,comm -p $(pgrep -u harry sleep)
+T Switch profiles and back
+S Apply throughput-performance, check it, apply powersave, then return to the recommended profile.
+X tuned-adm profile throughput-performance && tuned-adm active
+X tuned-adm profile powersave && tuned-adm active
+X tuned-adm profile $(tuned-adm recommend)
+V tuned-adm active
+
+#D 27|RH134|SELinux modes and contexts|Set enforcing and permissive modes; list and identify SELinux file and process contexts.
+C Show the current SELinux mode.
+A getenforce
+A sestatus
+E Enforcing, Permissive or Disabled.
+C Switch SELinux to permissive mode until the next reboot.
+A setenforce 0
+A setenforce Permissive
+E `setenforce 1` switches back to enforcing.
+Q Where is the SELinux mode set persistently?
++ The SELINUX= line in /etc/selinux/config
+- /etc/sysconfig/selinux-mode
+- /etc/default/grub only
+- /etc/selinux/semanage.conf
+E The exam requires enforcing unless the task says otherwise. Leave it enforcing.
+Q Can `setenforce` turn SELinux off completely?
++ No, it only switches between enforcing and permissive
+- Yes, with setenforce disabled
+- Yes, with setenforce -1
+- Only as root in rescue mode
+E Fully disabling needs a reboot. On RHEL 9 and later it is done with the `selinux=0` kernel argument.
+C Show the SELinux contexts of the files in /var/www/html.
+A ls -Z /var/www/html
+A ls -lZ /var/www/html
+E Web content should have the type httpd_sys_content_t.
+C Show the SELinux contexts of the running httpd processes.
+A ps -eZ | grep httpd
+A ps axZ | grep httpd
+A ps -efZ | grep httpd
+A ps auxZ | grep httpd
+E Apache processes run as the type httpd_t.
+Q Which part of a context does the targeted policy mostly check?
++ The type, such as httpd_sys_content_t
+- The user, such as system_u
+- The role, such as object_r
+- The level, such as s0
+E Rules say which process types may access which file types.
+Q What is the format of an SELinux context?
++ user:role:type:level
+- type:user:role
+- owner:group:mode
+- role:type:user:level
+E Example: system_u:object_r:httpd_sys_content_t:s0.
+Q What happens to an action the policy would deny, in permissive mode?
++ It is allowed, but the denial is still logged
+- It is blocked and logged
+- It is blocked silently
+- Nothing is logged at all
+E Permissive mode is useful for troubleshooting, not as a fix.
+Q Where are SELinux AVC denials logged?
++ /var/log/audit/audit.log
+- /var/log/selinux.log
+- /var/log/secure
+- /etc/selinux/log
+E Search them with `ausearch -m AVC`.
+T Switch SELinux modes
+S Check the current mode, switch to permissive, confirm, switch back to enforcing, and confirm the persistent setting is enforcing.
+X getenforce
+X setenforce 0 && getenforce
+X setenforce 1 && getenforce
+X grep ^SELINUX= /etc/selinux/config
+V sestatus
+T Read contexts of files and processes
+S Show the contexts of /etc/shadow, /var/www/html, /home/student and /tmp, of the sshd and httpd processes, and of your own shell.
+X ls -Z /etc/shadow
+X ls -dZ /var/www/html /home/student /tmp
+X ps -eZ | grep -E 'sshd|httpd'
+X id -Z
+V ls -dZ /var/www/html | grep httpd_sys_content_t
+T Moving vs copying keeps different contexts
+S Create a.html and b.html in /root. Move a.html and copy b.html into /var/www/html. Compare their contexts, see why a.html would give a 403 error, and fix it.
+X echo A > /root/a.html; echo B > /root/b.html
+X mv /root/a.html /var/www/html/
+X cp /root/b.html /var/www/html/
+X ls -Z /var/www/html/*.html      # a.html keeps admin_home_t
+X restorecon -v /var/www/html/a.html
+V ls -Z /var/www/html/*.html
+T Boot once in permissive mode
+S Reboot and, at the GRUB menu, add `enforcing=0` to the kernel line for this boot only. Check the mode, then reboot normally and check again.
+X # at GRUB: press e, go to the line starting with linux, add enforcing=0, press Ctrl+X
+X getenforce       # Permissive
+X systemctl reboot
+V getenforce       # Enforcing
+
+#D 28|RH134|SELinux: file contexts, booleans and ports|Restore default file contexts, use Boolean settings, and manage SELinux port labels.
+C Add a persistent rule so /web and everything under it gets the type httpd_sys_content_t.
+A semanage fcontext -a -t httpd_sys_content_t '/web(/.*)?'
+A semanage fcontext -a -t httpd_sys_content_t "/web(/.*)?"
+E This only adds the rule. Then apply it with restorecon.
+C Apply the default contexts to /web recursively and show what changes.
+A restorecon -Rv /web
+A restorecon -R -v /web
+A restorecon -vR /web
+E restorecon sets each file to what the policy rules say it should be.
+Q What is the difference between chcon and semanage fcontext?
++ chcon changes the label now but a relabel or restorecon undoes it; semanage fcontext records the rule permanently
+- chcon is permanent; semanage is temporary
+- They are identical
+- chcon only works on directories
+E In the exam, always use semanage fcontext plus restorecon.
+C Show all SELinux booleans with "httpd" in their name and their current values.
+A getsebool -a | grep httpd
+A semanage boolean -l | grep httpd
+E `semanage boolean -l` also shows a short description of each one.
+C Turn on the boolean httpd_enable_homedirs permanently.
+A setsebool -P httpd_enable_homedirs on
+A setsebool -P httpd_enable_homedirs 1
+E Without -P the change is lost at the next reboot.
+C Allow httpd to listen on TCP port 82 as far as SELinux is concerned.
+A semanage port -a -t http_port_t -p tcp 82
+E If the port already has another type, use -m instead of -a.
+C List the SELinux port types that contain "http".
+A semanage port -l | grep http
+E http_port_t covers 80, 443, 488, 8008, 8009 and 8443 by default.
+Q Which package provides the semanage command?
++ policycoreutils-python-utils
+- selinux-policy-targeted
+- setroubleshoot-server
+- libselinux-utils
+E getenforce and setenforce come from libselinux-utils; sealert from setroubleshoot-server.
+Q Which command shows recent AVC denials from the audit log?
++ ausearch -m AVC -ts recent
+- journalctl -u selinux
+- grep denied /var/log/messages -A5 only
+- sestatus -v
+E `sealert -a /var/log/audit/audit.log` explains each denial and suggests a fix.
+T Custom web root (exam classic)
+S Serve /web/index.html with Apache by pointing DocumentRoot at /web. Make it work in enforcing mode with a persistent SELinux rule.
+X mkdir /web && echo "custom root" > /web/index.html
+X vim /etc/httpd/conf/httpd.conf     # DocumentRoot "/web"  and  <Directory "/web"> ... Require all granted
+X semanage fcontext -a -t httpd_sys_content_t '/web(/.*)?'
+X restorecon -Rv /web
+X systemctl restart httpd
+V curl http://localhost/
+V ls -Zd /web /web/index.html
+T Web server on a non-standard port (exam classic)
+S Make httpd listen on port 82 and serve its content there. Fix SELinux and the firewall so http://node1:82 works from node2.
+X vim /etc/httpd/conf/httpd.conf     # Listen 82
+X systemctl restart httpd            # fails: cannot bind to port 82
+X semanage port -a -t http_port_t -p tcp 82
+X firewall-cmd --permanent --add-port=82/tcp && firewall-cmd --reload
+X systemctl enable --now httpd
+V curl http://node1:82      # run on node2
+V semanage port -l | grep ^http_port_t
+T Use a boolean
+S Let httpd make outgoing network connections (needed by apps that call a backend), permanently. List the booleans you changed from the defaults.
+X getsebool httpd_can_network_connect
+X setsebool -P httpd_can_network_connect on
+V getsebool httpd_can_network_connect
+V semanage boolean -l -C
+T Read and fix a denial
+S Create /var/www/html/bad.html in /root and move it into place so it gets the wrong context. Request it, find the denial in the audit log, read the sealert advice, and fix it.
+X echo bad > /root/bad.html && mv /root/bad.html /var/www/html/
+X curl http://localhost/bad.html          # 403 Forbidden
+X ausearch -m AVC -ts recent
+X dnf install -y setroubleshoot-server
+X sealert -a /var/log/audit/audit.log | less
+X restorecon -v /var/www/html/bad.html
+V curl http://localhost/bad.html
+
+#D 29|RH134|Partitions on GPT disks|List, create and delete partitions on GPT disks; mount file systems at boot by UUID or label.
+C Write a new GPT partition table to /dev/vdb with parted.
+A parted /dev/vdb mklabel gpt
+A parted -s /dev/vdb mklabel gpt
+E This wipes the existing partition table. Only run it on an empty disk.
+C With parted, create a partition named data on /dev/vdb from 1MiB to 1025MiB with an xfs hint.
+A parted /dev/vdb mkpart data xfs 1MiB 1025MiB
+A parted -s /dev/vdb mkpart data xfs 1MiB 1025MiB
+A parted /dev/vdb mkpart data 1MiB 1025MiB
+E On GPT, the first argument of mkpart is the partition name. The fs type is only a hint; you still need mkfs.
+Q Why start the first partition at 1MiB?
++ It keeps partitions aligned and leaves room for the GPT header
+- Partitions cannot start at 0
+- The bootloader needs exactly 1MiB
+- It makes the partition faster to format
+E Always use MiB units in parted for alignment.
+C Show the partition table of /dev/vdb.
+A parted /dev/vdb print
+A fdisk -l /dev/vdb
+A gdisk -l /dev/vdb
+A lsblk /dev/vdb
+E `lsblk` is the quickest way to see all disks and partitions at once.
+Q After creating a partition, which command waits until its device file (/dev/vdb1) exists?
++ udevadm settle
+- partprobe --wait
+- sync
+- systemctl daemon-reload
+E Scripts use it before running mkfs on the new partition.
+C Format /dev/vdb1 with XFS.
+A mkfs.xfs /dev/vdb1
+A mkfs -t xfs /dev/vdb1
+E Add `-f` to overwrite an existing filesystem.
+Q What is the order of the six fields in /etc/fstab?
++ device, mount point, filesystem type, options, dump, fsck order
+- mount point, device, type, options, fsck order, dump
+- device, type, mount point, options, dump, fsck order
+- UUID, label, mount point, type, options, dump
+E Example: `UUID=1b2c... /data xfs defaults 0 0`.
+Q Why use UUID= in /etc/fstab instead of /dev/vdb1?
++ Device names can change between boots, but the UUID stays the same
+- /dev names are not allowed in fstab
+- UUIDs mount faster
+- The exam forbids device names
+E Get it with `blkid` or `lsblk -f`. LABEL= works too when the filesystem has a label.
+C Mount everything in /etc/fstab that is not mounted yet, without rebooting.
+A mount -a
+E If it prints nothing, your new lines are fine. Run `findmnt --verify` for a deeper check.
+Q What does `parted /dev/vdb set 1 lvm on` do?
++ Marks partition 1 as an LVM partition
+- Creates a physical volume on partition 1
+- Adds partition 1 to a volume group
+- Formats partition 1
+E The flag only sets the type. You still need `pvcreate`.
+T GPT partition mounted by UUID (exam classic)
+S On the second disk, create a GPT label and a 1 GiB partition. Format it with XFS and mount it at /mnt/data at every boot using its UUID.
+X lsblk
+X parted -s /dev/vdb mklabel gpt
+X parted -s /dev/vdb mkpart data xfs 1MiB 1025MiB
+X udevadm settle
+X mkfs.xfs /dev/vdb1
+X mkdir -p /mnt/data
+X blkid /dev/vdb1
+X echo 'UUID=<uuid-from-blkid>  /mnt/data  xfs  defaults  0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V findmnt /mnt/data
+V reboot, then df -h /mnt/data
+T ext4 partition mounted by label
+S Create a second partition of 500 MiB, format it ext4 with the label BACKUP, and mount it at /backup at boot using LABEL=.
+X parted -s /dev/vdb mkpart backup ext4 1025MiB 1525MiB
+X udevadm settle
+X mkfs.ext4 -L BACKUP /dev/vdb2
+X mkdir -p /backup
+X echo 'LABEL=BACKUP  /backup  ext4  defaults  0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V lsblk -f /dev/vdb
+V findmnt /backup
+T Delete a partition safely
+S Remove the /backup partition: unmount it, remove its fstab line, delete the partition, and confirm the system still boots cleanly.
+X umount /backup
+X vim /etc/fstab            # delete the LABEL=BACKUP line
+X systemctl daemon-reload
+X parted /dev/vdb rm 2
+V lsblk /dev/vdb
+V mount -a && echo "fstab OK"
+T Partition with fdisk instead of parted
+S On a spare disk, use fdisk interactively to create a GPT label and one 200 MiB partition of type "Linux filesystem".
+X fdisk /dev/vdc
+X # g  (new GPT label)
+X # n  (new partition), accept number and first sector, last sector: +200M
+X # p  (print)   w  (write)
+V lsblk /dev/vdc
+
+#D 30|RH134|Swap space|Add swap non-destructively and activate it at boot.
+C Initialize /dev/vdb2 as swap space.
+A mkswap /dev/vdb2
+E mkswap prints the new UUID.
+C Turn on the swap on /dev/vdb2 now.
+A swapon /dev/vdb2
+E `swapoff /dev/vdb2` turns it off again.
+C Show the active swap areas.
+A swapon --show
+A swapon -s
+A cat /proc/swaps
+A free -h
+E `free -h` shows total swap; `swapon --show` lists each area with its priority.
+Q Which /etc/fstab line activates a swap partition at boot?
++ UUID=<uuid>  none  swap  defaults  0 0
+- UUID=<uuid>  /swap  xfs  defaults  0 0
+- UUID=<uuid>  swap  swapon  auto  1 1
+- /swap  UUID=<uuid>  swap  on  0 0
+E The mount point field is `none` or `swap`; both work.
+C Activate all swap areas listed in /etc/fstab.
+A swapon -a
+E Use this to test your fstab line without rebooting.
+Q A task says "add swap non-destructively". What does that mean?
++ Add new swap without deleting or damaging any existing partitions, data or swap
+- Replace the existing swap with a bigger one
+- Use a swap file only
+- Resize the root filesystem to make room
+E Use free space on the disk and keep existing swap active.
+Q How do you make the kernel use one swap area before another?
++ Give it a higher pri=N value in its fstab options
+- List it first in fstab
+- Make it larger
+- Put it on a faster disk; nothing else matters
+E Example options field: `pri=10`. Higher numbers are used first.
+Q Which parted filesystem type hint do you use for a swap partition?
++ linux-swap
+- swap
+- xfs
+- raw
+E Example: `parted /dev/vdb mkpart swap1 linux-swap 1025MiB 1537MiB`.
+Q Can a logical volume be used as swap?
++ Yes: create the LV, run mkswap on it, and add it to fstab
+- No, swap must be a partition
+- Only if it uses all of the VG
+- Only with a swap file on top
+E Example: `mkswap /dev/vgdata/swaplv`.
+T Add a swap partition (exam classic)
+S Add a 512 MiB swap partition on the second disk without touching existing partitions or swap. It must be active after reboot.
+X parted -s /dev/vdb mkpart swap1 linux-swap 1025MiB 1537MiB
+X udevadm settle
+X mkswap /dev/vdb2
+X echo 'UUID=<uuid-from-mkswap>  none  swap  defaults  0 0' >> /etc/fstab
+X swapon -a
+V swapon --show
+V reboot, then free -h
+T Swap on a logical volume
+S In an existing volume group, create a 256 MiB LV named swaplv, make it swap, and activate it at boot.
+X lvcreate -n swaplv -L 256M vgdata
+X mkswap /dev/vgdata/swaplv
+X echo '/dev/vgdata/swaplv  none  swap  defaults  0 0' >> /etc/fstab
+X swapon -a
+V swapon --show
+T Swap priorities
+S Give the partition swap priority 10 and the LV swap priority 5 in /etc/fstab. Reactivate both and check the order.
+X vim /etc/fstab        # options: pri=10 on the partition line, pri=5 on the LV line
+X swapoff -a && swapon -a
+V swapon --show
+T Swap file
+S Create a 256 MiB swap file /swapfile with safe permissions, activate it, and add it to fstab.
+X dd if=/dev/zero of=/swapfile bs=1M count=256
+X chmod 600 /swapfile
+X mkswap /swapfile
+X swapon /swapfile
+X echo '/swapfile  none  swap  defaults  0 0' >> /etc/fstab
+V swapon --show
+
+#D 31|RH134|LVM: physical volumes, groups and volumes|Create and remove physical volumes, assign them to volume groups, create and delete logical volumes.
+C Initialize /dev/vdb1 as an LVM physical volume.
+A pvcreate /dev/vdb1
+E Check it with `pvs`.
+C Create the volume group vgdata from /dev/vdb1 with a physical extent size of 16 MiB.
+A vgcreate -s 16M vgdata /dev/vdb1
+A vgcreate -s 16m vgdata /dev/vdb1
+E `-s` sets the extent size. Without it you get 4 MiB.
+C Create a 500 MiB logical volume named lvdata in vgdata.
+A lvcreate -n lvdata -L 500M vgdata
+A lvcreate -L 500M -n lvdata vgdata
+A lvcreate --name lvdata --size 500M vgdata
+E `-L` takes a size; `-l` takes a number of extents.
+C Create a logical volume lvqa of exactly 60 extents in vgdata.
+A lvcreate -n lvqa -l 60 vgdata
+A lvcreate -l 60 -n lvqa vgdata
+E If the task gives extents, use -l. If it gives a size, use -L.
+Q What is the default physical extent size?
++ 4 MiB
+- 1 MiB
+- 16 MiB
+- 32 MiB
+E `vgdisplay` shows it as "PE Size".
+Q A VG has an extent size of 16 MiB. How big is an LV of 60 extents?
++ 960 MiB
+- 60 MiB
+- 600 MiB
+- 1 GiB
+E Size = extents x extent size = 60 x 16 MiB.
+Q Which two paths point to the LV lvdata in vgdata?
++ /dev/vgdata/lvdata and /dev/mapper/vgdata-lvdata
+- /dev/lvdata and /dev/vgdata
+- /dev/lvm/lvdata and /dev/dm-lvdata
+- /dev/vgdata-lvdata and /dev/mapper/lvdata
+E Both work in /etc/fstab. LVs keep their names, so they are stable like UUIDs.
+C Show details of the volume group vgdata, including its extent size.
+A vgdisplay vgdata
+A vgs -o +vg_extent_size vgdata
+E `pvs`, `vgs` and `lvs` give short summaries.
+C Create an LV named lvrest in vgdata that uses all remaining free space.
+A lvcreate -n lvrest -l 100%FREE vgdata
+A lvcreate -l 100%FREE -n lvrest vgdata
+E `-l 50%VG` would take half of the whole VG.
+Q In what order do you remove an LVM setup completely?
++ Unmount, remove the fstab line, lvremove, vgremove, pvremove
+- pvremove, vgremove, lvremove, then unmount
+- vgremove first, it removes everything
+- Just delete the partition
+E Removing things underneath a mounted filesystem leads to errors and data loss.
+T LV with a given extent size (exam classic)
+S Create volume group qagroup with 16 MiB extents. In it, create LV qa with 60 extents, format it ext4, and mount it at /mnt/qa at every boot.
+X parted -s /dev/vdb mkpart lvm1 1537MiB 3585MiB && parted -s /dev/vdb set 3 lvm on
+X udevadm settle
+X pvcreate /dev/vdb3
+X vgcreate -s 16M qagroup /dev/vdb3
+X lvcreate -n qa -l 60 qagroup
+X mkfs.ext4 /dev/qagroup/qa
+X mkdir -p /mnt/qa
+X echo '/dev/qagroup/qa  /mnt/qa  ext4  defaults  0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V lvs qagroup; vgdisplay qagroup | grep 'PE Size'
+V df -h /mnt/qa
+T Two disks, one volume group
+S Make PVs from two partitions (or two small disks), combine them into VG labvg, and create two LVs: web (300 MiB, XFS at /srv/web) and db (200 MiB, ext4 at /srv/db), both mounted at boot.
+X pvcreate /dev/vdc1 /dev/vdd1
+X vgcreate labvg /dev/vdc1 /dev/vdd1
+X lvcreate -n web -L 300M labvg && mkfs.xfs /dev/labvg/web
+X lvcreate -n db -L 200M labvg && mkfs.ext4 /dev/labvg/db
+X mkdir -p /srv/web /srv/db
+X echo '/dev/labvg/web /srv/web xfs defaults 0 0' >> /etc/fstab
+X echo '/dev/labvg/db /srv/db ext4 defaults 0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V lvs labvg; df -h /srv/web /srv/db
+T Read the LVM status
+S Use pvs, vgs, lvs and their display versions to answer: how much free space does each VG have, which PVs belong to which VG, and what is each VG's extent size?
+X pvs; vgs; lvs
+X pvdisplay /dev/vdb3
+X vgdisplay qagroup
+X lvdisplay /dev/qagroup/qa
+V vgs -o vg_name,vg_size,vg_free,vg_extent_size
+T Tear down an LVM stack
+S Completely remove labvg and its PVs, leaving the system booting cleanly.
+X umount /srv/web /srv/db
+X vim /etc/fstab             # delete the two labvg lines
+X systemctl daemon-reload
+X lvremove -y /dev/labvg/web /dev/labvg/db
+X vgremove labvg
+X pvremove /dev/vdc1 /dev/vdd1
+V pvs; vgs
+V mount -a && echo "fstab OK"

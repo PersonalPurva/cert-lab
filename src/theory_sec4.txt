@@ -1,0 +1,92 @@
+#D 25
+## What risk is
+**Risk** is the chance that a threat exploits a vulnerability, and the impact if it does — roughly **likelihood × impact**. Security is really risk management: you cannot remove all risk, so you decide which risks to reduce and which to accept.
+
+## The four risk responses
+For each risk you choose one of:
+- **Mitigate** — add controls to reduce likelihood or impact.
+- **Transfer** — shift the impact to someone else (buying cyber-insurance).
+- **Avoid** — stop doing the risky activity.
+- **Accept** — knowingly live with the residual risk.
+**Residual risk** is what remains after controls are applied; leadership formally accepts it. A **risk register** is a living document listing each risk, its owner, and its treatment status.
+
+## Measuring risk
+- **Qualitative** analysis rates risk high/medium/low by judgement.
+- **Quantitative** analysis uses numbers:
+  - **SLE (Single Loss Expectancy)** = asset value × exposure factor.
+  - **ARO (Annualized Rate of Occurrence)** = how many times per year it's expected.
+  - **ALE (Annualized Loss Expectancy)** = SLE × ARO.
+Example: a $20,000 asset, 25% destroyed, once every 4 years → SLE = $5,000, ARO = 0.25, ALE = $1,250/year. A control costing less than $1,250/year that removes this risk is justified.
+
+#D 26
+## Why third-party risk matters
+Your security is only as strong as the vendors who touch your data — a weakness in one of them can become **your** breach (supply-chain risk). So you assess vendors before and during the relationship.
+
+## Agreements that manage the relationship
+- **SLA (Service Level Agreement)** — the measurable service levels a vendor must meet (uptime, response times); include security requirements and penalties.
+- **MOU/MOA** — a (often non-binding) statement of intentions between parties.
+- **BPA (Business Partners Agreement)** — governs responsibilities and liability between business partners.
+- A **right-to-audit** clause lets you verify a vendor's controls yourself or via a third party — without it you rely only on their word.
+
+## Assurance and lifecycle
+- A **SOC 2** report gives independent assurance about a service provider's security/availability controls.
+- **Vendor lock-in** is a risk because leaving becomes costly — plan an exit strategy and data portability up front.
+- **End-of-life (EOL)** vendor products stop getting security updates, so plan replacement before EOL.
+For a software dependency, reduce supply-chain risk by pinning versions, verifying checksums/signatures, using a private/proxy registry, and scanning for CVEs before upgrading.
+
+#D 27
+## Assessments vs audits vs testing
+Different activities verify security in different ways:
+- A **vulnerability scan** identifies weaknesses automatically but does **not** exploit them.
+- A **penetration test** goes further, **exploiting** flaws to prove real impact within an authorised scope.
+- An **audit** independently verifies that controls exist and work against a standard or policy; **attestation** is a formal statement that they were reviewed and meet criteria.
+- A **compliance scan** checks systems against a required benchmark (PCI DSS, CIS).
+
+## Penetration-test knowledge
+- **Black box** = the tester has no internal knowledge; **white box** = full knowledge and credentials; **gray box** = partial.
+- **Rules of engagement** define the authorised scope, timing, allowed techniques and contacts — testing outside them can be illegal.
+- A **red team** simulates a real adversary to test detection and response; the **blue team** defends; **purple** is the two collaborating.
+
+## Continuous validation
+- A **bug bounty** program pays external researchers to responsibly report vulnerabilities under defined rules, widening your testing pool.
+- Retesting after remediation confirms fixes actually worked. The point of all of this is to find and fix weaknesses *before* an attacker does — and prioritise by real risk, not raw counts.
+
+#D 28
+## Automation and orchestration in security
+Automation runs security tasks consistently, quickly and repeatably, reducing human error — for example **SOAR** playbooks that auto-triage and contain common incidents. But automation cuts both ways: a flawed script can cause damage at scale, so it needs guardrails, approvals and testing. **Idempotent** automation (running it repeatedly yields the same safe end state) is the goal, as with configuration tools like Ansible.
+
+## Secure development and pipelines
+- **Shift left** means adding security testing early in the development pipeline (CI/CD) — catching flaws with SAST/DAST and dependency scans *before* production, which is far cheaper than fixing them later.
+- **Sign your scripts and artifacts** so only trusted, untampered code runs — a supply-chain defence; verification stops a tampered artifact from deploying.
+
+## Handling secrets and service accounts
+- Never store secrets (API keys, passwords) in code — anyone with the code gets them. Use a **secrets manager** and inject them at runtime.
+- Automation **service accounts** must follow least privilege and be monitored; an over-privileged automation account is a prime target. Scanning code for hard-coded secrets before committing is a simple, high-value habit.
+
+#D 29
+## Endpoint protection
+Endpoints (laptops, servers, phones) are where users work and where attacks often land, so they get layered protection:
+- **Antivirus** catches known-signature malware.
+- **EDR (Endpoint Detection and Response)** goes further — continuous monitoring of behaviour and telemetry, with the ability to investigate and contain remotely. It catches suspicious *behaviour*, not just known files.
+- **Application allow-listing** blocks unknown executables from running.
+- **HIPS** (host intrusion prevention) blocks malicious behaviour on the host itself.
+The strong anti-ransomware combination is EDR + least privilege + patching + tested offline backups.
+
+## Email security
+Email is the top delivery route for attacks, so it gets dedicated defences:
+- **SPF, DKIM and DMARC** together verify a sender's authenticity and reduce spoofing/phishing — SPF authorises sending servers, DKIM signs messages, DMARC sets policy and reporting.
+- **Sandboxing** detonates a suspicious attachment in an isolated environment to observe its behaviour safely.
+- **Content Disarm and Reconstruction (CDR)** strips active content (macros/scripts) and rebuilds a safe version of a file.
+Combined with user awareness training and MFA, these blunt both the delivery and the payoff of email attacks.
+
+#D 30
+## Approaching the SY0-701 exam
+The Security+ exam is up to **90 questions in 90 minutes**, mixing multiple-choice with **performance-based questions (PBQs)** — small hands-on scenarios like configuring a firewall rule, reading logs, or matching controls. The passing score is **750 on a 100–900 scale** (so not a simple percentage).
+
+## Strategy
+- PBQs take longer, so a common tactic is to **flag** them, answer the quick multiple-choice questions first to bank those points, then return.
+- Watch for keywords: **"BEST"** and **"MOST likely"** signal that more than one answer looks correct — rank them and pick the strongest, most secure, most directly relevant option.
+- There's **no penalty for guessing**, so never leave a blank — eliminate wrong options and make your best choice.
+
+## What the exam really tests
+Security+ rewards understanding *concepts* and choosing the *best* control for a situation, not memorising trivia. The PBQs reward hands-on familiarity — reading a log, picking firewall rules, hardening a config — which is exactly why practising the labs and command drills alongside the theory pays off. Think like a defender: which option most reduces real risk?

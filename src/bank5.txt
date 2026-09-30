@@ -1,0 +1,760 @@
+#D 41|EX200|Review: essential tools|Mixed exam-style practice on files, links, grep, find, archives and documentation.
+Q A task says "copy the file, preserving ownership, permissions and timestamps". Which command fits?
++ cp -a source dest
+- cp source dest
+- mv source dest
+- cp -r source dest
+E `-a` keeps ownership (as root), mode, timestamps, links and SELinux context.
+Q A task asks for a hard link /root/fstab.hard to /etc/fstab. Which is correct?
++ ln /etc/fstab /root/fstab.hard
+- ln -s /etc/fstab /root/fstab.hard
+- cp -l /root/fstab.hard /etc/fstab
+- ln /root/fstab.hard /etc/fstab
+E Check with `ls -li`: both names show the same inode number.
+Q Which grep command keeps the exact lines of /etc/services that contain "http" at the start of a line?
++ grep '^http' /etc/services
+- grep 'http$' /etc/services
+- grep -v '^http' /etc/services
+- grep -c '^http' /etc/services
+E Read whether the task wants lines, a count, or only words.
+C Create /root/logs.tar.xz containing /var/log, compressed with xz.
+A tar -cJf /root/logs.tar.xz /var/log
+A tar cJf /root/logs.tar.xz /var/log
+A tar -cJvf /root/logs.tar.xz /var/log
+E Check it with `file /root/logs.tar.xz`.
+C Find files under /etc larger than 1 MiB and list them with details.
+A find /etc -size +1M -ls
+A find /etc -type f -size +1M -ls
+A find /etc -size +1M -exec ls -l {} \;
+E `-ls` prints ls-style details for each match.
+Q Where can you find example configurations during the exam when you have no internet?
++ man pages, `--help`, and /usr/share/doc
+- Red Hat's website
+- Your own notes
+- The exam proctor
+E Practise finding things with `man -k`, `man 5 ...` and `ls /usr/share/doc` now so it's fast on exam day.
+C Find which man pages mention "autofs" in their description.
+A man -k autofs
+A apropos autofs
+E `man 5 auto.master` has example map lines you can copy.
+Q What is the safest way to redirect a command's output to a file only if the file does not already exist?
++ Use `set -o noclobber`, then `>` refuses to overwrite existing files
+- Use `>>`
+- Use `2>`
+- Use `tee -a`
+E Most exam tasks just want `>`. Know the options anyway.
+T Links and copies
+S Create a hard link /root/fstab.hard and a symbolic link /root/fstab.soft, both to /etc/fstab. Copy /etc/hosts to /root/hosts.bak keeping all attributes. Show the inode numbers.
+X ln /etc/fstab /root/fstab.hard
+X ln -s /etc/fstab /root/fstab.soft
+X cp -a /etc/hosts /root/hosts.bak
+V ls -li /etc/fstab /root/fstab.hard /root/fstab.soft /root/hosts.bak
+T Extract lines to a file
+S Put every line of /etc/services that contains the word "ftp" into /root/ftp-lines, in the original order. Then put only the service names (first column) of those lines, without duplicates, into /root/ftp-names.
+X grep ftp /etc/services > /root/ftp-lines
+X grep ftp /etc/services | awk '{print $1}' | sort -u > /root/ftp-names
+V wc -l /root/ftp-lines; cat /root/ftp-names
+T Find and copy by owner
+S Create user jacques and give him files in /tmp and /var/tmp. Find all files owned by jacques and copy them into /root/found (create it).
+X useradd jacques
+X sudo -u jacques touch /tmp/j1 /var/tmp/j2
+X mkdir -p /root/found
+X find / -user jacques -type f -exec cp -a {} /root/found/ \; 2>/dev/null
+V ls -l /root/found
+T Archive with each compression
+S Archive /etc/ssh into /root/ssh.tar.gz, /root/ssh.tar.bz2 and /root/ssh.tar.xz. Extract the bzip2 one into /tmp/sshcheck and compare it with the original.
+X tar -czf /root/ssh.tar.gz /etc/ssh
+X tar -cjf /root/ssh.tar.bz2 /etc/ssh
+X tar -cJf /root/ssh.tar.xz /etc/ssh
+X mkdir -p /tmp/sshcheck && tar -xjf /root/ssh.tar.bz2 -C /tmp/sshcheck
+V diff -r /etc/ssh /tmp/sshcheck/etc/ssh && echo same
+T Documentation hunt against the clock
+S In under 5 minutes, using only local docs, find: the fstab option that lets a mount fail without stopping the boot, the nmcli example for a static IP, and the rich-rule syntax to reject a source address.
+X man 5 fstab             # /nofail
+X man nmcli-examples      # /static
+X man firewalld.richlanguage   # /reject
+V you found all three from local documentation
+
+#D 42|EX200|Review: users, groups and permissions|Mixed exam-style practice on accounts, aging, sudo, special permissions and ACLs.
+Q A task says user "manalo" must have UID 3533 and password "flectrag". Which pair of commands does it?
++ useradd -u 3533 manalo; echo flectrag | passwd --stdin manalo
+- useradd manalo -p flectrag -u 3533
+- usermod -u 3533 manalo; passwd manalo flectrag
+- adduser --uid 3533 --password flectrag manalo
+E `useradd -p` expects an already hashed password, so don't use it with plain text.
+Q New users must get passwords that expire after 20 days. What do you change?
++ PASS_MAX_DAYS 20 in /etc/login.defs
+- chage -M 20 for every existing user
+- /etc/default/useradd EXPIRE=20
+- /etc/shadow for root
+E Only future accounts are affected. Existing accounts keep their settings.
+Q A shared directory must let group members delete only their own files. Which mode fits?
++ 3770 (SGID and sticky bit, rwx for owner and group)
+- 2770
+- 1777
+- 0770
+E 2 = SGID for group inheritance, 1 = sticky for "delete only your own".
+C Allow members of the group admins to run any command as any user via sudo, with a password.
+A echo '%admins ALL=(ALL) ALL' > /etc/sudoers.d/admins
+A echo "%admins ALL=(ALL) ALL" > /etc/sudoers.d/admins
+E Then `visudo -c` to check the syntax.
+Q A user's umask must give new files 640 and directories 750. Which umask?
++ 027
+- 022
+- 077
+- 002
+E 666-027 = 640 and 777-027 = 750.
+C Remove all ACL entries from /var/tmp/fstab.
+A setfacl -b /var/tmp/fstab
+E `setfacl -x u:natasha /var/tmp/fstab` removes just one entry.
+Q Where do you put a umask for every user on the system?
++ A script in /etc/profile.d/, such as /etc/profile.d/umask.sh
+- /etc/fstab
+- /etc/login.defs only affects this
+- /etc/skel/.umask
+E UMASK in /etc/login.defs affects home directories created by useradd and some login paths. A profile.d script covers shells.
+C Give new files created in /srv/team a default ACL granting user harry rwx.
+A setfacl -m d:u:harry:rwx /srv/team
+A setfacl -d -m u:harry:rwx /srv/team
+A setfacl -m default:u:harry:rwx /srv/team
+E Default ACLs only work on directories and apply to files created later.
+T Account setup from a spec
+S Create group "developers" with GID 5000. Create users dev1 and dev2 (secondary group developers), and user auditor with UID 4000 and no interactive shell. Set all passwords to "Rhcsa@2026". dev1 must change the password at first login.
+X groupadd -g 5000 developers
+X useradd -G developers dev1; useradd -G developers dev2
+X useradd -u 4000 -s /sbin/nologin auditor
+X for u in dev1 dev2 auditor; do echo 'Rhcsa@2026' | passwd --stdin $u; done
+X chage -d 0 dev1
+V id dev1; id dev2; id auditor; chage -l dev1 | head -1
+T Team directory with SGID and sticky bit
+S Create /srv/devshare owned by root:developers. Members can read, write and enter; others get nothing. New files belong to developers, and members can delete only their own files.
+X mkdir /srv/devshare
+X chown root:developers /srv/devshare
+X chmod 3770 /srv/devshare
+V ls -ld /srv/devshare      # drwxrws--T
+V su - dev1 -c 'touch /srv/devshare/f1'; su - dev2 -c 'rm /srv/devshare/f1'   # not permitted
+T Password aging for existing and new users
+S New users' passwords expire after 45 days with a 5-day warning. dev2's password expires after 30 days, and auditor's account expires on 2027-03-31.
+X sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS\t45/; s/^PASS_WARN_AGE.*/PASS_WARN_AGE\t5/' /etc/login.defs
+X chage -M 30 dev2
+X chage -E 2027-03-31 auditor
+V grep -E '^PASS_(MAX_DAYS|WARN_AGE)' /etc/login.defs
+V chage -l dev2; chage -l auditor
+T Umask for one user
+S New files created by dev1 must have mode 600 and new directories 700. It must survive logout.
+X echo 'umask 077' >> /home/dev1/.bashrc
+V su - dev1 -c 'touch f; mkdir d; ls -ld f d'
+T Fix a permission problem
+S Run this setup: `mkdir -p /data/reports && echo q1 > /data/reports/q1.txt && chmod 700 /data && chmod 644 /data/reports/q1.txt`. dev1 must be able to read q1.txt but not list or change anything else in /data. Find and fix the problem with the smallest change.
+X su - dev1 -c 'cat /data/reports/q1.txt'     # Permission denied
+X namei -l /data/reports/q1.txt
+X chmod o+x /data      # traverse only, no listing
+V su - dev1 -c 'cat /data/reports/q1.txt'; su - dev1 -c 'ls /data'   # read works, ls denied
+
+#D 43|EX200|Review: storage I|Mixed exam-style practice on partitions, swap and creating LVM storage.
+Q An exam disk already has partitions and a mounted filesystem. A task says to add a partition. What must you avoid?
++ Creating a new partition table (mklabel) on that disk
+- Using parted
+- Starting the partition after the last one
+- Running udevadm settle
+E mklabel erases every existing partition on the disk.
+Q Which command shows free space left on /dev/vdb in parted?
++ parted /dev/vdb unit MiB print free
+- parted /dev/vdb free
+- lsblk --free /dev/vdb
+- df -h /dev/vdb
+E Start your new partition where the free space begins.
+Q The task wants a 1 GiB LV "exam" and the VG uses 32 MiB extents. How many extents is that?
++ 32
+- 1024
+- 64
+- 16
+E 1024 MiB / 32 MiB = 32 extents. Using -L 1G gives the same result.
+C Create the volume group datavg from /dev/vdb3 and /dev/vdc1 with 8 MiB extents.
+A vgcreate -s 8M datavg /dev/vdb3 /dev/vdc1
+A vgcreate -s 8m datavg /dev/vdb3 /dev/vdc1
+E Both devices must be PVs, or vgcreate initializes them for you.
+Q After adding a swap line to /etc/fstab, how do you test it without rebooting?
++ swapon -a, then swapon --show
+- mount -a only
+- systemctl restart swap
+- free -h only
+E `mount -a` ignores swap entries.
+C Show the UUID of every block device in one command.
+A blkid
+A lsblk -f
+A lsblk -o NAME,UUID
+E Copy UUIDs carefully. A single wrong character stops the boot.
+Q Which fstab line mounts an XFS logical volume by its device mapper path?
++ /dev/mapper/datavg-exam  /exam  xfs  defaults  0 0
+- /dev/datavg:exam  /exam  xfs  defaults  0 0
+- LV=exam  /exam  xfs  defaults  0 0
+- datavg/exam  /exam  xfs  defaults  0 0
+E /dev/datavg/exam works too.
+Q What should you always do after editing /etc/fstab, before rebooting?
++ Run systemctl daemon-reload and mount -a (and swapon -a for swap) to test it
+- Nothing, reboot to test
+- Run fsck on every disk
+- Run grub2-mkconfig
+E A broken fstab found at boot means emergency mode.
+T Add storage without touching existing data
+S On a disk that already holds partitions, add a 400 MiB XFS partition mounted at /mnt/extra by UUID, and a 300 MiB swap partition active at boot. Existing partitions and swap must stay untouched.
+X parted /dev/vdb unit MiB print free
+X parted -s /dev/vdb mkpart extra xfs <start>MiB <start+400>MiB
+X parted -s /dev/vdb mkpart swap2 linux-swap <start+400>MiB <start+700>MiB
+X udevadm settle
+X mkfs.xfs /dev/vdbN && mkswap /dev/vdbM
+X mkdir -p /mnt/extra
+X # add both UUID lines to /etc/fstab
+X systemctl daemon-reload && mount -a && swapon -a
+V lsblk -f /dev/vdb; swapon --show; findmnt /mnt/extra
+T LVM from scratch with extents
+S Create VG examvg with 32 MiB extents on a new partition. Create LV exam of 20 extents, format it XFS, and mount it at /exam at boot.
+X pvcreate /dev/vdbN
+X vgcreate -s 32M examvg /dev/vdbN
+X lvcreate -n exam -l 20 examvg
+X mkfs.xfs /dev/examvg/exam
+X mkdir -p /exam
+X echo '/dev/examvg/exam  /exam  xfs  defaults  0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V lvs examvg; df -h /exam       # 640 MiB
+T LVM swap
+S Add a 512 MiB swap LV in examvg that is active at boot.
+X lvcreate -n swap -L 512M examvg
+X mkswap /dev/examvg/swap
+X echo '/dev/examvg/swap  none  swap  defaults  0 0' >> /etc/fstab
+X swapon -a
+V swapon --show
+T Reboot test
+S Reboot and confirm every mount and swap area from today came back. If the boot fails, fix it from emergency mode.
+X systemctl reboot
+V findmnt /mnt/extra /exam; swapon --show
+
+#D 44|EX200|Review: storage II|Mixed exam-style practice on extending storage, VFAT, NFS and autofs.
+Q The task says "extend the /exam filesystem to 900 MiB". The VG has only 200 MiB free. What do you do first?
++ Add a new PV to the VG with vgextend
+- Shrink the root filesystem
+- Recreate the LV bigger
+- Extend it by 200 MiB and stop
+E Read the whole task: it may also tell you which disk to use.
+Q Why is `lvextend -r` safer in an exam than lvextend followed by a separate grow command?
++ You cannot forget to grow the filesystem
+- It is faster
+- It works on unmounted XFS only
+- It skips rounding
+E Always confirm with `df -h` afterwards.
+C Mount node2:/shares/docs at /mnt/docs at boot. Write the fstab line.
+A echo 'node2:/shares/docs /mnt/docs nfs defaults,_netdev 0 0' >> /etc/fstab
+A node2:/shares/docs /mnt/docs nfs defaults,_netdev 0 0
+A node2:/shares/docs /mnt/docs nfs defaults 0 0
+E Test with `mount -a` and `findmnt /mnt/docs`.
+Q For an autofs indirect map at /rhome, which directory must NOT contain pre-made subdirectories?
++ /rhome
+- /etc/auto.master.d
+- /home
+- /mnt
+E autofs manages /rhome. Any leftovers there confuse the mounts.
+Q autofs is configured but `cd /rhome/remoteuser1` fails. What do you check?
++ That autofs is running, the map spelling, the export on the server, and the journal for autofs
+- Only SELinux
+- Only /etc/fstab
+- Reboot first
+E `showmount -e node2` confirms the export exists.
+C Format /dev/vdb6 as VFAT with the label USBDATA in one command.
+A mkfs.vfat -n USBDATA /dev/vdb6
+A mkfs.fat -n USBDATA /dev/vdb6
+E For VFAT the label option is -n; for XFS and ext4 it is -L.
+Q What does "configure systems to mount file systems at boot by UUID or label" mean for your fstab lines?
++ Use UUID= or LABEL= in the first field, not /dev/sdX or /dev/vdX
+- Use /dev/disk/by-path only
+- Add the uuid option
+- Mount with systemd units only
+E LVM paths like /dev/vg/lv are also stable; follow the wording of the task.
+Q Which command confirms autofs actually mounted remoteuser1's home over NFS?
++ findmnt /rhome/remoteuser1 (after accessing it)
+- systemctl status nfs
+- cat /etc/auto.rhome
+- ls /etc/auto.master.d
+E The mount shows as nfs4 with the server:path source.
+T Grow storage with a new disk
+S Grow /exam to 900 MiB total. The VG does not have enough space, so add a new PV from a spare disk first. Keep the data.
+X pvcreate /dev/vdc
+X vgextend examvg /dev/vdc
+X lvextend -r -L 900M /dev/examvg/exam
+V df -h /exam; vgs examvg
+T VFAT with label, at boot
+S Create a 200 MiB VFAT filesystem labeled USBDATA and mount it at /mnt/usbdata at boot using LABEL=.
+X parted -s /dev/vdb mkpart usb fat32 <start>MiB <start+200>MiB && udevadm settle
+X mkfs.vfat -n USBDATA /dev/vdbN
+X mkdir -p /mnt/usbdata
+X echo 'LABEL=USBDATA  /mnt/usbdata  vfat  defaults  0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V findmnt /mnt/usbdata
+T Static NFS mount
+S Mount node2:/shares/docs at /mnt/docs persistently, and check that it survives a reboot.
+X mkdir -p /mnt/docs
+X echo 'node2:/shares/docs  /mnt/docs  nfs  defaults,_netdev  0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V findmnt /mnt/docs
+T autofs home directories from memory
+S Without looking at earlier days, configure autofs so /rhome/remoteuser2 is mounted from node2:/rhome/remoteuser2 when remoteuser2 logs in.
+X dnf install -y autofs
+X echo '/rhome  /etc/auto.rhome' > /etc/auto.master.d/rhome.autofs
+X echo 'remoteuser2  -rw,sync  node2:/rhome/remoteuser2' > /etc/auto.rhome
+X systemctl enable --now autofs
+V su - remoteuser2 -c pwd; findmnt /rhome/remoteuser2
+
+#D 45|EX200|Review: SELinux and the firewall|Mixed exam-style practice on SELinux contexts, booleans, ports and firewalld.
+Q An exam task says "the web server must serve files from /srv/web in enforcing mode". Which two commands are essential?
++ semanage fcontext -a -t httpd_sys_content_t '/srv/web(/.*)?' and restorecon -Rv /srv/web
+- chcon -t httpd_sys_content_t /srv/web and setenforce 0
+- setsebool -P httpd_srv on and restorecon /srv
+- chmod 777 /srv/web and setenforce 1
+E The semanage rule survives a relabel; chcon does not.
+Q How do you find the correct file type to use for a service?
++ Look at the context of its default directory, e.g. `ls -Zd /var/www/html`, or its _selinux man page
+- Guess the name
+- Use unconfined_t
+- Copy the type from /tmp
+E Install selinux-policy-doc to get pages like `man httpd_selinux`.
+C Show your local SELinux file-context customizations only.
+A semanage fcontext -l -C
+E -C lists only changes you made, which is handy for checking your work.
+Q The exam system is in permissive mode at the start. What should you do?
++ Set it to enforcing, now and in /etc/selinux/config, unless the task says otherwise
+- Leave it permissive to save time
+- Disable SELinux
+- Nothing; permissive is the same as enforcing
+E Tasks are graded with SELinux enforcing. Fix labels, don't turn SELinux off.
+Q You add a firewall rule with --permanent and forget to reload. Graders reboot the system. Is the rule active after the reboot?
++ Yes, permanent rules load at boot; but reload anyway so you can test now
+- No, it is lost
+- Only if SELinux is enforcing
+- Only if firewalld was restarted
+E A rule without --permanent is the one that disappears at reboot.
+C Allow the httpd daemon to read user home directories through a persistent boolean.
+A setsebool -P httpd_enable_homedirs on
+A setsebool -P httpd_enable_homedirs 1
+E Find booleans with `getsebool -a | grep httpd` or `semanage boolean -l | grep home`.
+Q Which command lists firewalld's rules for every zone at once?
++ firewall-cmd --list-all-zones
+- firewall-cmd --list-all
+- firewall-cmd --get-zones
+- iptables -L
+E --list-all shows only the default zone (or the one given with --zone).
+Q A service has the right file contexts and firewall, but still gets AVC denials for a network connection it makes. What is the likely fix?
++ Turn on the matching boolean, e.g. httpd_can_network_connect, with -P
+- Relabel the whole filesystem
+- Add a firewall rule
+- Change the port
+E Booleans switch optional behaviour in the policy on or off.
+T Web content in a custom directory
+S Serve /srv/web (containing index.html with "srv web") as Apache's DocumentRoot in enforcing mode, reachable from node2.
+X mkdir -p /srv/web && echo "srv web" > /srv/web/index.html
+X vim /etc/httpd/conf/httpd.conf     # DocumentRoot "/srv/web" and <Directory "/srv/web"> Require all granted
+X semanage fcontext -a -t httpd_sys_content_t '/srv/web(/.*)?'
+X restorecon -Rv /srv/web
+X systemctl restart httpd
+X firewall-cmd --permanent --add-service=http && firewall-cmd --reload
+V curl http://node1/            # from node2
+T SELinux port and firewall together
+S Make httpd listen on 8989 as well as 80. Fix SELinux and the firewall so both ports work from node2.
+X echo 'Listen 8989' > /etc/httpd/conf.d/8989.conf
+X semanage port -a -t http_port_t -p tcp 8989
+X firewall-cmd --permanent --add-port=8989/tcp && firewall-cmd --reload
+X systemctl restart httpd
+V curl http://node1:8989/       # from node2
+T Enforcing everywhere
+S Set SELinux to permissive in both runtime and config (simulating a broken start state). Then fix it so it is enforcing now and after reboot.
+X setenforce 0; sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+X setenforce 1
+X sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+V getenforce; grep ^SELINUX= /etc/selinux/config
+T Firewall by zone
+S Change the default zone to "home", make sure ssh and http are allowed in it permanently, and confirm the interface is in that zone.
+X firewall-cmd --set-default-zone=home
+X firewall-cmd --permanent --zone=home --add-service=ssh --add-service=http
+X firewall-cmd --reload
+V firewall-cmd --get-active-zones; firewall-cmd --zone=home --list-services
+
+#D 46|EX200|Review: boot, targets and the bootloader|Mixed exam-style practice on targets, root password reset and GRUB.
+Q The exam starts and you do not know node2's root password. What is expected?
++ Reset it by interrupting the boot (rd.break), usually as one of the tasks
+- Reinstall node2
+- Ask the proctor
+- Skip node2
+E Practise the reset until it takes under 4 minutes.
+Q After the root reset, the system reboots for a long time. Why?
++ SELinux is relabeling every file because of /.autorelabel
+- The password is being encrypted
+- It is running fsck
+- It is downloading updates
+E Let it finish. Don't power it off.
+C Make the system boot into graphical.target by default.
+A systemctl set-default graphical.target
+E Only if a desktop is installed; otherwise the target has nothing extra to start.
+Q Where do you add a kernel argument for one boot only?
++ At the GRUB menu: press e, edit the linux line, press Ctrl+X
+- In /etc/default/grub
+- With grubby --update-kernel=ALL
+- In /proc/cmdline
+E The other methods are permanent.
+C Add the argument crashkernel=256M to the default kernel only.
+A grubby --update-kernel=DEFAULT --args="crashkernel=256M"
+A grubby --update-kernel=DEFAULT --args=crashkernel=256M
+A grubby --update-kernel=$(grubby --default-kernel) --args="crashkernel=256M"
+E ALL means every kernel; DEFAULT means only the default one.
+Q What does `systemctl isolate rescue.target` do on a running system?
++ Stops most services and drops to single-user rescue mode
+- Reboots into rescue mode
+- Sets rescue.target as default
+- Only lists rescue services
+E Do it from the console, not over SSH, because SSH stops.
+Q GRUB_TIMEOUT was changed in /etc/default/grub but the menu still waits 5 seconds. Why?
++ grub2-mkconfig was not run to regenerate grub.cfg
+- The file needs a reboot twice
+- SELinux blocks the change
+- GRUB_TIMEOUT must be in grub.cfg only
+E Run `grub2-mkconfig -o /boot/grub2/grub.cfg`.
+Q Which log shows what happened during the current boot?
++ journalctl -b
+- /var/log/boot.msg
+- dmesg -old
+- /boot/log
+E `journalctl -b -1` shows the previous boot if the journal is persistent.
+T Root password reset under time pressure
+S Set a timer for 5 minutes. Reset node2's root password to "Exam@2026", with SELinux relabel, and log in.
+X # GRUB: e, add rd.break, Ctrl+X
+X mount -o remount,rw /sysroot
+X chroot /sysroot
+X echo 'Exam@2026' | passwd --stdin root
+X touch /.autorelabel
+X exit; exit
+V log in as root with Exam@2026
+T Default target and GRUB timeout
+S Make node2 boot into multi-user.target by default and set the GRUB menu timeout to 7 seconds. Reboot to confirm both.
+X systemctl set-default multi-user.target
+X sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=7/' /etc/default/grub
+X grub2-mkconfig -o /boot/grub2/grub.cfg
+X systemctl reboot
+V systemctl get-default; grep ^GRUB_TIMEOUT /etc/default/grub
+T Kernel argument on the default kernel
+S Add `nomodeset` to the default kernel only. Reboot and confirm, then remove it.
+X grubby --update-kernel=DEFAULT --args="nomodeset"
+X systemctl reboot
+X cat /proc/cmdline
+X grubby --update-kernel=DEFAULT --remove-args="nomodeset"
+V grubby --info=DEFAULT | grep args
+T Rescue mode repair
+S Break sshd by adding an invalid line to /etc/ssh/sshd_config.d/99-bad.conf, reboot into rescue.target from GRUB, find the error with journalctl and sshd -t, and fix it.
+X echo 'ThisIsNotValid yes' > /etc/ssh/sshd_config.d/99-bad.conf
+X # reboot, GRUB: e, add systemd.unit=rescue.target, Ctrl+X
+X sshd -t
+X rm /etc/ssh/sshd_config.d/99-bad.conf
+X systemctl default
+V systemctl is-active sshd
+
+#D 47|EX200|Review: services, scheduling, logs, time and tuning|Mixed exam-style practice on operating running systems.
+Q A task says "the service must start automatically at boot". Is `systemctl start` enough?
++ No; it must also be enabled, e.g. systemctl enable --now
+- Yes
+- Only after a reboot
+- Only for network services
+E Graders often reboot first and then test.
+Q Which cron line runs a job at 23:50 on the 1st and 15th of every month?
++ 50 23 1,15 * *
+- 23 50 1,15 * *
+- 50 23 * 1,15 *
+- 50 23 * * 1,15
+E Lists use commas and ranges use a dash.
+C Show the date and time chrony last synchronized, and how far off the clock is.
+A chronyc tracking
+E "System time" shows the current offset.
+Q The journal must survive reboots. Which step alone is enough when Storage=auto?
++ Create /var/log/journal (then restart systemd-journald or reboot)
+- Install rsyslog
+- Run journalctl --flush without creating anything
+- Set SystemMaxUse=1G
+E Setting Storage=persistent works too. Pick one and verify with --list-boots after a reboot.
+C Kill the process with the highest CPU usage, given its PID is 4242, gracefully first.
+A kill 4242
+A kill -15 4242
+A kill -TERM 4242
+A kill -SIGTERM 4242
+E Only use -9 if it does not exit after SIGTERM.
+Q Which command shows the reason a service failed to start?
++ systemctl status name, then journalctl -u name
+- systemctl is-enabled name
+- ps aux | grep name only
+- cat /etc/services
+E status shows the last log lines; journalctl -u shows the whole history.
+C Schedule `/usr/local/bin/cleanup.sh` for user harry every Monday at 07:15 as a cron job, without an editor.
+A (crontab -l -u harry 2>/dev/null; echo "15 7 * * 1 /usr/local/bin/cleanup.sh") | crontab -u harry -
+A echo "15 7 * * 1 /usr/local/bin/cleanup.sh" | crontab -u harry -
+E `crontab -u harry -` reads the whole crontab from stdin. The first form keeps harry's existing jobs.
+Q A task says "set the tuning profile recommended by the system". What must also be true for it to persist?
++ The tuned service is enabled at boot
+- The profile is copied to /etc
+- SELinux is permissive
+- A reboot happens right away
+E `systemctl enable --now tuned` then `tuned-adm profile $(tuned-adm recommend)`.
+T Service health check
+S Make sure httpd, chronyd, sshd and crond are all running and enabled. Find any failed unit on the system and fix it or reset its state.
+X systemctl enable --now httpd chronyd sshd crond
+X systemctl --failed
+X systemctl status <failed-unit>; journalctl -u <failed-unit> -n 20
+X systemctl reset-failed
+V systemctl is-enabled httpd chronyd sshd crond; systemctl is-active httpd chronyd sshd crond
+T Scheduling three ways
+S For user natasha: a cron job that writes the date to /tmp/natasha-cron every 5 minutes. As root: an at job that writes "done" to /tmp/at-done in 3 minutes. And a systemd timer that runs `logger "timer tick"` every 15 minutes.
+X echo '*/5 * * * * date >> /tmp/natasha-cron' | crontab -u natasha -
+X echo 'echo done > /tmp/at-done' | at now + 3 minutes
+X # tick.service: [Service] Type=oneshot, ExecStart=/usr/bin/logger "timer tick"
+X # tick.timer:   [Timer] OnCalendar=*:0/15   [Install] WantedBy=timers.target
+X systemctl daemon-reload && systemctl enable --now tick.timer
+V crontab -l -u natasha; atq; systemctl list-timers tick.timer
+T Logs and journal
+S Make the journal persistent, then write a log line with priority local7.warning and find it both in /var/log/messages and in the journal.
+X mkdir -p /var/log/journal && systemctl restart systemd-journald
+X logger -p local7.warning "RHCSA review day 47"
+V grep 'RHCSA review day 47' /var/log/messages
+V journalctl -p warning --since "-5min" | grep 'review day 47'
+T Time and tuning together
+S Configure chrony to use node2 (or a server you choose) and set the time zone to Asia/Kolkata. Apply the recommended tuned profile. Verify all three.
+X sed -i 's/^pool /#pool /' /etc/chrony.conf && echo 'server node2 iburst' >> /etc/chrony.conf
+X systemctl restart chronyd
+X timedatectl set-timezone Asia/Kolkata
+X systemctl enable --now tuned && tuned-adm profile $(tuned-adm recommend)
+V chronyc sources; timedatectl; tuned-adm active
+
+#D 48|EX200|Review: networking and software|Mixed exam-style practice on IPv4, IPv6, hostnames, repositories and Flatpak.
+Q The exam gives you IP, netmask, gateway, DNS and hostname for node1. Where do you usually do this task?
++ On the console first, since SSH may drop when the address changes
+- Over SSH from node2
+- In /etc/sysconfig/network-scripts
+- In /etc/hosts only
+E After it works, you can use SSH for the rest.
+Q What is a netmask of 255.255.255.0 in prefix notation?
++ /24
+- /16
+- /8
+- /32
+E nmcli wants the prefix form: 192.168.1.10/24.
+C Set the hostname to server1.example.com permanently.
+A hostnamectl set-hostname server1.example.com
+A hostnamectl hostname server1.example.com
+E Check with `hostnamectl`.
+Q Which nmcli property stops a profile from using DNS servers from DHCP?
++ ipv4.ignore-auto-dns yes
+- ipv4.dns none
+- ipv4.never-default yes
+- ipv4.may-fail yes
+E Useful when a task gives you a fixed DNS server.
+C Add a second DNS server 8.8.8.8 to the connection "eth0" without removing the existing one.
+A nmcli con mod eth0 +ipv4.dns 8.8.8.8
+A nmcli connection modify eth0 +ipv4.dns 8.8.8.8
+E The `+` prefix appends to a list property; `-` removes an item.
+Q The repo task gives only a URL. Which lines do you write in the .repo file at minimum?
++ [id], name=, baseurl=URL, enabled=1, gpgcheck=0 (or 1 with the key the task gives)
+- Only baseurl=
+- mirrorlist= and metalink=
+- [main] and baseurl=
+E Then run `dnf repolist` and install a package to prove it works.
+C Install the package from the local file /root/tree-2.1.0.rpm, resolving dependencies from the repos.
+A dnf install /root/tree-2.1.0.rpm
+A dnf install -y /root/tree-2.1.0.rpm
+A dnf localinstall /root/tree-2.1.0.rpm
+E Check with `rpm -q tree`.
+Q Which command lists the apps a Flatpak remote offers?
++ flatpak remote-ls <remote>
+- flatpak list --remote
+- flatpak search --all
+- flatpak remotes --apps
+E `flatpak list` shows only what is installed.
+T Full network configuration
+S On node1, configure a static IPv4 address, gateway and DNS from your lab subnet, add the IPv6 address fd00:10::11/64, set the hostname node1.lab.example.com, and make sure the connection starts at boot. Reboot and verify.
+X nmcli con mod "<profile>" ipv4.addresses 192.168.122.11/24 ipv4.gateway 192.168.122.1 ipv4.dns 192.168.122.1 ipv4.method manual
+X nmcli con mod "<profile>" ipv6.addresses fd00:10::11/64 ipv6.method manual
+X nmcli con mod "<profile>" connection.autoconnect yes
+X nmcli con up "<profile>"
+X hostnamectl set-hostname node1.lab.example.com
+V ip -br a; ip route; hostnamectl; cat /etc/resolv.conf
+T Repositories from a URL
+S Remove any existing repo files (back them up first), then configure BaseOS and AppStream from node2's HTTP share with gpgcheck disabled. Install tree to prove it works.
+X mkdir -p /root/repo-backup && mv /etc/yum.repos.d/*.repo /root/repo-backup/
+X vim /etc/yum.repos.d/exam.repo      # [BaseOS] and [AppStream] blocks with baseurl=http://node2/rhel10/...
+X dnf clean all && dnf repolist
+X dnf install -y tree
+V dnf repolist; rpm -q tree
+T Flatpak remote and app
+S Add the remote the task gives (use Flathub if you have internet), install one app system-wide, list it, and then remove it.
+X flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+X flatpak install -y flathub org.gnome.TextEditor
+X flatpak list --app
+X flatpak uninstall -y org.gnome.TextEditor
+V flatpak remotes
+T Name resolution check
+S Make node1 resolve node2 by name through /etc/hosts, and make sure the files are checked before DNS. Test both names.
+X echo '192.168.122.12 node2.lab.example.com node2' >> /etc/hosts
+X grep ^hosts /etc/nsswitch.conf     # files before dns
+V getent hosts node2 node2.lab.example.com
+
+#D 49|EX200|Review: shell scripts|Mixed exam-style practice on script inputs, conditions, loops and command output.
+Q A script must print an error and stop when no argument is given. Which test fits?
++ if [ $# -eq 0 ]; then echo "Usage: $0 arg" >&2; exit 1; fi
+- if [ $1 ]; then exit; fi
+- if [ $# == none ]; then exit 1; fi
+- test $0 || exit
+E Send usage messages to stderr with >&2 and exit with a non-zero code.
+Q What does `for f in /etc/*.conf; do echo $f; done` loop over?
++ Every file in /etc ending in .conf
+- The contents of each .conf file
+- The lines of /etc/*.conf
+- Only the first .conf file
+E The shell expands the glob before the loop runs.
+C Inside a script, save today's date in YYYY-MM-DD format into the variable today.
+A today=$(date +%F)
+A today=$(date +%Y-%m-%d)
+A today=`date +%F`
+E Use it like `tar -czf /root/backup-$today.tar.gz /etc`.
+Q A script is in /usr/local/bin with mode 644. Running `myscript` gives "Permission denied". Why?
++ It is not executable; run chmod +x (e.g. 755)
+- /usr/local/bin is not on the PATH
+- The shebang is wrong
+- Only root can run scripts
+E Without the x bit, the shell cannot run it by name.
+C Loop over the lines of /root/hosts.txt (one host name per line) and ping each once.
+A while read h; do ping -c 1 $h; done < /root/hosts.txt
+A for h in $(cat /root/hosts.txt); do ping -c 1 $h; done
+A while read h; do ping -c 1 "$h"; done < /root/hosts.txt
+E The while-read form also handles lines with spaces correctly.
+Q What does `$(( 5 + 3 ))` produce?
++ 8
+- 5 + 3
+- 53
+- An error
+E Bash arithmetic uses $(( )). Only whole numbers.
+Q What does `2>/dev/null` inside a script do for `find / -name x 2>/dev/null`?
++ Hides error messages so only real results reach the output
+- Hides the results
+- Saves errors to a file named null
+- Makes find run faster
+E The results still go to stdout, which you can redirect separately.
+Q How do you check inside a script that a user exists before creating it?
++ if id "$u" &>/dev/null; then ... fi
+- if [ -u $u ]; then ... fi
+- if grep $u; then ... fi
+- if user $u; then ... fi
+E id exits 0 if the user exists, 1 if not.
+T Report script
+S Write /usr/local/bin/sysreport that prints the hostname, the number of CPUs, total RAM in MiB, the root filesystem use %, and the number of running processes, one per line.
+X vim /usr/local/bin/sysreport
+X # #!/bin/bash
+X # echo "Host: $(hostname)"
+X # echo "CPUs: $(nproc)"
+X # echo "RAM MiB: $(free -m | awk '/^Mem:/ {print $2}')"
+X # echo "Root use: $(df --output=pcent / | tail -1 | tr -d ' ')"
+X # echo "Processes: $(ps -e --no-headers | wc -l)"
+X chmod 755 /usr/local/bin/sysreport
+V sysreport
+T Script with argument checks
+S Write /usr/local/bin/mkproject that takes a project name. It creates /srv/projects/NAME with subdirectories src, docs and tests. With no argument, print usage and exit 1. If the project exists, print "exists" and exit 2.
+X vim /usr/local/bin/mkproject
+X # #!/bin/bash
+X # [ $# -eq 0 ] && { echo "Usage: mkproject NAME" >&2; exit 1; }
+X # d=/srv/projects/$1
+X # [ -d "$d" ] && { echo "exists" >&2; exit 2; }
+X # mkdir -p "$d"/{src,docs,tests} && echo "created $d"
+X chmod 755 /usr/local/bin/mkproject
+V mkproject; echo $?; mkproject demo; mkproject demo; echo $?
+T Loop over files with a condition
+S Write a script that goes through every file in /etc/*.conf and prints the names of those larger than 5 KiB into /root/bigconf.txt.
+X vim /root/bigconf.sh
+X # #!/bin/bash
+X # > /root/bigconf.txt
+X # for f in /etc/*.conf; do
+X #   if [ $(stat -c %s "$f") -gt 5120 ]; then echo "$f" >> /root/bigconf.txt; fi
+X # done
+X bash /root/bigconf.sh
+V cat /root/bigconf.txt
+T Process command output
+S Write a script that lists every user with UID 1000 or higher from /etc/passwd as "name (uid)".
+X vim /root/listusers.sh
+X # #!/bin/bash
+X # while IFS=: read name x uid rest; do
+X #   [ "$uid" -ge 1000 ] && echo "$name ($uid)"
+X # done < /etc/passwd
+X bash /root/listusers.sh
+V bash /root/listusers.sh | head
+
+#D 50|EX200|Exam day strategy|How to work through a full practical exam and not lose marks.
+Q What should you do in the first few minutes of the exam?
++ Read every task on both nodes, then start with networking, repos and the root reset
+- Start the storage tasks right away
+- Reboot both nodes
+- Write notes about each task on paper for 30 minutes
+E Networking and repos are needed by many later tasks.
+Q What is the pass mark for EX200?
++ 210 out of 300
+- 150 out of 300
+- 250 out of 300
+- 70 out of 100
+E Tasks are graded by what works after a reboot, not by the commands you typed.
+Q Why reboot both nodes before the end of the exam?
++ To prove every change persists and to catch a broken fstab while you can still fix it
+- The exam requires it to submit
+- To clear the logs
+- To save your work
+E Leave at least 15 minutes for the final reboot and fixes.
+Q A task is taking too long. What is the best move?
++ Move on and come back later; every task is worth points
+- Keep going until it is solved
+- Reboot and hope
+- Skip the rest of the exam
+E One stuck task should not cost you three easy ones.
+Q Which change is the most dangerous to leave untested before a reboot?
++ /etc/fstab
+- A cron job
+- A user account
+- A firewall rule
+E Test every fstab change with `systemctl daemon-reload && mount -a` right away.
+Q The task says "user sarah must not have access to an interactive shell". Which check proves it?
++ grep sarah /etc/passwd shows /sbin/nologin as the shell
+- id sarah
+- sarah is not in wheel
+- sarah has no password
+E Verify every task with a command, not by memory.
+Q What should the SELinux mode be at the end of the exam?
++ Enforcing, unless a task explicitly says otherwise
+- Permissive to avoid denials
+- Disabled
+- It does not matter
+E Fix contexts, ports and booleans instead.
+Q Which is a good habit for every task?
++ Do it, verify it with a command, and note it as done
+- Do all tasks, then verify at the end only
+- Only verify storage tasks
+- Never verify; there is no time
+E Short verify commands take seconds and catch typos.
+T Exam-day checklist run
+S Take one full practice exam from the Exams tab with the timer on. At the end, reboot both nodes and use each task's verify commands to score yourself honestly.
+X # Exams tab, pick an exam, press Start
+X # work node2 first if it needs a root reset, then networking and repos
+X # reboot both nodes at the 2 h 30 min mark and verify everything
+V your score is 210 or more
+T Build your own verify script
+S Write /root/verify.sh that prints PASS or FAIL for five checks of your choice (e.g. hostname, SELinux enforcing, a mount, a user, a firewall service). Run it after a reboot.
+X vim /root/verify.sh
+X # #!/bin/bash
+X # check() { if eval "$2" &>/dev/null; then echo "PASS $1"; else echo "FAIL $1"; fi; }
+X # check hostname '[ "$(hostname)" = node1.lab.example.com ]'
+X # check selinux '[ "$(getenforce)" = Enforcing ]'
+X # check mount 'findmnt /mnt/data'
+X # check user 'id natasha'
+X # check http 'firewall-cmd --list-services | grep -w http'
+X bash /root/verify.sh
+V bash /root/verify.sh | grep -c PASS
+T Speed round
+S From a fresh snapshot, and within 30 minutes: set the network and hostname, configure the repos, create two users and a group, make an SGID directory, create an LV and mount it at boot, and set the recommended tuned profile.
+X # use the earlier days' solutions only if you get stuck
+V reboot, then verify each item

@@ -1,0 +1,716 @@
+#D 32|RH134|LVM: extending volumes|Extend existing logical volumes and add new logical volumes non-destructively.
+C Grow /dev/vgdata/lvdata by 200 MiB and grow its filesystem in the same command.
+A lvextend -r -L +200M /dev/vgdata/lvdata
+A lvextend -L +200M -r /dev/vgdata/lvdata
+A lvextend --resizefs -L +200M /dev/vgdata/lvdata
+A lvresize -r -L +200M /dev/vgdata/lvdata
+E `-r` runs the right grow tool for XFS or ext4 after the LV grows.
+C Grow the mounted XFS filesystem at /mnt/data to fill its (already extended) LV.
+A xfs_growfs /mnt/data
+E xfs_growfs takes the mount point. XFS grows while mounted.
+C Grow the ext4 filesystem on /dev/vgdata/lvdb to fill its LV.
+A resize2fs /dev/vgdata/lvdb
+E resize2fs takes the device. ext4 can grow while mounted.
+Q Can an XFS filesystem be made smaller?
++ No, XFS can only grow
+- Yes, with xfs_growfs -s
+- Yes, but only when unmounted
+- Yes, with lvreduce -r
+E To shrink XFS you must back up, recreate the filesystem smaller, and restore. ext4 can shrink while unmounted.
+C Add the physical volume /dev/vdc1 to the volume group vgdata.
+A vgextend vgdata /dev/vdc1
+E Run `pvcreate /dev/vdc1` first if it is not a PV yet (vgextend can also do it for you).
+Q A task says: "Resize LV vo to 230 MiB (anything from 217 to 243 MiB is fine)". The extent size is 16 MiB. What does `lvextend -L 230M` give?
++ 240 MiB, because LVM rounds up to a whole number of extents (15)
+- Exactly 230 MiB
+- 224 MiB, rounded down
+- An error, because 230 is not a multiple of 16
+E 230 / 16 = 14.4, rounded up to 15 extents = 240 MiB, which is inside the allowed range.
+Q What is the difference between `lvextend -L 1G` and `lvextend -L +1G`?
++ -L 1G sets the total size to 1 GiB; -L +1G adds 1 GiB to the current size
+- They are identical
+- -L 1G adds 1 GiB; -L +1G sets 1 GiB
+- -L +1G is not valid syntax
+E Read the task carefully: "resize to" is an absolute size, "grow by" is relative.
+Q You grew the LV but `df -h` still shows the old size. Why?
++ The filesystem was not grown; run xfs_growfs or resize2fs, or use lvextend -r next time
+- df caches sizes until reboot
+- The VG needs to be reactivated
+- You must remount with the grow option
+E The LV and the filesystem are separate layers.
+C Move all data off the PV /dev/vdb1 onto the other PVs in its volume group.
+A pvmove /dev/vdb1
+E The VG needs enough free space on its other PVs. It can run while mounted.
+Q After pvmove, which command removes /dev/vdb1 from vgdata?
++ vgreduce vgdata /dev/vdb1
+- pvremove vgdata /dev/vdb1
+- vgremove /dev/vdb1
+- lvremove /dev/vdb1
+E Then `pvremove /dev/vdb1` wipes its LVM label.
+T Resize a logical volume (exam classic)
+S Setup: create VG vgexam (16 MiB extents) and LV vo of 176 MiB with XFS mounted at /mnt/vo, with a test file inside. Task: resize vo to 230 MiB (217 to 243 MiB is fine) without losing data.
+X vgcreate -s 16M vgexam /dev/vdb4      # setup, on a spare partition or disk
+X lvcreate -n vo -L 176M vgexam && mkfs.xfs /dev/vgexam/vo
+X mkdir -p /mnt/vo && mount /dev/vgexam/vo /mnt/vo && echo keep > /mnt/vo/data.txt
+X # the task itself:
+X lvextend -r -L 230M /dev/vgexam/vo
+V lvs vgexam; df -h /mnt/vo
+V cat /mnt/vo/data.txt
+T Volume group out of space
+S Try to grow an LV beyond the VG's free space and read the error. Add a new PV to the VG, then grow the LV and its filesystem by 500 MiB.
+X lvextend -r -L +5G /dev/vgexam/vo        # Insufficient free space
+X pvcreate /dev/vdc1
+X vgextend vgexam /dev/vdc1
+X lvextend -r -L +500M /dev/vgexam/vo
+V vgs vgexam; df -h /mnt/vo
+T Shrink an ext4 volume
+S Create a 400 MiB ext4 LV with a file on it, mounted at /mnt/shrink. Shrink it to 200 MiB safely and check the file.
+X lvcreate -n shrink -L 400M vgexam && mkfs.ext4 /dev/vgexam/shrink
+X mkdir -p /mnt/shrink && mount /dev/vgexam/shrink /mnt/shrink && echo safe > /mnt/shrink/f.txt
+X umount /mnt/shrink
+X lvreduce -r -L 200M /dev/vgexam/shrink
+X mount /dev/vgexam/shrink /mnt/shrink
+V lvs vgexam; cat /mnt/shrink/f.txt
+T Replace a physical volume
+S Move all extents off one PV in vgexam, take it out of the VG, and wipe its LVM label, while the LVs stay mounted.
+X pvs
+X pvmove /dev/vdb4
+X vgreduce vgexam /dev/vdb4
+X pvremove /dev/vdb4
+V pvs; df -h /mnt/vo
+
+#D 33|RH134|XFS, ext4 and VFAT file systems|Create, mount, unmount and use VFAT, ext4 and XFS file systems.
+C Create a VFAT filesystem on /dev/vdb5.
+A mkfs.vfat /dev/vdb5
+A mkfs -t vfat /dev/vdb5
+A mkfs.fat /dev/vdb5
+E mkfs.vfat comes from the dosfstools package.
+Q Which package provides mkfs.vfat?
++ dosfstools
+- vfat-utils
+- e2fsprogs
+- xfsprogs
+E e2fsprogs gives mkfs.ext4 and resize2fs; xfsprogs gives mkfs.xfs and xfs_growfs.
+Q How do file ownership and permissions work on a VFAT filesystem?
++ VFAT stores none; they come from mount options such as uid=, gid= and umask=
+- Exactly like XFS
+- Only root can ever write to VFAT
+- They are stored in an extended attribute
+E chmod and chown on VFAT files fail or have no lasting effect.
+C Mount /dev/vdb5 at /mnt/usb so that the user with UID 2000 owns all files.
+A mount -o uid=2000 /dev/vdb5 /mnt/usb
+A mount -t vfat -o uid=2000 /dev/vdb5 /mnt/usb
+E In fstab: `UUID=ABCD-1234 /mnt/usb vfat uid=2000,gid=2000 0 0`.
+C Set the label DATA on the unmounted XFS filesystem /dev/vdb1.
+A xfs_admin -L DATA /dev/vdb1
+E Or set it when you create it: `mkfs.xfs -L DATA /dev/vdb1`.
+C Set the label BACKUP on the ext4 filesystem /dev/vdb2.
+A e2label /dev/vdb2 BACKUP
+A tune2fs -L BACKUP /dev/vdb2
+E `fatlabel /dev/vdb5 NAME` does the same for VFAT.
+Q What does the UUID of a VFAT filesystem look like in blkid?
++ A short form such as 1A2B-3C4D
+- A long form such as 6f1e...-...-...
+- VFAT has no UUID
+- The same as the partition number
+E Copy it exactly into fstab: `UUID=1A2B-3C4D`.
+C Show the geometry of the XFS filesystem mounted at /mnt/data.
+A xfs_info /mnt/data
+E For ext4, use `tune2fs -l /dev/...` or `dumpe2fs -h /dev/...`.
+Q Which filesystem does RHEL use by default?
++ XFS
+- ext4
+- Btrfs
+- VFAT
+E Btrfs is not supported on RHEL.
+Q Which fstab option lets the system finish booting even if this device is missing?
++ nofail
+- noauto
+- defaults
+- _netdev
+E `noauto` means "don't mount at boot at all"; `nofail` means "try, but don't stop the boot on failure".
+T VFAT file system mounted at boot
+S Create a 300 MiB partition, format it VFAT, and mount it at /mnt/vfat at every boot using its UUID.
+X parted -s /dev/vdb mkpart win fat32 3585MiB 3885MiB
+X udevadm settle
+X mkfs.vfat /dev/vdb5
+X mkdir -p /mnt/vfat
+X blkid /dev/vdb5            # UUID="XXXX-XXXX"
+X echo 'UUID=XXXX-XXXX  /mnt/vfat  vfat  defaults  0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V findmnt /mnt/vfat
+T Mount by label everywhere
+S Give your XFS, ext4 and VFAT filesystems labels (DATA, BACKUP, WINDATA) and change their fstab lines to use LABEL=. Test with mount -a and a reboot.
+X umount /mnt/data && xfs_admin -L DATA /dev/vdb1
+X e2label /dev/vdb2 BACKUP
+X umount /mnt/vfat && fatlabel /dev/vdb5 WINDATA
+X vim /etc/fstab            # LABEL=DATA ..., LABEL=BACKUP ..., LABEL=WINDATA ...
+X systemctl daemon-reload && mount -a
+V lsblk -f
+T Mount options in practice
+S Remount /mnt/data read-only and try to create a file. Remount it read-write. Mount /mnt/vfat with uid=harry's UID and check file ownership.
+X mount -o remount,ro /mnt/data
+X touch /mnt/data/x          # Read-only file system
+X mount -o remount,rw /mnt/data
+X umount /mnt/vfat && mount -o uid=$(id -u harry) /dev/vdb5 /mnt/vfat
+X touch /mnt/vfat/test && ls -l /mnt/vfat
+V findmnt -o TARGET,OPTIONS /mnt/data /mnt/vfat
+T XFS vs ext4 resizing
+S On two LVs (one XFS, one ext4), grow both by 100 MiB. Then try to shrink the XFS one and read the error.
+X lvextend -r -L +100M /dev/vgexam/vo
+X lvextend -r -L +100M /dev/vgexam/shrink
+X lvreduce -r -L -50M /dev/vgexam/vo        # fails: XFS cannot shrink
+V lvs vgexam
+
+#D 34|RH134|Mounting NFS file systems|Mount and unmount NFS network file systems.
+C Mount the NFS export node2:/shares/docs on /mnt/docs for now.
+A mount -t nfs node2:/shares/docs /mnt/docs
+A mount node2:/shares/docs /mnt/docs
+E The mount point must exist first.
+Q Which /etc/fstab line mounts that export at boot?
++ node2:/shares/docs  /mnt/docs  nfs  defaults,_netdev  0 0
+- /mnt/docs  node2:/shares/docs  nfs  defaults  0 0
+- UUID=node2:/shares/docs  /mnt/docs  nfs  defaults  1 2
+- nfs://node2/shares/docs  /mnt/docs  auto  defaults  0 0
+E Use `0 0` for dump and fsck; there is nothing local to check.
+Q What does the `_netdev` mount option tell the system?
++ The filesystem needs the network, so mount it after the network is up
+- Mount it over any network device
+- Never mount it at boot
+- Use NFSv3
+E systemd usually detects NFS as a network filesystem anyway, but _netdev makes it explicit.
+C List the exports that node2 offers.
+A showmount -e node2
+E showmount needs the server's mountd and rpc-bind reachable. With NFSv4-only servers, mount `node2:/` and browse instead.
+Q Which package provides the NFS client tools?
++ nfs-utils
+- nfs-client
+- autofs
+- rpcbind-client
+E It is usually installed already. Check with `rpm -q nfs-utils`.
+Q Which NFS version does RHEL use by default when mounting?
++ NFSv4 (the newest one both sides support)
+- NFSv2
+- NFSv3
+- SMB 3
+E Force one with `-o nfsvers=4.2` or `-o vers=3` if a task asks.
+C Show the NFS filesystems that are mounted right now.
+A findmnt -t nfs4
+A findmnt -t nfs,nfs4
+A mount -t nfs4
+A df -hT -t nfs4
+E `findmnt` also shows the mount options that were used.
+Q On an NFS server, which file lists the directories it shares?
++ /etc/exports
+- /etc/nfs.conf
+- /etc/fstab
+- /etc/exports.nfs
+E Example line: `/shares/docs 192.168.122.0/24(rw,sync)`.
+C On the server, re-read /etc/exports and apply the changes.
+A exportfs -r
+A exportfs -ra
+A exportfs -arv
+E `exportfs -v` lists what is exported now.
+Q Which firewalld services must the server allow for NFSv4 plus showmount?
++ nfs, rpc-bind and mountd
+- http and https
+- nfs only, for everything
+- samba
+E nfs alone is enough for NFSv4 mounts; showmount needs the other two.
+T Build an NFS server on node2
+S On node2, share /shares/docs (read-write) and /rhome with your lab subnet. Create remote user home directories /rhome/remoteuser1 and /rhome/remoteuser2 owned by UIDs 5001 and 5002. Open the firewall.
+X dnf install -y nfs-utils
+X mkdir -p /shares/docs /rhome/remoteuser1 /rhome/remoteuser2
+X chown 5001:5001 /rhome/remoteuser1; chown 5002:5002 /rhome/remoteuser2
+X echo '/shares/docs 192.168.122.0/24(rw,sync)' >> /etc/exports
+X echo '/rhome 192.168.122.0/24(rw,sync)' >> /etc/exports
+X systemctl enable --now nfs-server
+X exportfs -rv
+X firewall-cmd --permanent --add-service={nfs,rpc-bind,mountd} && firewall-cmd --reload
+V exportfs -v
+T Mount NFS at boot on node1
+S Mount node2:/shares/docs at /mnt/docs on node1 so it comes back after every reboot.
+X showmount -e node2
+X mkdir -p /mnt/docs
+X echo 'node2:/shares/docs  /mnt/docs  nfs  defaults,_netdev  0 0' >> /etc/fstab
+X systemctl daemon-reload && mount -a
+V findmnt /mnt/docs
+V touch /mnt/docs/from-node1 && ls -l /mnt/docs
+T Read-only NFS mount
+S Mount the same export read-only at /mnt/docs-ro and confirm you cannot write to it.
+X mkdir -p /mnt/docs-ro
+X mount -t nfs -o ro node2:/shares/docs /mnt/docs-ro
+X touch /mnt/docs-ro/x         # Read-only file system
+V findmnt -o TARGET,OPTIONS /mnt/docs-ro
+T Troubleshoot an NFS mount
+S On node2, remove the nfs service from the firewall and try to mount from node1. Read the error, then fix it. Next, mount a path that is not exported and read that error too.
+X firewall-cmd --remove-service=nfs          # on node2, runtime only
+X mount -t nfs node2:/shares/docs /mnt/docs  # hangs, then times out
+X firewall-cmd --add-service=nfs             # on node2
+X mount -t nfs node2:/wrong /mnt/docs        # access denied / No such file
+V mount -a && findmnt /mnt/docs
+
+#D 35|RH134|Automounting with autofs|Configure autofs.
+Q Which package and service provide automounting?
++ autofs
+- automount-nfs
+- nfs-automount
+- systemd-autofsd
+E `dnf install autofs` then `systemctl enable --now autofs`.
+Q Where do you add your own master map entries on RHEL?
++ In a file ending in .autofs under /etc/auto.master.d/
+- In /etc/fstab with the auto option
+- In /etc/autofs.conf
+- In /etc/exports
+E Example /etc/auto.master.d/shares.autofs: `/shares  /etc/auto.shares`.
+Q The master map has `/shares  /etc/auto.shares` and the map has `work  -rw,sync  node2:/shares/work`. Where is the export mounted?
++ At /shares/work, the first time something accesses it
+- At /work at boot
+- At /shares at boot
+- At /etc/auto.shares/work
+E This is an indirect map: the key (work) becomes a subdirectory of /shares.
+Q In the map line `*  -rw,sync  node2:/rhome/&`, what does `&` stand for?
++ The key that was requested, such as the user name
+- The current user
+- All exports on node2
+- A wildcard for any character
+E Accessing /rhome/remoteuser1 mounts node2:/rhome/remoteuser1.
+Q How is a direct map listed in the master map?
++ /-  /etc/auto.direct
+- /direct  /etc/auto.direct
+- *  /etc/auto.direct
+- direct:/etc/auto.direct
+E In a direct map, each key is a full path, e.g. `/mnt/docs  -ro  node2:/shares/docs`.
+C Enable and start the autofs service.
+A systemctl enable --now autofs
+E After editing maps later, `systemctl reload autofs` is enough.
+Q Should you create /shares/work yourself for an indirect map?
++ No; autofs creates it when it is accessed
+- Yes, or the mount fails
+- Yes, with mode 777
+- Only on the NFS server
+E You create nothing under the base directory. autofs owns it.
+Q `ls /shares` shows nothing, but `ls /shares/work` works. Why?
++ Indirect map keys are only mounted, and shown, when accessed
+- The map is broken
+- autofs is stopped
+- The share is empty
+E `cd /shares/work` triggers the mount. Then `ls /shares` shows it until it times out.
+Q The task: "remoteuser1's home /rhome/remoteuser1 is automounted from node2:/rhome/remoteuser1". Which map line is right in /etc/auto.rhome?
++ remoteuser1  -rw,sync  node2:/rhome/remoteuser1
+- /rhome/remoteuser1  node2:/rhome/remoteuser1
+- remoteuser1  node2:/rhome
+- *  -rw  /rhome/remoteuser1
+E Plus the master entry `/rhome  /etc/auto.rhome`.
+T Automount a remote home directory (exam classic)
+S Create user remoteuser1 (UID 5001) on node1 with home /rhome/remoteuser1 but no local home created. Configure autofs so /rhome/remoteuser1 is mounted read-write from node2:/rhome/remoteuser1.
+X useradd -u 5001 -d /rhome/remoteuser1 -M remoteuser1
+X echo 'Rhcsa@2026' | passwd --stdin remoteuser1
+X dnf install -y autofs
+X echo '/rhome  /etc/auto.rhome' > /etc/auto.master.d/rhome.autofs
+X echo 'remoteuser1  -rw,sync  node2:/rhome/remoteuser1' > /etc/auto.rhome
+X systemctl enable --now autofs
+V su - remoteuser1 -c 'pwd; touch ~/hello; ls -l'
+V findmnt /rhome/remoteuser1
+T Wildcard map for every remote user
+S Change the rhome map so any user under /rhome gets their own export automatically. Add remoteuser2 (UID 5002) and test both.
+X echo '*  -rw,sync  node2:/rhome/&' > /etc/auto.rhome
+X systemctl reload autofs
+X useradd -u 5002 -d /rhome/remoteuser2 -M remoteuser2
+V ls /rhome/remoteuser1 /rhome/remoteuser2
+V findmnt -t nfs4
+T Direct map
+S Automount node2:/shares/docs read-only at exactly /mnt/autodocs using a direct map.
+X echo '/-  /etc/auto.direct' > /etc/auto.master.d/direct.autofs
+X echo '/mnt/autodocs  -ro  node2:/shares/docs' > /etc/auto.direct
+X systemctl reload autofs
+V ls /mnt/autodocs && findmnt /mnt/autodocs
+T Debug autofs
+S Break the rhome map by misspelling the server name. Try to access a home, read the autofs messages in the journal, and fix it.
+X sed -i 's/node2/nodee2/' /etc/auto.rhome && systemctl reload autofs
+X ls /rhome/remoteuser1       # No such file or directory
+X journalctl -u autofs -n 20
+X sed -i 's/nodee2/node2/' /etc/auto.rhome && systemctl reload autofs
+V ls /rhome/remoteuser1
+
+#D 36|RH134|Boot targets|Boot, reboot and shut down normally; boot into different targets manually; configure the default target.
+C Show the default boot target.
+A systemctl get-default
+E Usually graphical.target or multi-user.target.
+C Make the system boot into text mode (no desktop) by default.
+A systemctl set-default multi-user.target
+E This changes the /etc/systemd/system/default.target symlink.
+C Switch to multi-user.target now, without rebooting.
+A systemctl isolate multi-user.target
+E isolate stops everything not needed by that target.
+Q Which target gives a root shell with basic services and all local filesystems mounted, for repairs?
++ rescue.target
+- emergency.target
+- multi-user.target
+- graphical.target
+E Both rescue and emergency ask for the root password.
+Q What does emergency.target give you?
++ A minimal root shell with only the root filesystem mounted, read-only
+- A full desktop in safe mode
+- The same as rescue.target
+- A network-only shell
+E Use it when rescue.target itself fails, e.g. because of a bad fstab line.
+Q How do you boot into rescue.target once, from the GRUB menu?
++ Press e, add systemd.unit=rescue.target to the line starting with linux, then Ctrl+X
+- Choose "rescue" from the BIOS menu
+- Press r at the GRUB menu
+- Run systemctl rescue before rebooting
+E The change applies to that boot only.
+Q What is the order of the RHEL boot process?
++ Firmware, GRUB2, kernel and initramfs, systemd, default target
+- GRUB2, firmware, systemd, kernel
+- Kernel, GRUB2, systemd, firmware
+- systemd, kernel, GRUB2, target
+E Knowing the order tells you where to intervene for each problem.
+C Reboot the system cleanly.
+A systemctl reboot
+A reboot
+A shutdown -r now
+E In the exam, reboot at least once at the end to prove everything persists.
+C Schedule a power off in 10 minutes.
+A shutdown -h +10
+A shutdown +10
+A shutdown -P +10
+E `shutdown -c` cancels it.
+Q What is default.target?
++ A symlink that points to the target the system boots into
+- A special target that runs first
+- The same as basic.target
+- A file you edit with vim
+E Check it with `ls -l /etc/systemd/system/default.target`.
+T Change the default target
+S Make the system boot to multi-user.target, reboot and confirm you get a text login, then set it back to graphical.target if you use a desktop.
+X systemctl set-default multi-user.target
+X systemctl reboot
+X systemctl get-default
+X systemctl set-default graphical.target
+V ls -l /etc/systemd/system/default.target
+T Boot into rescue mode once
+S Reboot, and from the GRUB menu boot into rescue.target. Log in with the root password, check which target is active, then continue to the normal target.
+X # at GRUB: e, add systemd.unit=rescue.target to the linux line, Ctrl+X
+X systemctl list-units --type=target --state=active
+X systemctl default
+V systemctl is-active multi-user.target
+T Use the emergency target
+S Boot into emergency.target from GRUB. Check how the root filesystem is mounted, remount it read-write, then reboot.
+X # at GRUB: e, add systemd.unit=emergency.target, Ctrl+X
+X findmnt /                    # ro
+X mount -o remount,rw /
+X systemctl reboot
+V systemctl get-default
+T Explore targets
+S List all active targets, list what multi-user.target wants, and find which target the system is in right now.
+X systemctl list-units --type=target
+X systemctl list-dependencies multi-user.target | head -30
+X systemctl is-active graphical.target multi-user.target
+V who -r
+
+#D 37|RH134|Resetting root and repairing boot problems|Interrupt the boot process to gain system access; fix boot problems.
+Q What is the first step to reset a lost root password with rd.break?
++ Reboot, press e at the GRUB menu, and add rd.break to the end of the line starting with linux
+- Boot into rescue.target and run passwd
+- Log in as a normal user and edit /etc/shadow
+- Boot from the network
+E rd.break stops inside the initramfs before the real root filesystem takes over.
+Q In the rd.break shell, how is the real root filesystem mounted?
++ Read-only at /sysroot
+- Read-write at /
+- Not mounted at all
+- Read-write at /mnt/sysimage
+E So the first command is to remount it read-write.
+C In the rd.break shell, remount /sysroot read-write.
+A mount -o remount,rw /sysroot
+E Next: `chroot /sysroot`.
+C Change your root directory to /sysroot.
+A chroot /sysroot
+E Now paths like /etc/shadow point at the real system.
+Q Why do you run `touch /.autorelabel` after `passwd root`?
++ The new /etc/shadow has no correct SELinux label; the next boot relabels the filesystem
+- It tells GRUB to boot normally
+- It saves the new password
+- It clears the rd.break setting
+E Skipping it can mean nobody can log in after the reboot. The relabel takes a few minutes.
+Q At the GRUB editor, which keys boot the edited entry?
++ Ctrl+X
+- Enter
+- F10 only
+- Esc
+E Esc throws away your edits and goes back to the menu.
+Q A bad line in /etc/fstab stops the boot. Where do you usually land?
++ Emergency mode, asking for the root password
+- The graphical login
+- A kernel panic
+- The GRUB menu
+E Enter the root password, then fix the file.
+Q In emergency mode after a bad fstab line, how is / mounted?
++ Read-only, so you run mount -o remount,rw / before editing
+- Read-write
+- Not at all
+- As tmpfs
+E Then fix /etc/fstab, run systemctl daemon-reload and mount -a.
+Q Which fstab option stops a missing, non-essential disk from blocking the boot?
++ nofail
+- noauto,ro
+- errors=continue
+- x-systemd.skip
+E Use it for disks that may not be there. In the exam, follow what the task asks.
+C After fixing /etc/fstab in emergency mode, make systemd read the new version.
+A systemctl daemon-reload
+E Then `mount -a` to test it before you reboot.
+T Reset the root password (exam classic)
+S Pretend you lost the root password. Interrupt the boot and set it to "Redhat@2026", making sure SELinux labels are fixed. Log in as root afterwards.
+X # reboot; at GRUB press e
+X # at the end of the line starting with linux add:  rd.break    then Ctrl+X
+X mount -o remount,rw /sysroot
+X chroot /sysroot
+X passwd root
+X touch /.autorelabel
+X exit
+X exit          # the system relabels and reboots
+V log in as root with the new password
+T Recover from a broken fstab
+S Add a line to /etc/fstab with a wrong UUID for /mnt/data. Reboot and fix the system from emergency mode.
+X vim /etc/fstab          # change one character of the /mnt/data UUID
+X systemctl reboot        # boot stops in emergency mode
+X # enter the root password
+X mount -o remount,rw /
+X vim /etc/fstab          # correct the UUID (check with blkid)
+X systemctl daemon-reload && mount -a
+X systemctl reboot
+V findmnt /mnt/data
+T Speed drill: root reset
+S Repeat the root password reset three times. Time yourself and aim for under 4 minutes, including the relabel reboot.
+X # same steps as the root reset task, from memory
+V log in as root each time
+T Boot with a non-essential disk missing
+S Add nofail to the /mnt/docs NFS line or a spare disk line, shut down, detach that disk (or stop node2), and boot. The system must reach its normal target.
+X vim /etc/fstab          # options: defaults,nofail
+X systemctl poweroff      # detach the disk or stop node2, then power on
+V systemctl is-system-running
+
+#D 38|RH134|The bootloader|Modify the system bootloader.
+C Show which kernel boots by default.
+A grubby --default-kernel
+E `grubby --default-index` shows its menu position.
+C Add the kernel argument console=ttyS0 to all installed kernels.
+A grubby --update-kernel=ALL --args="console=ttyS0"
+A grubby --update-kernel=ALL --args=console=ttyS0
+A grubby --update-kernel ALL --args console=ttyS0
+E It takes effect at the next boot. Check with `cat /proc/cmdline` after rebooting.
+C Remove the argument quiet from all installed kernels.
+A grubby --update-kernel=ALL --remove-args="quiet"
+A grubby --update-kernel=ALL --remove-args=quiet
+E Add it back with `--args=quiet`.
+Q Which file sets how many seconds the GRUB menu waits?
++ /etc/default/grub (GRUB_TIMEOUT)
+- /boot/grub2/grub.cfg only
+- /etc/grub.conf
+- /etc/sysconfig/kernel
+E Don't edit grub.cfg directly; it is generated.
+C Regenerate the GRUB configuration after editing /etc/default/grub.
+A grub2-mkconfig -o /boot/grub2/grub.cfg
+E On RHEL 9 and 10 this path is right for both BIOS and UEFI machines.
+C Show the details of every boot entry.
+A grubby --info=ALL
+A grubby --info ALL
+E It prints each kernel's index, path, arguments and title.
+C Make /boot/vmlinuz-6.12.0-55.el10.x86_64 the default kernel.
+A grubby --set-default /boot/vmlinuz-6.12.0-55.el10.x86_64
+A grubby --set-default=/boot/vmlinuz-6.12.0-55.el10.x86_64
+E Use a real path from `ls /boot/vmlinuz-*` on your system.
+Q Where are the individual boot menu entries stored on RHEL 9 and 10?
++ /boot/loader/entries/*.conf (Boot Loader Specification files)
+- /boot/grub2/menu.lst
+- /etc/grub.d/entries
+- /boot/efi/entries.txt
+E grubby edits these files for you.
+Q You need an argument in only one boot, for testing. What do you do?
++ Press e at the GRUB menu, add it to the linux line, and press Ctrl+X
+- Run grubby with --once
+- Edit /etc/default/grub and reboot
+- Add it to /proc/cmdline
+E Edits made at the menu are forgotten after that boot.
+T Change the GRUB timeout
+S Make the GRUB menu wait 10 seconds. Apply the change and confirm it after a reboot.
+X vim /etc/default/grub       # GRUB_TIMEOUT=10
+X grub2-mkconfig -o /boot/grub2/grub.cfg
+X systemctl reboot
+V grep -i timeout /boot/grub2/grub.cfg | head -3
+T Add a kernel argument permanently
+S Add `audit=1` to all installed kernels, reboot and confirm the running kernel has it.
+X grubby --update-kernel=ALL --args="audit=1"
+X grubby --info=ALL | grep args
+X systemctl reboot
+V cat /proc/cmdline
+T Choose the default kernel
+S If more than one kernel is installed, make the older one the default, reboot into it, check with uname -r, then set the newest back as default.
+X grubby --info=ALL | grep -E '^index|^kernel'
+X grubby --set-default /boot/vmlinuz-<older-version>
+X systemctl reboot
+X uname -r
+X grubby --set-default /boot/vmlinuz-<newest-version>
+V grubby --default-kernel
+T Remove a kernel argument
+S Remove `audit=1` from all kernels again and confirm it is gone after a reboot.
+X grubby --update-kernel=ALL --remove-args="audit=1"
+X systemctl reboot
+V cat /proc/cmdline
+
+#D 39|RH134|firewalld|Restrict network access using firewalld and firewall-cmd.
+C Show everything configured in the default zone.
+A firewall-cmd --list-all
+E Add `--zone=NAME` to look at another zone.
+C Allow the http service permanently.
+A firewall-cmd --permanent --add-service=http
+A firewall-cmd --add-service=http --permanent
+E Then reload, or it is not active yet.
+C Make the permanent configuration active now.
+A firewall-cmd --reload
+E Reload replaces the running config with the permanent one.
+Q What happens if you add a rule with --permanent and never reload?
++ It is saved for the next boot but not active now
+- It is active now and after reboot
+- It is lost
+- firewalld restarts by itself
+E The opposite mistake: a rule without --permanent works now but disappears at reboot.
+C Open port 8080/tcp permanently.
+A firewall-cmd --permanent --add-port=8080/tcp
+A firewall-cmd --add-port=8080/tcp --permanent
+E Prefer a service name when one exists: `firewall-cmd --get-services`.
+C Show the default zone.
+A firewall-cmd --get-default-zone
+E `--get-active-zones` shows which interfaces and sources are in which zone.
+Q What does `firewall-cmd --runtime-to-permanent` do?
++ Saves the current running rules as the permanent configuration
+- Makes every rule temporary
+- Reloads from disk
+- Restarts firewalld
+E Useful if you tested rules without --permanent and they work.
+C Remove the cockpit service from the default zone permanently.
+A firewall-cmd --permanent --remove-service=cockpit
+A firewall-cmd --remove-service=cockpit --permanent
+E Then `firewall-cmd --reload`.
+Q Which command permanently rejects SSH from 192.168.50.0/24 only?
++ firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.50.0/24" service name="ssh" reject'
+- firewall-cmd --permanent --block-ssh=192.168.50.0/24
+- firewall-cmd --permanent --remove-service=ssh --source=192.168.50.0/24
+- firewall-cmd --deny ssh from 192.168.50.0/24
+E `man firewalld.richlanguage` has examples you can copy during the exam.
+Q Where are the predefined firewalld service definitions stored?
++ /usr/lib/firewalld/services/*.xml
+- /etc/services only
+- /etc/firewalld/zones/
+- /var/lib/firewalld/
+E Custom services go in /etc/firewalld/services/.
+T Allow web traffic
+S On node1, allow HTTP and HTTPS permanently in the default zone. From node2, confirm you can reach the web server.
+X firewall-cmd --permanent --add-service=http --add-service=https
+X firewall-cmd --reload
+V firewall-cmd --list-services
+V curl http://node1        # from node2
+T Ports and removing services
+S Open 8080/tcp and 5353/udp permanently, remove the cockpit service, and check the result.
+X firewall-cmd --permanent --add-port=8080/tcp --add-port=5353/udp
+X firewall-cmd --permanent --remove-service=cockpit
+X firewall-cmd --reload
+V firewall-cmd --list-all
+T Zones and sources
+S Put node2's IP address in the trusted zone permanently, so node2 can reach every port on node1. Show the active zones.
+X firewall-cmd --permanent --zone=trusted --add-source=192.168.122.12
+X firewall-cmd --reload
+V firewall-cmd --get-active-zones
+V firewall-cmd --zone=trusted --list-all
+T Rich rule
+S Permanently reject SSH from node2's IP only, test it from node2, then remove the rule.
+X firewall-cmd --permanent --zone=trusted --remove-source=192.168.122.12
+X firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.122.12" service name="ssh" reject'
+X firewall-cmd --reload
+X ssh node1          # from node2: Connection refused
+X firewall-cmd --permanent --remove-rich-rule='rule family="ipv4" source address="192.168.122.12" service name="ssh" reject'
+X firewall-cmd --reload
+V firewall-cmd --list-rich-rules
+
+#D 40|RH134|Network security end to end|Combine firewalld, SELinux port labels and service configuration.
+Q To run sshd on port 2222 in enforcing mode, which steps are needed?
++ Add Port 2222 to the sshd config, label 2222/tcp as ssh_port_t, open 2222/tcp in the firewall, restart sshd
+- Only change Port in the sshd config
+- Only open the firewall port
+- Disable SELinux and restart sshd
+E Three layers: the service config, SELinux and the firewall. Check all three.
+C Label TCP port 2222 as an SSH port for SELinux.
+A semanage port -a -t ssh_port_t -p tcp 2222
+E Check it with `semanage port -l | grep ssh`.
+Q A service fails to start with "Permission denied" when binding to a new port. What is the likely cause?
++ SELinux: the port is not labeled with the type the service is allowed to use
+- The firewall is blocking the port
+- The port is already open
+- The service needs a reboot
+E The firewall never stops a local service from starting. It only blocks incoming traffic.
+Q A service works with curl on localhost but not from another machine. What should you check first?
++ The firewall
+- SELinux file contexts
+- The service's unit file
+- DNS
+E Test with `curl http://node1:PORT` from node2 after each fix.
+C Show which process is listening on TCP port 2222.
+A ss -tlnp | grep 2222
+A ss -tulpn | grep 2222
+A ss -tlnp | grep :2222
+E No output means nothing is listening on that port.
+C Remove the SELinux ssh_port_t label from TCP port 2222.
+A semanage port -d -t ssh_port_t -p tcp 2222
+E Only ports you added can be deleted; built-in ones cannot.
+Q `semanage port -a -t http_port_t -p tcp 8443` says the port is already defined. What do you do?
++ Nothing if it already has the right type; otherwise use -m to modify it
+- Delete the SELinux policy
+- Use a different port
+- Run setenforce 0
+E Always check with `semanage port -l | grep 8443` first.
+Q What is the difference between a firewalld service and a port?
++ A service is a named set of ports (and helpers); a port is a single number and protocol
+- Services only work for TCP
+- Ports are permanent and services are not
+- There is no difference
+E `firewall-cmd --info-service=http` shows which ports a service opens.
+Q In what order should you debug "web page not reachable"?
++ Service running, listening port, local curl, firewall, SELinux (port and file contexts), then logs
+- Reboot first, then check SELinux
+- Disable the firewall and SELinux, then test
+- Reinstall the package
+E Never leave SELinux permissive or the firewall off as your "fix" in the exam.
+T SSH on an extra port
+S Make sshd listen on both 22 and 2222 on node1, with SELinux enforcing and the firewall on. Connect from node2 on port 2222.
+X vim /etc/ssh/sshd_config.d/60-port.conf      # Port 22 and Port 2222 on two lines
+X semanage port -a -t ssh_port_t -p tcp 2222
+X firewall-cmd --permanent --add-port=2222/tcp && firewall-cmd --reload
+X sshd -t && systemctl restart sshd
+V ss -tlnp | grep sshd
+V ssh -p 2222 student@node1 hostname       # from node2
+T Fix a web server broken at every layer
+S Run these setup commands, then make http://node1:8888/ show "fixed" from node2 without disabling SELinux or the firewall: `sed -i 's/^Listen .*/Listen 8888/' /etc/httpd/conf/httpd.conf; echo fixed > /root/index.html; mv /root/index.html /var/www/html/; systemctl stop httpd`
+X systemctl restart httpd                 # fails to bind to 8888
+X semanage port -a -t http_port_t -p tcp 8888
+X systemctl enable --now httpd
+X curl localhost:8888                     # 403: wrong file context
+X restorecon -v /var/www/html/index.html
+X firewall-cmd --permanent --add-port=8888/tcp && firewall-cmd --reload
+V curl http://node1:8888/                 # from node2: fixed
+T Map services to port types
+S Find which SELinux port type covers 3306/tcp, which covers 25/tcp, and which ports ssh_port_t includes.
+X semanage port -l | grep -w 3306
+X semanage port -l | grep -w 25
+X semanage port -l | grep ssh_port_t
+V semanage port -l -C          # only your local changes
+T Lock the firewall down
+S Allow only ssh and http in the default zone of node1 (remove everything else, including cockpit and dhcpv6-client if present), then make sure you can still SSH in.
+X firewall-cmd --list-services
+X firewall-cmd --permanent --remove-service=cockpit --remove-service=dhcpv6-client
+X firewall-cmd --permanent --add-service=ssh --add-service=http
+X firewall-cmd --reload
+V firewall-cmd --list-all
+V ssh node1 true && echo ssh-ok       # from node2

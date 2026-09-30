@@ -1,0 +1,502 @@
+#D 23|1 Concepts|Physical security|Apply physical security controls.
+Q A mantrap (access control vestibule) prevents:
++ Tailgating, by allowing one person through at a time
+- Network attacks
+- Malware
+- Phishing
+E Two interlocking doors stop a second person slipping in.
+Q Why place security cameras (CCTV) at entrances?
++ To deter and to detect/record who enters
+- To encrypt data
+- To speed up entry
+- To replace locks
+E Visible cameras deter; recordings provide detective evidence.
+Q A bollard is used to:
++ Physically block vehicles from ramming a building
+- Filter network traffic
+- Authenticate users
+- Store keys
+E Physical, preventive control against vehicle attacks.
+Q "Faraday cage" protects against:
++ Electromagnetic signals entering or leaving (eavesdropping/interference)
+- Fire
+- Flooding
+- Power loss
+E Used for shielding sensitive equipment and preventing signal leakage.
+Q Biometric access control is which authentication factor?
++ Something you are
+- Something you know
+- Something you have
+- Somewhere you are
+E Fingerprints, iris, face. Watch for false accept/reject rates.
+Q A "proximity badge" is which factor?
++ Something you have
+- Something you know
+- Something you are
+- Somewhere you are
+E Combine with a PIN (know) for MFA at the door.
+Q Why use security lighting and clear sightlines?
++ They deter intruders and improve camera/guard effectiveness
+- They encrypt data
+- They speed up Wi-Fi
+- They are decorative only
+E Environmental design (CPTED) reduces hiding spots.
+Q A "honeyfile" or honeytoken is:
++ A decoy file/credential that alerts defenders when touched
+- A backup file
+- An encryption key
+- A firewall log
+E Any access to it strongly implies an intruder.
+T Design layered physical security
+S For a small server room, list controls from the perimeter inward (defense in depth).
+X # perimeter: fence, gate, lighting, cameras
+X # building: badge + PIN door, reception, visitor logs
+X # server room: mantrap, separate badge, camera, locked racks
+X # rack: locked cabinet, asset tags
+V each layer backs up the others
+T FAR vs FRR (concept)
+S Explain false acceptance rate and false rejection rate and which is worse for a high-security door.
+X # FAR: wrongly admits an impostor (security risk)
+X # FRR: wrongly rejects a valid user (annoyance)
+X # high security: tune to lower FAR even if FRR rises
+V you can state the trade-off
+
+#D 24|5 Program|Governance, policies and standards|Summarize governance, policies, standards and frameworks.
+Q What is the difference between a policy and a procedure?
++ A policy states what/why (high level); a procedure states step-by-step how
+- They are identical
+- A procedure is higher level
+- A policy is technical only
+E Standards and guidelines sit between them.
+Q An Acceptable Use Policy (AUP) defines:
++ How employees may use company systems and data
+- The backup schedule
+- Firewall rules
+- Encryption algorithms
+E Users typically sign it during onboarding.
+Q A "standard" (vs a policy) is:
++ A mandatory specific rule that supports a policy (e.g., "AES-256 for encryption")
+- An optional suggestion
+- A high-level goal
+- A legal contract
+E Guidelines are recommended, not mandatory; standards are mandatory.
+Q What is a security framework used for?
++ A structured set of best practices to build and measure a security program
+- Encrypting disks
+- Blocking ports
+- Writing malware
+E Examples: NIST CSF, ISO 27001, CIS Controls.
+Q "Separation of duties" prevents fraud by:
++ Requiring more than one person to complete a sensitive task
+- Giving one admin all power
+- Encrypting logs
+- Backing up daily
+E No single person can both request and approve a payment, for example.
+Q "Mandatory vacation" and "job rotation" are controls that:
++ Help detect fraud and reduce dependence on one person
+- Improve morale only
+- Are unrelated to security
+- Replace backups
+E Fraud often surfaces when the usual person is away.
+Q Onboarding and offboarding processes matter because:
++ They ensure access is granted correctly and fully removed when someone leaves
+- They are HR-only concerns
+- They speed up hiring
+- They are optional
+E Orphaned accounts of ex-employees are a major risk.
+Q What is "due care" vs "due diligence"?
++ Due diligence is investigating/planning; due care is acting on it responsibly
+- They are the same
+- Due care is only legal
+- Due diligence means ignoring risk
+E Diligence = doing your homework; care = the ongoing responsible action.
+T Write an access-control policy snippet
+S Draft three policy statements for user account management (creation, review, removal).
+X # Accounts are created only via approved onboarding tickets with manager sign-off.
+X # Access is reviewed quarterly; unused/excess access is revoked.
+X # Accounts are disabled within 1 hour of termination.
+V each statement is enforceable and auditable
+T Map to a framework
+S Pick three CIS Controls (or NIST CSF functions) and give one action your org would take for each.
+X # e.g. NIST CSF: Identify -> asset inventory
+X #                Protect -> MFA + patching
+X #                Detect  -> central logging/SIEM
+V each function has a concrete action
+
+#D 25|5 Program|Risk management|Apply risk-management concepts and calculations.
+Q What is "risk" in security terms?
++ The likelihood of a threat exploiting a vulnerability and the resulting impact
+- Any change to a system
+- A type of malware
+- A firewall rule
+E Risk = likelihood x impact, roughly.
+Q The four risk-response strategies are:
++ Accept, Avoid, Transfer, Mitigate
+- Ignore, Delete, Encrypt, Backup
+- Detect, Deter, Delay, Deny
+- Buy, Sell, Hold, Trade
+E Transfer often means buying insurance; mitigate means adding controls.
+Q Buying cyber-insurance is an example of risk:
++ Transference
+- Avoidance
+- Acceptance
+- Mitigation
+E You shift the financial impact to a third party.
+Q "Residual risk" is:
++ The risk that remains after controls are applied
+- The risk before any controls
+- Risk that was transferred
+- Zero always
+E You cannot usually reach zero; leadership accepts the residual.
+Q SLE x ARO equals:
++ ALE (Annualized Loss Expectancy)
+- Residual risk
+- RPO
+- The asset value
+E Single Loss Expectancy x Annual Rate of Occurrence = expected yearly loss.
+Q If an asset is worth $10,000 and an incident destroys 50% of it, the SLE is:
++ $5,000
+- $10,000
+- $2,500
+- $500
+E SLE = Asset Value x Exposure Factor = 10,000 x 0.5.
+Q A "risk register" is:
++ A living document listing risks, owners, and treatment status
+- A firewall log
+- A backup index
+- A password vault
+E It tracks each risk from identification to closure.
+Q Qualitative risk analysis uses:
++ Ratings like high/medium/low rather than exact numbers
+- Only dollar figures
+- Packet captures
+- Hash values
+E Quantitative analysis uses numbers (SLE/ALE); qualitative uses judgment scales.
+T Calculate ALE
+S A server worth $20,000 faces a flood that would destroy 25% of it, expected once every 4 years. Compute SLE, ARO, and ALE.
+X # SLE = 20000 x 0.25 = $5,000
+X # ARO = 1/4 = 0.25 per year
+X # ALE = SLE x ARO = 5000 x 0.25 = $1,250 per year
+V a control costing < $1,250/yr that removes this risk is justified
+T Build a mini risk register
+S Add three risks for a web app, each with likelihood, impact, response strategy, and owner.
+X # SQLi -> High/High -> Mitigate (WAF+prepared stmts) -> Dev lead
+X # DDoS -> Med/High -> Transfer/Mitigate (CDN scrubbing) -> Ops
+X # lost laptop -> Med/Med -> Mitigate (FDE+MDM) -> IT
+V each row is complete and actionable
+
+#D 26|5 Program|Third-party and vendor risk|Manage supply-chain and third-party risk.
+Q Why assess third-party vendors' security?
++ Their weaknesses can become your breach (supply-chain risk)
+- To lower their prices
+- It is only about quality
+- Vendors are always safe
+E A vendor with access to your data extends your attack surface.
+Q An SLA (Service Level Agreement) defines:
++ The measurable service levels a vendor must meet (e.g., uptime)
+- The encryption algorithm
+- The vendor's staff names
+- A firewall rule
+E Include security requirements and penalties in the SLA.
+Q An MOU/MOA is:
++ A (often non-binding) agreement outlining intentions between parties
+- A malware type
+- A network protocol
+- A backup standard
+E It sets expectations before a formal contract.
+Q A BPA (Business Partners Agreement) governs:
++ The relationship and responsibilities between business partners
+- Only pricing
+- Only encryption
+- Physical security
+E It clarifies liability, data handling, and responsibilities.
+Q "Right to audit" clauses let you:
++ Verify a vendor's security controls yourself or via a third party
+- Delete the vendor's data
+- Change their prices
+- Access their staff records
+E Without it, you rely only on the vendor's word.
+Q A SOC 2 report tells you:
++ How well a vendor's controls meet security/availability criteria
+- The vendor's revenue
+- The vendor's IP addresses
+- Your own risk score
+E It is independent assurance about a service provider's controls.
+Q "Vendor lock-in" is a risk because:
++ It makes leaving a provider costly/difficult, reducing your options
+- It improves security
+- It lowers cost always
+- It is a malware type
+E Consider exit strategy and data portability up front.
+Q End-of-life (EOL) hardware/software from a vendor means:
++ No more security updates, so risk rises over time
+- Faster performance
+- Free support
+- Better security
+E Plan replacement before EOL; isolate if you cannot.
+T Vendor security questionnaire
+S Write five questions you would ask a SaaS vendor before storing customer data with them.
+X # Where is data stored, and is it encrypted at rest/in transit?
+X # Do you have SOC 2 / ISO 27001? Can we see it?
+X # How do you handle breach notification and in what timeframe?
+X # What is your access control and MFA posture for staff?
+X # What is our data export/deletion process on exit?
+V the answers would materially change your decision
+T Assess supply-chain risk
+S For a software dependency your app pulls from the internet, list three controls to reduce supply-chain risk.
+X # pin exact versions + verify checksums/signatures
+X # use a private/proxy registry and scan dependencies for CVEs
+X # review before upgrading; monitor for compromised packages
+V a poisoned update would be caught before deployment
+
+#D 27|5 Program|Audits, assessments and testing|Compare security assessments, audits and testing types.
+Q A vulnerability scan differs from a penetration test because it:
++ Identifies weaknesses but does not exploit them
+- Actively exploits and pivots
+- Is always manual
+- Requires physical access
+E A pen test goes further and proves impact by exploiting.
+Q "Black box" penetration testing means the tester:
++ Has no prior internal knowledge of the target
+- Has full source and credentials
+- Only tests physically
+- Works for the attacker
+E White box = full knowledge; gray box = partial.
+Q The "rules of engagement" in a pen test define:
++ Scope, timing, allowed techniques, and contacts — the authorized boundaries
+- The attacker's tools only
+- The firewall config
+- The backup plan
+E Testing outside the authorized scope can be illegal.
+Q An internal audit's main purpose is to:
++ Independently verify that controls exist and work as intended
+- Attack production
+- Sell products
+- Replace the SOC
+E Audits check compliance with policy/standards.
+Q "Attestation" in an audit is:
++ A formal statement that controls were reviewed and meet criteria
+- A password
+- A scan result
+- A backup
+E Often provided to customers as assurance.
+Q A "red team" exercise:
++ Simulates a real adversary to test detection and response, not just find bugs
+- Fixes vulnerabilities
+- Writes policy
+- Runs backups
+E The "blue team" defends; "purple" is the two collaborating.
+Q Why do a "bug bounty" program?
++ To pay external researchers to responsibly report vulnerabilities
+- To attack competitors
+- To avoid patching
+- To sell data
+E It widens your testing pool under defined rules.
+Q A compliance scan checks systems against:
++ A required standard/benchmark (e.g., PCI DSS, CIS)
+- Random settings
+- The attacker's wishlist
+- Nothing
+E It reports gaps you must remediate for compliance.
+C Run an authorized vulnerability-style scan of your lab host with nmap scripts.
+A nmap -sV --script vuln localhost
+E Authorized targets only; interpret results and prioritize by severity + exposure.
+T Plan a penetration test
+S Draft the rules of engagement for testing a single web app: scope, window, allowed/forbidden actions, and emergency contact.
+X # scope: app.example.com only, no DoS, no social engineering
+X # window: Sat 00:00-06:00; test account provided
+X # forbidden: data destruction, pivoting to other systems
+X # contact: on-call number to stop the test immediately
+V the ROE keeps the test legal and safe
+T Compare assessment types
+S In one line each, distinguish vulnerability scan, penetration test, audit, and red-team exercise.
+X # vuln scan: automated find weaknesses (no exploit)
+X # pen test: exploit to prove impact within scope
+X # audit: verify controls vs standard/policy
+X # red team: adversary simulation to test detection/response
+V you can pick the right one for a given goal
+
+#D 28|4 Operations|Automation, orchestration and secure ops|Apply automation to security operations securely.
+Q A key benefit of automation in security operations is:
++ Consistent, fast, repeatable responses that reduce human error
+- Removing all humans
+- Making systems slower
+- Avoiding documentation
+E Playbooks in SOAR auto-triage and contain common incidents.
+Q A risk of over-automation is:
++ A flawed script can cause damage at scale, quickly
+- Nothing; automation is always safe
+- Slower response
+- More manual work
+E Guardrails, approvals, and testing keep automation safe.
+Q Storing secrets (API keys, passwords) in code is bad because:
++ Anyone with the code gets the secret; use a secrets manager instead
+- It runs faster
+- It is required
+- It encrypts them
+E Use a vault and inject secrets at runtime.
+Q "Idempotent" automation means:
++ Running it repeatedly yields the same safe end state
+- It runs only once ever
+- It changes something each run
+- It cannot fail
+E Configuration tools like Ansible aim for idempotency.
+Q CI/CD security ("shift left") means:
++ Adding security testing early in the development pipeline
+- Testing only after release
+- Skipping tests
+- Moving servers left
+E Catch flaws before production with SAST/DAST and dependency scans.
+Q A "least-privilege" service account for automation should:
++ Have only the permissions the task needs, and be monitored
+- Be a domain admin
+- Have no logging
+- Be shared by everyone
+E Over-privileged automation accounts are prime targets.
+Q Why sign your scripts/artifacts in a pipeline?
++ To ensure integrity and that only trusted code runs (supply-chain defense)
+- To make them run faster
+- To hide the code
+- To skip testing
+E Signature verification stops tampered artifacts from deploying.
+C Store a secret in an environment variable for a script instead of hard-coding it (lab).
+A export API_KEY="$(cat ~/.secrets/api_key)"
+E Better: use a real secrets manager; never commit secrets to Git.
+T Automate a safe check
+S Write a short script that checks disk usage and alerts (logs) if over 80%, and make it idempotent.
+X printf '#!/bin/bash\nu=$(df --output=pcent / | tail -1 | tr -dc 0-9)\n[ "$u" -gt 80 ] && logger "DISK WARN ${u}%%"\n' > /usr/local/bin/diskwatch
+X chmod 755 /usr/local/bin/diskwatch
+X /usr/local/bin/diskwatch; journalctl -n 3 | grep -i "DISK WARN" || echo "under 80%"
+V running it twice does not cause harm
+T Find hard-coded secrets
+S Scan a code directory for likely secrets before committing.
+X grep -rEn '(password|api[_-]?key|secret|token)\s*=\s*["'"'"'][^"'"'"']+' ./src 2>/dev/null | head
+V you can spot secrets that should move to a vault
+
+#D 29|4 Operations|Endpoint and email security|Protect endpoints and email against modern threats.
+Q EDR (Endpoint Detection and Response) provides:
++ Continuous monitoring, detection, and response on endpoints
+- Only signature antivirus
+- Disk encryption only
+- A firewall
+E EDR sees behavior and enables remote investigation/containment.
+Q How does EDR differ from traditional antivirus?
++ It focuses on behavior/telemetry and response, not just known-signature files
+- It only scans on demand
+- It cannot quarantine
+- It has no logging
+E AV catches known malware; EDR catches suspicious behavior and enables hunting.
+Q SPF, DKIM and DMARC together help:
++ Verify email sender authenticity and reduce spoofing/phishing
+- Encrypt attachments
+- Speed up email
+- Back up mailboxes
+E SPF authorizes senders, DKIM signs messages, DMARC sets policy + reporting.
+Q Application allow-listing on endpoints:
++ Blocks unknown executables from running
+- Allows any download
+- Encrypts the disk
+- Is the same as antivirus
+E Strong against unknown malware, but needs upkeep.
+Q "Sandboxing" a suspicious attachment means:
++ Detonating it in an isolated environment to observe behavior safely
+- Deleting it
+- Encrypting it
+- Emailing it back
+E Email gateways and EDR use sandboxes to catch unknown malware.
+Q A key control against ransomware on endpoints is:
++ EDR + least privilege + tested offline backups + patching
+- Only antivirus
+- Disabling the firewall
+- Sharing admin rights
+E Layered defenses reduce both the chance and the impact.
+Q "Host-based intrusion prevention" (HIPS) does what?
++ Blocks malicious behavior on the endpoint itself
+- Filters the whole network
+- Encrypts email
+- Manages patches
+E Complements EDR and host firewall.
+Q Email attachment "content disarm and reconstruction" (CDR):
++ Strips active content and rebuilds a safe version of the file
+- Encrypts the email
+- Blocks all attachments
+- Signs the message
+E It removes macros/scripts while keeping the document usable.
+C On Linux, check a downloaded file's type before opening it, to avoid disguised executables.
+A file downloaded_invoice.pdf
+E If "PDF" is actually an executable or script, do not run it.
+T Configure email authentication (concept)
+S Write the DNS records (conceptually) for SPF, DKIM and DMARC for example.com and say what each does.
+X # SPF (TXT): v=spf1 include:_spf.provider.com -all   (authorize senders)
+X # DKIM (TXT): selector._domainkey ... p=<public key>  (sign messages)
+X # DMARC (TXT): v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com  (policy+reports)
+V you can explain how the three work together
+T Endpoint hardening quick win
+S On a Linux endpoint, ensure automatic security updates are considered and the firewall is on, and verify.
+X systemctl is-active firewalld || echo "enable firewall"
+X dnf install -y dnf-automatic 2>/dev/null; systemctl enable --now dnf-automatic.timer 2>/dev/null || true
+V firewall is active and update automation is considered
+
+#D 30|Exam|Security+ exam-day strategy|Approach the SY0-701 exam and its performance-based questions.
+Q How many questions and how long is the SY0-701 exam (approx)?
++ Up to 90 questions in 90 minutes
+- 200 questions in 4 hours
+- 50 questions in 30 minutes
+- Unlimited time
+E It mixes multiple-choice and performance-based questions (PBQs).
+Q What is the SY0-701 passing score?
++ 750 on a scale of 100-900
+- 210 out of 300
+- 70 percent flat
+- 800 out of 1000
+E It is scaled, so it is not a simple percentage.
+Q Performance-based questions (PBQs) usually ask you to:
++ Perform a task or solve a scenario (drag-drop, configure, analyze output)
+- Only pick A-D
+- Write an essay
+- Draw on paper
+E Many test-takers skip PBQs first, then return with remaining time.
+Q A good strategy for a hard PBQ early in the exam is:
++ Flag it, move on, and return after answering the quick multiple-choice items
+- Spend 20 minutes on it immediately
+- Guess and never return
+- Leave the exam
+E Bank the easy points first; PBQs can eat your clock.
+Q When two answers look correct, choose the one that is:
++ BEST/MOST secure and most directly addresses the question asked
+- Longest
+- First alphabetically
+- Most technical-sounding
+E CompTIA wants the best answer, not just a correct-sounding one.
+Q "MOST likely" and "BEST" in a question mean you should:
++ Rank the options and pick the strongest fit, even if others are partly right
+- Pick any correct-looking one
+- Pick the cheapest
+- Skip the question
+E These keywords signal more than one option is plausible.
+Q If you do not know an answer, you should:
++ Eliminate wrong options, then make your best guess (no penalty for guessing)
+- Leave it blank
+- Pick C always
+- Report a bug
+E There is no penalty, so never leave a blank.
+Q The best way to be ready for PBQs is to:
++ Practice hands-on tasks (firewall rules, log reading, hardening) beforehand
+- Memorize definitions only
+- Watch videos only
+- Skip labs
+E That is exactly why the Labs and command drills in this app matter.
+T Full timed review
+S Take a 90-question, 90-minute mixed quiz across all five domains. Flag anything you are unsure of and review only those at the end.
+X # Quiz tab -> 50+ questions, all domains, timed mentally
+X # note weak domains and drill them next
+V you score 750-equivalent (about 83%+) consistently
+T Domain weak-spot sweep
+S Use the weak-spots quiz mode until you have no domain below 80%.
+X # Quiz -> "My weak spots" -> repeat
+V every domain is at or above 80%
+T PBQ dry run
+S Do three Labs from different domains under a timer (log analysis, firewall/hardening, crypto) to simulate PBQs.
+X # Labs tab -> pick one ops, one architecture, one threats lab
+X # do them without revealing steps first
+V you can complete a scenario task without hints

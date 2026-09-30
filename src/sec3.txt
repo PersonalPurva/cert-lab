@@ -1,0 +1,207 @@
+#D 13|3 Architecture|Identity and access management|Explain IAM, authentication factors and access-control models.
+Q The three authentication factor categories are:
++ Something you know, something you have, something you are
+- Password, PIN, passphrase
+- Name, email, phone
+- Read, write, execute
+E Add location ("somewhere you are") and behavior as extra factors.
+Q Multi-factor authentication (MFA) requires factors from:
++ Two or more DIFFERENT categories
+- Two passwords
+- The same category twice
+- One factor only
+E A password + PIN is still one category ("know"), so it is not true MFA.
+Q In RBAC, access is granted based on:
++ The user's role/job function
+- The individual user only
+- The time of day only
+- Attributes like location
+E Role-Based Access Control scales better than assigning rights per user.
+Q ABAC grants access based on:
++ Attributes (user, resource, action, environment) evaluated by policy
+- Roles only
+- Mandatory labels only
+- The user's password length
+E Attribute-Based Access Control is flexible (e.g., "managers, on the corporate network, during work hours").
+Q In Mandatory Access Control (MAC), access decisions are:
++ Enforced by the system using labels/clearances, not changeable by users
+- Set by each file owner
+- Based on job role only
+- Optional
+E SELinux is a MAC implementation. Users cannot override the labels.
+Q Discretionary Access Control (DAC) means:
++ The resource owner decides who gets access
+- The system decides using labels
+- No one can change access
+- Only admins have access
+E Standard Linux file permissions (chmod) are DAC.
+Q Single Sign-On (SSO) improves security by:
++ Letting users authenticate once to reach many services, reducing password reuse
+- Removing the need for passwords entirely
+- Making one account admin of all
+- Disabling MFA
+E Federation (SAML/OIDC) enables SSO across organizations.
+Q What is the principle behind "just-in-time" (JIT) privileged access?
++ Elevated rights are granted only when needed and for a limited time
+- Admins keep rights forever
+- Access is granted at midnight
+- Everyone is an admin
+E It shrinks the window an attacker can abuse standing privileges.
+C On Linux, show which groups a user belongs to (their role memberships).
+A id student
+A groups student
+E Group membership is how RBAC is often implemented on Linux.
+T Enforce MFA thinking
+S For each login method, say whether it is true MFA: (a) password + SMS code, (b) password + security question, (c) fingerprint + hardware token, (d) PIN + password.
+X # (a) MFA (know + have)
+X # (b) NOT MFA (know + know)
+X # (c) MFA (are + have)
+X # (d) NOT MFA (know + know)
+V you can classify each correctly
+T Implement least-privilege roles
+S On a Linux host, create a "backupops" group, add a user, and give that group (not the user) read access to /var/backups.
+X groupadd backupops
+X usermod -aG backupops student
+X chgrp -R backupops /var/backups && chmod -R g+rX /var/backups
+V the user gets access only through the role/group
+T Time-based access (concept)
+S Describe how you would restrict a contractor account so it only works Mon-Fri 9-5 and expires in 30 days.
+X # account expiry:  chage -E $(date -d +30days +%F) contractor
+X # time restrictions via PAM (pam_time) or the IdP's conditional access policy
+V the account self-expires and is time-bound
+
+#D 14|4 Operations|Hardening and secure baselines|Apply hardening techniques to systems and endpoints.
+Q "Hardening" a system means:
++ Reducing its attack surface by removing/disabling unneeded features and tightening config
+- Installing more software
+- Adding more users
+- Making it faster
+E Fewer services, fewer accounts, stricter settings = smaller attack surface.
+Q A secure "baseline" is:
++ A defined, approved secure configuration that systems are built and checked against
+- The slowest setting
+- The default install
+- A backup image only
+E Tools compare live systems to the baseline and flag drift.
+Q Disabling unused services helps because:
++ Every running service is a potential entry point
+- It saves electricity only
+- It is required by law
+- It speeds up the GUI
+E Close ports and stop daemons you do not need.
+Q Why change default credentials during hardening?
++ Default usernames/passwords are publicly known and widely attacked
+- To make login harder for admins
+- It is optional and cosmetic
+- Defaults are encrypted
+E Default creds on routers, cameras and databases are a top breach cause.
+Q Application allow-listing (whitelisting) means:
++ Only approved programs may run; everything else is blocked
+- Blocking a list of bad programs
+- Allowing all downloads
+- A firewall rule for websites
+E It is stronger than block-listing but needs maintenance.
+Q Full-disk encryption on a laptop protects mainly against:
++ Data theft if the device is lost or stolen
+- Network attacks
+- Phishing
+- DDoS
+E BitLocker/LUKS make the disk unreadable without the key.
+Q What is "configuration drift"?
++ Systems gradually diverging from the approved secure baseline over time
+- Hardware aging
+- Network latency
+- A cloud billing term
+E Automated config management (Ansible, etc.) corrects drift.
+Q A host-based firewall differs from a network firewall because it:
++ Runs on and protects a single host
+- Protects the whole subnet
+- Is always hardware
+- Cannot be configured
+E Defense in depth uses both.
+C On Linux, list every service set to start at boot so you can disable extras.
+A systemctl list-unit-files --type=service --state=enabled
+E Disable what you do not need with systemctl disable --now.
+T Build a hardening checklist
+S Write a 6-item hardening checklist for a new Linux server, then apply two of the items.
+X # 1 update all packages  2 disable unused services  3 SSH: no root, keys only
+X # 4 host firewall: default deny inbound  5 change defaults  6 enable logging/auditd
+X dnf update -y
+X systemctl disable --now cups avahi-daemon 2>/dev/null || true
+V two items are actually applied
+T Verify against a baseline
+S Use a script to check three baseline rules: root SSH disabled, firewall running, and no empty-password accounts.
+X grep -i '^PermitRootLogin no' /etc/ssh/sshd_config* 2>/dev/null && echo OK-ssh
+X systemctl is-active firewalld && echo OK-fw
+X awk -F: '($2==""){print $1" has empty password"}' /etc/shadow
+V all three checks pass or you can fix the failures
+
+#D 15|4 Operations|Monitoring, logging and SIEM|Use logs and security monitoring to detect issues.
+Q What does a SIEM do?
++ Collects, correlates and alerts on security events from many sources
+- Encrypts disks
+- Replaces firewalls
+- Backs up data
+E Security Information and Event Management centralizes logs for detection and investigation.
+Q "Log aggregation" means:
++ Gathering logs from many systems into one central place
+- Deleting old logs
+- Encrypting one log
+- Writing logs faster
+E Central logs survive even if an attacker wipes a host's local logs.
+Q Why keep time synchronized (NTP) across systems?
++ So log timestamps line up, making correlation and investigation possible
+- To save power
+- To speed up the CPU
+- It is only cosmetic
+E Skewed clocks make it nearly impossible to reconstruct an incident timeline.
+Q What is an IoC (Indicator of Compromise)?
++ An artifact (hash, IP, domain, filename) that suggests a system was breached
+- A firewall rule
+- A backup file
+- A user role
+E Threat feeds share IoCs so defenders can search their environment.
+Q "False positive" in an alert means:
++ The tool alerted, but nothing malicious actually happened
+- The tool missed a real attack
+- The alert was correct
+- A user typed the wrong password
+E A false negative is worse: a real attack that produced no alert.
+Q NetFlow / flow data is useful because it:
++ Records who talked to whom, when and how much — without full packet contents
+- Stores every file
+- Decrypts TLS
+- Replaces the firewall
+E Great for spotting beaconing and data exfiltration patterns.
+Q What is "alert fatigue"?
++ Analysts becoming desensitized by too many (often low-value) alerts
+- A tired firewall
+- A slow SIEM
+- A backup failure
+E Tuning rules and prioritizing reduces missed real alerts.
+Q A SOAR platform adds what to a SOC?
++ Automation and orchestration of repetitive response tasks (playbooks)
+- More manual work
+- Disk encryption
+- Physical guards
+E Security Orchestration, Automation and Response speeds up containment.
+C On Linux, follow the auth log live to watch login events during an investigation.
+A journalctl -f -u sshd
+A tail -f /var/log/secure
+E Watch for repeated failures or logins at odd hours.
+T Hunt failed logins
+S On a Linux host, count failed SSH logins and list the top source IPs.
+X journalctl -u sshd --since today | grep -i 'failed password' | wc -l
+X journalctl -u sshd --since today | grep -oE 'from [0-9.]+' | sort | uniq -c | sort -rn | head
+V you can name the noisiest source IP
+T Centralize a log (concept + practice)
+S Explain why central logging matters, then forward this host's logs to a file that an attacker on the host cannot easily reach, and confirm entries arrive.
+X # central logging survives host compromise and enables correlation
+X logger "SIEM test event from $(hostname)"
+X journalctl -n 5 | grep 'SIEM test event'
+V the test event is recorded
+T Write a simple detection rule
+S Describe a detection rule for "possible brute force": 10+ failed SSH logins from one IP in 5 minutes, then what response it should trigger.
+X # condition: count(failed_ssh by src_ip, 5min) >= 10
+X # response: alert SOC + auto-block the IP (firewall) for 1 hour
+V the rule has a clear condition and action

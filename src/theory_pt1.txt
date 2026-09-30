@@ -1,0 +1,110 @@
+#D 1
+## What makes a penetration test legal
+A penetration test is authorised, ethical hacking done to find weaknesses **before** a real attacker does. The single thing that separates it from a crime is **written authorization** — a signed contract or statement of work from the owner of the systems being tested. No matter how good your intent, testing systems without that permission is illegal. On the job and on the exam, the first instinct for any scenario is always: *are we scoped and authorised for this?*
+
+## Rules of Engagement (ROE)
+The **Rules of Engagement** define the boundaries of the test:
+- **Scope** — exactly which systems, networks and applications may be tested. Anything outside scope is off-limits, even if you find a way in.
+- **Timing** — when testing may happen (often a maintenance window).
+- **Permitted and forbidden techniques** — high-impact actions like **denial-of-service, social engineering and physical intrusion** are usually forbidden unless explicitly authorised.
+- **Points of contact and a stop procedure** — so the client can halt testing immediately if something breaks.
+
+## Staying inside the lines
+- A "get out of jail free" letter is the written authorisation you carry proving the work is sanctioned — it documents permission, it does not excuse acting outside scope.
+- Testing cloud-hosted or shared systems may also require the **provider's** permission.
+- If you discover a path into an **out-of-scope** system, you stop, document it, and notify the client — you continue only if scope is formally amended in writing. Scope applies at **every** phase, from recon to reporting.
+
+#D 2
+## The penetration-testing phases
+A structured methodology keeps a test thorough and repeatable. The typical phases:
+1. **Planning** — scoping, ROE, legal.
+2. **Reconnaissance** — gather information about the target.
+3. **Scanning / Enumeration** — find live hosts, ports, services and detail.
+4. **Exploitation** — prove a vulnerability is real within scope.
+5. **Post-exploitation** — situational awareness, escalation, lateral movement.
+6. **Reporting** — the deliverable that creates value.
+Knowing the order matters on the exam: you *enumerate before you exploit*, and you *report at the end*.
+
+## Frameworks and standards
+Testers use shared frameworks so results are consistent and defensible:
+- **MITRE ATT&CK** — a catalogue of real adversary tactics and techniques (TTPs), used to plan and describe attacks.
+- **The Cyber Kill Chain** — the stages of an attack from reconnaissance to actions on objectives.
+- **PTES, OSSTMM, NIST 800-115** — penetration-testing/assessment methodologies.
+- **OWASP Testing Guide / Top 10** — the reference for web application testing.
+
+## Engagement styles
+- A standard pen test aims for broad **coverage** of vulnerabilities.
+- **Red teaming** emulates a real adversary to test the defenders' detection and response, often stealthy and goal-based.
+- **Assumed breach** testing starts from the premise that an attacker already has a foothold, focusing on lateral movement and detection rather than initial access.
+Documenting your methodology in the report makes findings reproducible and shows what was and wasn't covered.
+
+#D 3
+## Passive reconnaissance and OSINT
+Reconnaissance is gathering information about the target, and **passive** recon does it **without directly touching** the target's systems — so it is low-risk and stealthy. It relies on **OSINT (Open-Source Intelligence)**: public data anyone can access. Early passive recon builds a picture of the attack surface without alerting anyone.
+
+## What OSINT reveals
+- **WHOIS** — domain registration details, registrar, and name servers.
+- **DNS records** — subdomains, mail servers (MX), name servers (NS), text records (TXT).
+- **Certificate Transparency logs** (e.g. crt.sh) — publicly list issued certificates, often revealing subdomains.
+- **Google dorking** — advanced search operators (`site:`, `filetype:`, `intitle:`) that surface exposed files or logins.
+- **Social media and job posts** — employees, roles, and the exact technologies in use (job ads often leak the tech stack).
+
+## Passive vs active
+The key distinction for the exam: passive recon uses only public data and sends nothing to the target; **active** recon (scanning) directly interacts with target systems and can be detected. You gather all you can passively first, then move to active techniques on authorised, in-scope hosts. Organisations reduce their own exposure by privacy-protecting WHOIS, minimising info in job posts, and reviewing what CT logs reveal.
+
+#D 4
+## Active scanning with Nmap
+Once passive recon is done, **active** scanning directly probes authorised, in-scope hosts to discover what's there. **Nmap** (Network Mapper) is the standard tool — it finds live hosts, open ports and the services behind them. Run it only on systems you own or are authorised to test.
+
+## Core scan types and options
+- `-sS` — a **SYN (half-open)** scan: fast and relatively stealthy because it doesn't complete the full handshake (needs privileges).
+- `-sV` — **version detection**, identifying the software and version on each open port so you can match it to known vulnerabilities.
+- `-O` — **OS fingerprinting**, guessing the operating system from network-stack behaviour.
+- `-sC` — run the **default NSE scripts** for extra discovery (banner grabbing, common checks).
+- `-sU` — a **UDP** scan (slower and more ambiguous because UDP is connectionless; still needed for DNS, SNMP, DHCP).
+- `-Pn` — skip host discovery and treat the host as online (useful when ICMP is blocked).
+
+## Reading and pacing scans
+- **Timing templates** `-T0`–`-T5` trade speed for stealth/load: `-T4` is fast, `-T1` is slow and quiet (gentler on fragile targets).
+- `-p-` scans **all** 65,535 TCP ports; `-F` scans a fast common set.
+- `-oA basename` saves output in all formats for later parsing and comparison. A UDP result of "open|filtered" means no reply — it could be open or dropped, which is why UDP scanning is less certain.
+
+#D 5
+## Enumeration
+**Enumeration** goes deeper than scanning: it actively extracts detailed information — users, shares, versions, configuration — from the services a scan found. It turns "port 445 is open" into "these shares and these users exist." Thorough enumeration is what separates a professional from a script kiddie, because precise detail makes later exploitation reliable and reduces the risk of causing damage.
+
+## Enumerating common services
+- **SMB (445)** — shares, users and OS details when misconfigured (tools query shares and null sessions where allowed).
+- **Web servers** — **content discovery** (directory brute-forcing) with wordlist tools finds hidden endpoints like `/admin` or `/backup`.
+- **SNMP** — a default community string ("public") can leak system info, interfaces and running processes.
+- **DNS** — a misconfigured server may allow a **zone transfer (AXFR)** that dumps every record — a finding in itself.
+- **LDAP** — anonymous binds can expose directory users, groups and structure.
+
+## Banner grabbing and why detail matters
+**Banner grabbing** retrieves the identification string a service returns, revealing its software and version — which map directly to known CVEs. The reason to enumerate thoroughly *before* exploiting is control: you exploit precisely, quietly, and without breaking things, because you understand exactly what you're dealing with.
+
+#D 6
+## Vulnerability scanning
+A **vulnerability scanner** checks targets against a database of known weaknesses and misconfigurations, then reports likely issues. It **reports**, it doesn't exploit — a tester validates the findings afterward. Scanners save huge time but must be used carefully: an aggressive scan can crash fragile production services, so intensity and timing are agreed in the ROE.
+
+## Getting accurate results
+- **Authenticated (credentialed) scanning** logs in to check patch levels and configuration, giving far deeper and more accurate results than an unauthenticated scan.
+- A **false positive** is a reported vulnerability that isn't actually exploitable; validation separates real issues from noise.
+- Raw scanner output is **not** a professional report — findings must be validated and prioritised first.
+
+## Understanding the ratings
+- **CVSS** scores severity from 0.0 to 10.0 (9.0+ is Critical); real risk also depends on **exposure** and business impact.
+- A **CVE** is the unique public identifier for a known vulnerability.
+- **Compliance scanning** checks systems against a benchmark (CIS, PCI DSS) and reports configuration gaps.
+The workflow is: scan, **validate** the important findings by hand (e.g. grab the real version banner), then prioritise.
+
+#D 7
+## From findings to risk
+A pile of scanner output isn't useful until you turn it into risk-ranked, actionable results. Real-world risk depends on **severity AND exposure/exploitability AND business impact** — a critical CVE on an isolated box may rank *below* a medium flaw on an internet-facing app. Mapping findings to **business impact** ("this exposes customer PII") is what motivates leadership to fix them.
+
+## Chaining and attack paths
+- **Chaining** combines several lower-severity issues into one high-impact result — e.g. an information leak + a weak password + a misconfiguration = full compromise.
+- An **attack path** in the report shows the steps from initial access to the objective, so defenders can see the cheapest place to break the chain — often a single well-placed control stops the whole thing.
+
+## Writing good findings
+Each finding needs a clear **remediation** — specific, actionable guidance, not "be more secure." Prioritise findings (P1–P4) by severity, exposure and impact so the client fixes the most dangerous issues first. Don't list only "critical" items — chained lows and quick wins matter too. When a client knowingly chooses to live with a risk, that's a documented **risk acceptance**, recorded with who accepted it. The report, not the number of shells, is what delivers value.
