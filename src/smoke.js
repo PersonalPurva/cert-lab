@@ -63,19 +63,22 @@ const tabsNav = mkEl('nav'); tabsNav.setAttribute('id','tabs');
 const toastDiv = mkEl('div'); toastDiv.setAttribute('id','toast');
 const courseSel = mkEl('select'); courseSel.setAttribute('id','courseSel');
 const themeBtn = mkEl('button'); themeBtn.setAttribute('id','themeBtn');
+const studyBtn = mkEl('button'); studyBtn.setAttribute('id','studyBtn');
 const dataScript = mkEl('script'); dataScript.setAttribute('id','course-data'); dataScript.textContent = data;
-[appDiv,tabsNav,toastDiv,courseSel,themeBtn,dataScript].forEach(e=>body.append(e));
+[appDiv,tabsNav,toastDiv,courseSel,themeBtn,studyBtn,dataScript].forEach(e=>body.append(e));
 
 const localStore = {};
 global.localStorage = { getItem:k=>k in localStore?localStore[k]:null, setItem:(k,v)=>{localStore[k]=String(v);}, removeItem:k=>{delete localStore[k];} };
 global.document = {
   documentElement: documentEl,
+  body: body,
   createElement: mkEl,
   createTextNode: mkText,
   createDocumentFragment: ()=>mkEl('#fragment'),
-  querySelector: sel => (sel==='#app'?appDiv:sel==='#tabs'?tabsNav:sel==='#toast'?toastDiv:sel==='#courseSel'?courseSel:sel==='#themeBtn'?themeBtn:sel==='#course-data'?dataScript:(byId[sel.replace('#','')]||qs(body,sel))),
+  querySelector: sel => (sel==='#app'?appDiv:sel==='#tabs'?tabsNav:sel==='#toast'?toastDiv:sel==='#courseSel'?courseSel:sel==='#themeBtn'?themeBtn:sel==='#studyBtn'?studyBtn:sel==='#course-data'?dataScript:(byId[sel.replace('#','')]||qs(body,sel))),
   addEventListener(){},
 };
+body.scrollHeight = 0;
 global.window = {
   matchMedia: ()=>({matches:false, addEventListener(){}, addListener(){}}),
   addEventListener(){}, scrollTo(){}, claude: undefined,
@@ -96,14 +99,14 @@ function trycall(label, fn){ try{ fn(); }catch(e){ failures.push(label+': '+e.me
 
 // eval in a function scope that exposes needed globals
 const runner = new Function('document','window','localStorage','matchMedia','scrollTo','confirm','setTimeout','clearTimeout','setInterval','clearInterval',
-  appjs + '\nreturn {get state(){return state;}, renderTab, renderTabs, openDay, startQuiz, startExam, renderToday, renderDays, renderLabs, renderQuiz, renderExam, renderStats, questionCard, labCard, dailyIndexFor, course, boot};');
+  appjs + '\nreturn {get state(){return state;}, renderTab, renderTabs, openDay, startQuiz, startExam, renderToday, renderDays, renderLabs, renderQuiz, renderExam, renderStats, renderHelper, diagnose, questionCard, labCard, dailyIndexFor, course, boot};');
 let api;
 trycall('load/boot', ()=>{ api = runner(global.document, global.window, global.localStorage, global.matchMedia, global.scrollTo, global.confirm, setTimeout, clearTimeout, setInterval, clearInterval); });
 
 if(api){
   const S = api.state;
   // render every tab
-  ['today','days','quiz','labs','exam','stats'].forEach(t=>{
+  ['today','days','quiz','labs','helper','exam','stats'].forEach(t=>{
     trycall('renderTab('+t+')', ()=>{ S.tab=t; api.renderTabs(); api.renderTab(); });
   });
   // open several days of the current (default) course and answer questions
@@ -164,7 +167,7 @@ if(api){
   const courseIds = JSON.parse(data).courses.map(c=>c.id);
   courseIds.forEach(cid=>{
     trycall('switch->'+cid, ()=>{ courseSel.value=cid; if(courseSel.onchange)courseSel.onchange(); });
-    ['today','days','quiz','labs','exam','stats'].forEach(t=>{
+    ['today','days','quiz','labs','helper','exam','stats'].forEach(t=>{
       trycall(cid+' renderTab('+t+')', ()=>{ S.tab=t; api.renderTabs(); api.renderTab(); });
     });
     // command-drill quiz for this course
@@ -184,6 +187,27 @@ if(api){
   });
   // theme toggle
   trycall('theme toggle', ()=>{ if(themeBtn.onclick)themeBtn.onclick(); if(themeBtn.onclick)themeBtn.onclick(); });
+  // study mode: toggle on, render a day (exercises hint + explain-yourself), toggle off
+  trycall('study mode on + day', ()=>{
+    if(studyBtn.onclick)studyBtn.onclick();              // turn on
+    S.courseId='classtrack'; api.openDay(1);
+    // answer an mcq and a cmd under study mode
+    const opts=qs(appDiv,'.opts'); if(opts){ const q=S.quiz?null:null; opts.children[0].onclick(); }
+    const rev=qsa(appDiv,'.btn').find(b=>/Reveal why/.test(b._text)); if(rev)rev.onclick();
+    const hint=qsa(appDiv,'.btn').find(b=>/Hint/.test(b._text)); if(hint)hint.onclick();
+    if(studyBtn.onclick)studyBtn.onclick();              // turn off
+  });
+  // Fix-it helper: render it and run the diagnoser on known + unknown inputs
+  trycall('helper tab + diagnose', ()=>{
+    S.tab='helper'; api.renderTabs(); api.renderHelper();
+    const samples=['echo"hello"','cd..','usermod -G sales ram','cp file /Desktop','groupadd 2083','su -deep','Permission denied','No such file or directory','totally random text'];
+    samples.forEach(s=>{ api.diagnose(s); });
+    // tap a chip
+    const chip=qs(appDiv,'.chip'); if(chip)chip.onclick();
+    // type + submit via the send button
+    const inp=qs(appDiv,'input'); const send=qsa(appDiv,'.btn').find(b=>/Check/.test(b._text));
+    if(inp){ inp.value='usermod -G x y'; } if(send)send.onclick();
+  });
   // daily question pick determinism
   trycall('daily pick', ()=>{ const a=api.dailyIndexFor('2026-09-30').pick, b=api.dailyIndexFor('2026-09-30').pick; if(a[1]!==b[1]) throw new Error('daily not deterministic'); });
 }

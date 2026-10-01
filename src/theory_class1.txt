@@ -1,0 +1,165 @@
+#D 1
+## Talking to Linux through the terminal
+When you open the terminal you are typing to the **shell** (bash), which runs your commands. A command usually has three parts: the **command** itself, **options** (flags like `-l`), and **arguments** (what it acts on). Linux is **case-sensitive**, so `Desktop` and `desktop` are different names — this is why `cd desktop` failed but `cd Desktop` worked in class.
+
+## First look-around commands
+- `cat /etc/redhat-release` prints which Red Hat version the machine runs.
+- `whoami` prints the username you are logged in as.
+- `pwd` ("print working directory") shows the full path of where you are.
+
+## Making files and folders
+- `touch name` creates an empty file (or updates its time). You can make several at once: `touch a.txt b.txt`.
+- `mkdir name` makes a folder; `mkdir a b c` makes several.
+- **Brace expansion** is a shortcut bash expands before the command runs: `touch linux{1..50}.txt` creates linux1.txt … linux50.txt, and `mkdir linux{51..100}` makes 50 folders. Watch out for **spaces**: `mkdir mydata 2` makes two folders ("mydata" and "2"), because spaces separate arguments.
+
+## Moving around
+`cd` changes directory. Remember the shortcuts:
+- `cd Desktop` go into a folder, `cd ..` go up one level (note the **space** — `cd..` fails), `cd` or `cd ~` go home, `cd /` go to the very top.
+- After moving, `pwd` confirms where you are, and `ls` lists what's there.
+
+#D 2
+## Viewing a file with cat
+`cat file` prints a file's whole contents to the screen. Its name comes from "concatenate" because it can also join files. But in class you also used `cat` to **create and fill** files.
+
+## Creating and appending with redirection
+The arrows `>` and `>>` send output into a file instead of the screen — this is **redirection**:
+- `cat > linux10.txt` creates (or **overwrites**) the file and lets you type its contents; press **Ctrl+D** on an empty line to finish.
+- `cat >> linux10.txt` **appends** — it keeps what's there and adds your new lines at the end.
+The single rule to remember: **one arrow `>` overwrites, two arrows `>>` append.**
+
+## Printing text with echo
+`echo` prints text. Combined with redirection it's a quick way to write files:
+- `echo "welcome to jspm" > linux1.txt` writes that line into the file (overwriting).
+- `echo "welcome to rscoe" >> linux1.txt` adds a line to the end.
+Note the **space** after echo: `echo"hello"` fails, `echo "hello"` works.
+
+## Escape sequences with echo -e
+Normally `echo` prints text as-is. With the **`-e`** option it understands **escape sequences**:
+- `\n` = new line, `\t` = tab, `\b` = backspace, `\v` = vertical tab.
+So `echo -e "i\nam\nroot"` prints the three words on three separate lines. You can send it into a file too: `echo -e "i\nam\nroot" > linuxg.txt`.
+
+#D 3
+## The date command
+`date` on its own prints the current date and time. To show just the part you want, add a **`+format`** with percent codes:
+- `%d` day of month (01–31), `%m` month number (01–12), `%y` two-digit year, `%Y` four-digit year.
+- `%b` short month name (Oct), `%B` full month name (October), `%D` the short date (mm/dd/yy).
+So `date +%B` prints the full month name, and `date +%Y` prints the four-digit year.
+
+## The cal command
+`cal` prints a calendar:
+- `cal` alone shows the current month.
+- `cal 2026` shows the whole year 2026.
+- `cal -n 3` shows several months around now; `cal -j` numbers each day by its day-of-year (Julian, 1–365); `cal -m` starts the week on Monday.
+
+## Getting help
+Every command has documentation:
+- `man date` and `man cal` open the full manual (press `q` to quit, `/word` to search).
+- `cal --help` prints a quick summary of options.
+These built-in help sources matter because the RHCSA exam has no internet.
+
+#D 4
+## One tree under /
+Linux has no drive letters. Everything hangs off a single **root** directory written as `/`. Other disks and devices appear as folders inside this one tree. Learning where things live saves time later.
+
+## Important directories
+- `/etc` — system **configuration** files (like `/etc/passwd`).
+- `/bin` and `/usr/bin` — programs (commands) you run.
+- `/usr/sbin` and `/sbin` — administrator programs.
+- `/var/log` — log files that record what the system is doing.
+- `/tmp` — temporary files.
+- `/dev` — device files; `/proc` — live information about running processes; `/mnt` and `/media` — places to attach other disks.
+
+## The account file /etc/passwd
+`cat /etc/passwd` shows one line per user account, with fields separated by colons: `name:x:UID:GID:comment:home:shell`. The real password is **not** here (the `x` is a placeholder) — this file is just the list of accounts. You'll come back to it when creating users.
+
+## Listing details
+- `ls -l` gives a **long listing** — permissions, owner, size and date for each item.
+- `ls -ld folder` shows the **folder's own** details instead of listing its contents (the `-d` means "the directory itself").
+- `history` recalls commands you've typed; rerun one with `!number`.
+
+#D 5
+## What grep does
+`grep` searches text for lines that match a **pattern** and prints those lines. The basic form is `grep PATTERN FILE`, for example `grep root /etc/passwd` prints every line containing "root". It also reads from a pipe: `command | grep word`.
+
+## Changing what grep reports
+Small options change the behaviour a lot:
+- `-n` adds the **line number** to each match.
+- `-v` **inverts** the search — lines that do NOT match (e.g. `grep -v nologin tmp`).
+- `-o` prints **only the matched word**, not the whole line.
+- `-e pattern` lets you give more than one pattern: `grep -e prasanna -e pranjal tmp` matches either word.
+- Options combine: `grep -on word tmp` shows only the match with its line number.
+
+## Why grep matters
+`grep` is how you pull useful lines out of big files — log files, the account list, config files. On the exam you'll often filter `/etc/passwd` or a log with grep. Use `grep --help` for a quick option list, or `man grep` for the full manual.
+
+#D 6
+## Substituting text with sed
+`sed` is a stream editor that transforms text. Its most common job is **substitution**: `sed "s/old/new/" file` prints the file with the first "old" on each line replaced by "new".
+- Add `g` at the end to replace **every** match on a line: `s/old/new/g`.
+- By default sed only **prints** the result and leaves the file unchanged. The **`-i`** option edits the file **in place**: `sed -i "s/bin/bbin/" tmp`.
+- You can limit it to **line ranges**: `sed '5,7s/purva/pranjal/g' file` only touches lines 5–7, and `$` means the last line (`7,$`).
+
+## Extracting columns with cut
+`cut` pulls out **fields** (columns):
+- `-d` sets the **delimiter** (separator) and `-f` picks the field number. Since `/etc/passwd` uses colons, `cut -d: -f1 tmp` prints the username column, and `-f3` the UID.
+
+## Sorting and counting
+- `sort tmp` sorts lines alphabetically; `-r` reverses, `-n` sorts **numerically**, `-t:` sets a field separator and `-k3` sorts by the 3rd field (so `sort -t: -k3 -n` sorts by UID).
+- `head -n N` shows the first N lines, `tail -n N` (or `tail -6`) the last.
+- `wc` counts: `-l` lines, `-w` words, `-c` characters. `wc -l tmp` counts accounts.
+These small tools chain together with pipes to analyse any text.
+
+#D 7
+## Users and the account files
+Every person or service is a **user account** with a numeric **UID**, and belongs to groups (a **primary** group plus any number of **supplementary** ones). Two files store this: `/etc/passwd` (the account list) and `/etc/group` (the groups). View them with `cat /etc/passwd` and `cat /etc/group`.
+
+## Creating accounts and groups
+- `groupadd linux` makes a group; `useradd myuser1` makes a user; `passwd myuser1` sets its password; `id myuser1` shows its UID and groups.
+- Useful `useradd` options: `-u 1095` sets the UID, `-g 2076` sets the primary group, `-G linux` adds a supplementary group, `-s /sbin/nologin` sets a non-login shell. You can combine them: `useradd -u 1095 -g 2076 -s /sbin/nologin varsha`.
+
+## Modifying accounts with usermod
+`usermod` changes an existing user. The important distinction the class drilled:
+- **`-g group`** changes the **primary** group.
+- **`-G groups`** sets the **supplementary** group list — but used alone it **replaces** the whole list, wiping the others.
+- **`-aG group`** **appends** a supplementary group safely. Always use `-aG` to add a group.
+- `-c "comment"` sets the full-name/comment field; `-s /sbin/nologin` changes the shell; `-u` changes the UID.
+
+## nologin accounts
+A shell of `/sbin/nologin` creates an account that **cannot log in interactively** — used for service accounts that need to exist but should never be a login. Set it at creation (`useradd -s`) or later (`usermod -s`).
+
+#D 8
+## Reading permissions
+Run `ls -l` (files) or `ls -ld` (a folder itself) and look at the left column, e.g. `drwxr-x---`. After the first type character, the nine letters are **three groups of rwx** for three classes of user: **owner (u)**, **group (g)**, and **others (o)**. `r` = read, `w` = write, `x` = execute (and on a directory, `x` means "may enter it").
+
+## Changing permissions with chmod
+`chmod` sets permissions two ways:
+- **Symbolic**: `who operator permission`. Who = `u g o a`; operator = `+` (add), `-` (remove), `=` (set exactly); e.g. `chmod o+w /mydata` adds write for others, `chmod o=rwx /unnati` sets others to exactly rwx, `chmod o=--- /unnati` removes everything for others.
+- **Octal (numbers)**: r=4, w=2, x=1 added per class. `chmod 771` = rwx owner (7), rwx group (7), execute-only others (1).
+
+## Ownership: chown and chgrp
+- `chown myuser /unnati` makes myuser the **owner** (root only).
+- `chgrp sales /unnati` changes the **group** (or `chown :sales /unnati`).
+These decide which class — owner, group, or others — a given user falls into for a file.
+
+## Special bits: SUID and SGID
+Beyond rwx there are special bits shown as an `s`:
+- **SUID** on a program makes it run with its **owner's** privileges. `ls -l /usr/bin/passwd` shows an `s` in the owner slot — that's why a normal user can change their own password (passwd runs as root).
+- **SGID** on a **directory** (`chmod g+s /data/impdata`, or octal `2771`) makes new files inside inherit the **directory's group** — perfect for a shared team folder.
+
+#D 9
+## Switching users with su
+`su` lets you become another user:
+- `su user1` switches to user1 but keeps your current environment; it asks for **user1's** password.
+- `su - user1` starts a **login shell** — it loads user1's full environment and moves to their home directory. Prefer `su -`.
+- `su -` with no name becomes root. Type `exit` to return to your own account.
+
+## Giving admin rights: the wheel group
+Instead of sharing the root password, RHEL grants admin rights through **sudo**. Members of the **wheel** group can run commands as root using their **own** password:
+- `usermod -aG wheel deep` adds deep to wheel (note `-aG` so you don't wipe his other groups).
+- Then `deep` can run, for example, `sudo cat /etc/shadow` and type **his own** password.
+The difference to remember: `su` asks for the **target** user's password; `sudo` asks for **your own**.
+
+## Editing sudo rules safely with visudo
+sudo's rules live in `/etc/sudoers`. **Never edit that file directly** — a typo can lock everyone out of sudo. Use **`visudo`**, which checks the syntax before saving. A rule has the form `user host=(runas) commands`:
+- `user1 ALL=(ALL) ALL` lets user1 run any command as root (with a password).
+- `user1 ALL=(ALL) NOPASSWD:ALL,!/usr/bin/passwd` lets user1 run anything as root **without** a password, **except** the passwd command — the `!` carves out an exception.

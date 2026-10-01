@@ -211,6 +211,39 @@ details.theory>summary{color:var(--accent-ink);background:var(--accent-weak)}
 .sync.on .d{background:var(--good)}
 .sync.local .d{background:var(--warn)}
 
+/* study mode */
+.iconbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .iconbtn.on{color:#08130d}}
+:root[data-theme="dark"] .iconbtn.on{color:#08130d}
+.studybanner{display:flex;gap:9px;align-items:flex-start;background:var(--accent-weak);border:1px solid var(--border2);
+  border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--fg);line-height:1.5}
+.sb-tag{font-family:var(--mono);font-weight:700;font-size:11px;color:var(--accent-ink);white-space:nowrap;flex:none;padding-top:1px}
+.study-hint{background:var(--warn-weak);border:1px solid var(--border2);border-left:3px solid var(--warn);
+  border-radius:0 8px 8px 0;padding:9px 12px;margin-top:12px;font-size:13.5px;color:var(--fg)}
+.study-hint code{background:var(--surface);padding:1px 5px;border-radius:5px;font-size:12px}
+.study-reflect{font-size:13px;color:var(--accent-ink);font-weight:600;margin-top:10px;line-height:1.5}
+.theory-reflect{margin-top:16px;padding-top:12px;border-top:1px dashed var(--border)}
+/* helper chatbot */
+.chatwrap{display:flex;flex-direction:column;min-height:60vh}
+.chatlog{flex:1;display:flex;flex-direction:column;gap:12px;padding:4px 0 14px}
+.msg{max-width:88%;padding:11px 14px;border-radius:14px;font-size:14px;line-height:1.55;white-space:normal}
+.msg.bot{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px;font-family:var(--mono);font-size:13px}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .msg.me{color:#08130d}}
+:root[data-theme="dark"] .msg.me{color:#08130d}
+.msg.bot code{background:var(--surface2);border:1px solid var(--border);padding:1px 5px;border-radius:5px;font-size:12.5px}
+.msg.bot .lbl{font-family:var(--mono);font-weight:700;font-size:11px;display:block;margin:8px 0 2px}
+.msg.bot .lbl.bad{color:var(--bad)} .msg.bot .lbl.why{color:var(--warn)} .msg.bot .lbl.fix{color:var(--good)}
+.msg.bot .fixcmd{display:block;font-family:var(--mono);font-size:13px;background:var(--term-bg);color:var(--term-fg);
+  padding:8px 11px;border-radius:8px;margin-top:3px;overflow-x:auto;white-space:pre}
+.chatbar{position:sticky;bottom:0;background:var(--bg);padding:10px 0 4px;display:flex;gap:8px;border-top:1px solid var(--border)}
+.chatbar input{flex:1;min-width:0;font-family:var(--mono);font-size:13.5px;padding:11px 13px;border-radius:10px;
+  border:1.5px solid var(--border2);background:var(--surface2);color:var(--fg)}
+.chatbar input:focus{outline:none;border-color:var(--accent)}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.chip{font-family:var(--mono);font-size:11.5px;padding:6px 10px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--surface);color:var(--muted);cursor:pointer}
+.chip:hover{border-color:var(--faint);color:var(--fg)}
 .empty{text-align:center;color:var(--muted);padding:40px 16px}
 .section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:26px 0 12px}
 .section-title h2{font-size:15px;font-family:var(--mono);letter-spacing:-.2px}
@@ -224,6 +257,7 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:22px 0}
     <div class="brand"><span class="dot"></span>Linux&nbsp;Cert&nbsp;Lab</div>
     <div class="spacer"></div>
     <div class="selwrap"><select class="course" id="courseSel"></select></div>
+    <button class="iconbtn" id="studyBtn" title="Study mode: hints & explain-it-yourself" aria-label="Study mode">🎓</button>
     <button class="iconbtn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
   </div>
   <nav class="tabs" id="tabs"></nav>
@@ -403,6 +437,7 @@ function toast(msg){
   const t=$('#toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(t._tmr); t._tmr=setTimeout(()=>t.classList.remove('show'),1600);
 }
+function firstSentence(s){ const m=String(s||'').match(/^.*?[.!?](\s|$)/); return (m?m[0]:String(s||'')).trim(); }
 
 /* ---------- question card ---------- */
 function questionCard(day,q,idx,onAnswered){
@@ -425,10 +460,19 @@ function questionCard(day,q,idx,onAnswered){
   };
   const showExplain=()=>{
     const ex=el('div','explain');
-    const v=el('div','verdict '+(state.progress.items[key].status==='correct'?'g':'b'));
-    v.textContent = state.progress.items[key].status==='correct'?'✓ Correct':'✗ Not quite';
+    const correct=state.progress.items[key].status==='correct';
+    const v=el('div','verdict '+(correct?'g':'b'));
+    v.textContent = correct?'✓ Correct':'✗ Not quite';
     ex.append(v);
-    const exbody=el('div');exbody.append(richText(q.explain));ex.append(exbody);
+    const exbody=el('div');exbody.append(richText(q.explain));
+    if(state.studyMode){
+      // self-explanation first (Socratic): hide the "why" behind a reveal
+      const pr=el('div','study-reflect');pr.textContent='🤔 Before you read it — say WHY in your own words, then check:';
+      ex.append(pr);
+      const rb=el('button','btn sm','Reveal why');
+      rb.onclick=()=>{ rb.remove(); pr.remove(); ex.append(exbody); };
+      ex.append(rb);
+    } else { ex.append(exbody); }
     card.append(ex);
   };
 
@@ -456,6 +500,14 @@ function questionCard(day,q,idx,onAnswered){
     const row=el('div','row'); row.style.marginTop='12px';
     const check=el('button','btn primary sm','Check');
     const reveal=el('button','btn sm','Show answer');
+    if(state.studyMode){
+      const hintBtn=el('button','btn sm','💡 Hint');
+      hintBtn.onclick=()=>{ if(answered||hintBtn.disabled)return; hintBtn.disabled=true;
+        const h=el('div','study-hint'); h.append(richText('💡 '+firstSentence(q.explain)));
+        card.insertBefore(h,row);
+      };
+      row.append(hintBtn);
+    }
     row.append(check,reveal); card.append(row);
     const doCheck=()=>{
       if(answered)return;
@@ -489,7 +541,7 @@ function bumpStreak(){
 }
 
 /* ---------- TABS ---------- */
-const TABS=[['today','Today'],['days','Days'],['quiz','Quiz'],['labs','Labs'],['exam','Exam'],['stats','Progress']];
+const TABS=[['today','Today'],['days','Days'],['quiz','Quiz'],['labs','Labs'],['helper','🛠 Fix-it'],['exam','Exam'],['stats','Progress']];
 function renderTabs(){
   const nav=$('#tabs'); nav.innerHTML='';
   TABS.forEach(([id,label])=>{
@@ -500,7 +552,7 @@ function renderTabs(){
 }
 function renderTab(){
   app.innerHTML='';
-  ({today:renderToday,days:renderDays,quiz:renderQuiz,labs:renderLabs,exam:renderExam,stats:renderStats}[state.tab]||renderToday)();
+  ({today:renderToday,days:renderDays,quiz:renderQuiz,labs:renderLabs,helper:renderHelper,exam:renderExam,stats:renderStats}[state.tab]||renderToday)();
 }
 
 /* ---------- TODAY ---------- */
@@ -604,6 +656,13 @@ function openDay(dayNum){
   const p=dayProgress(d);const pb=el('div','progbar');pb.style.marginTop='12px';const pbi=el('i');pbi.style.width=p.pct+'%';pb.append(pbi);head.append(pb);
   app.append(head);
 
+  if(state.studyMode){
+    const sb=el('div','studybanner');
+    sb.append(el('span','sb-tag','🎓 Study mode'));
+    sb.append(el('span',null,'Learn each idea as why → how → syntax. Read a concept, try the question yourself before revealing, then move up in difficulty: recognise → type the command → do the lab.'));
+    app.append(sb);
+  }
+
   if(d.theory && d.theory.length) app.append(theoryCard(d));
 
   if(d.questions.length){
@@ -643,6 +702,11 @@ function theoryCard(d){
       }
     });
   });
+  if(state.studyMode){
+    const r=el('div','study-reflect theory-reflect');
+    r.textContent='🤔 Recall before moving on — without scrolling up, can you name each command here and say (1) why it exists, (2) how it works, (3) how to write it?';
+    body.append(r);
+  }
   det.append(body);
   return det;
 }
@@ -898,6 +962,144 @@ function finishExam(){
   card.append(again);app.append(card);
 }
 
+/* ---------- FIX-IT HELPER (offline rule-based) ---------- */
+// Each rule: what's WRONG -> WHY -> the minimum FIX (matches Purva's learn style).
+const MISTAKES=[
+  {re:/^[a-z]+"[^"]/i, when:"a command stuck straight onto a quote, e.g. echo\"hello\"",
+   bad:"There's no space between the command and its argument.",
+   why:"The shell reads the first word as the command. `echo\"hello\"` is treated as one unknown command.",
+   fix:'echo "hello"'},
+  {re:/\bcd\.\./, bad:"`cd..` has no space.",
+   why:"`cd` is the command and `..` is its argument — they must be separated by a space.",
+   fix:"cd .."},
+  {re:/\bcd\s+(desktop|downloads|documents|music|pictures)\b/, bad:"Wrong case in the folder name.",
+   why:"Linux is case-sensitive. The folder is `Desktop` (capital D), so `cd desktop` fails.",
+   fix:"cd Desktop"},
+  {re:/\busermod\s+(-\w*\s+)*-G\b(?!.*\b-a)/, bad:"`usermod -G` without `-a` REPLACES all supplementary groups.",
+   why:"`-G` sets the whole supplementary-group list, so it silently removes the user's other groups.",
+   fix:"usermod -aG groupname username"},
+  {re:/\b(cp|mv|touch|mkdir)\b.*\s\/(Desktop|Downloads|Documents|data|test)\b/,
+   bad:"You're writing to a folder at the root `/` (e.g. `/Desktop`).",
+   why:"A leading `/` means the top of the filesystem, which you don't own — hence \"Permission denied\". You probably meant the folder in your home directory (no leading slash).",
+   fix:"cp file Desktop      # (no leading slash = your ~/Desktop)"},
+  {re:/\bgroupadd\s+\d+\s*$/, bad:"`groupadd 2083` makes a group literally NAMED \"2083\".",
+   why:"The argument to groupadd is the group NAME. To set a numeric GID you need the `-g` option.",
+   fix:"groupadd -g 2083 groupname"},
+  {re:/\bgreap\b/, bad:"`greap` is a typo.",
+   why:"The command is spelled `grep` (Global Regular Expression Print).",
+   fix:"grep pattern file"},
+  {re:/\bsu\s+-[A-Za-z]/, bad:"`su -user` has no space after the dash.",
+   why:"`su -` (dash alone) means \"login shell\"; the username is a separate argument.",
+   fix:"su - username"},
+  {re:/\b(nano|vi|vim)\s+\/etc\/sudoers\b/, bad:"You're editing /etc/sudoers directly.",
+   why:"A syntax error there can lock everyone out of sudo. `visudo` checks the syntax before saving.",
+   fix:"visudo"},
+  {re:/\b(head|tail|ls|grep)\s+-\s+\w/, bad:"There's a space between `-` and the flag letter.",
+   why:"An option is the dash joined to its letter, like `-n`. `- n` is read as two separate arguments.",
+   fix:"head -n 8 file"},
+  {re:/\brm\s+-rf\s+\/(\s|$)/, bad:"`rm -rf /` would try to delete the ENTIRE system.",
+   why:"`/` is the root of everything and `-rf` forces recursive deletion with no prompt.",
+   fix:"# Double-check the path. You almost never want a leading / here."},
+  {re:/\buseradd\s+-g\s+\w+/, bad:"`useradd -g GROUP` needs that group to already exist.",
+   why:"`-g` sets the primary group; if the group isn't created yet you'll get \"group does not exist\".",
+   fix:"groupadd mygroup   # first\nuseradd -g mygroup username"},
+  {re:/\bchmod\s+o=--(\s|$)/, bad:"`o=--` only clears two of the three permission slots.",
+   why:"There are three bits (r,w,x). To remove all permission for others, set it to nothing.",
+   fix:"chmod o= file        # or: chmod o-rwx file"},
+  {re:/\bcat\s+[^|>]*\s[a-z]+\.[a-z]+\s+[a-z]/i, bad:"A filename seems to contain a space (e.g. `linux g.txt`).",
+   why:"The shell splits on spaces, so `cat linux g.txt` looks for two files: `linux` and `g.txt`.",
+   fix:'cat "linux g.txt"   # quote names with spaces (better: avoid spaces)'},
+];
+// Error-message patterns (when the user pastes the error, not the command)
+const ERRORS=[
+  {re:/permission denied/i, bad:"\"Permission denied\".",
+   why:"You're trying to do something your current user isn't allowed to — often an admin task, or writing where you don't have the `w` permission.",
+   fix:"sudo <your command>   # if it's an admin task\n# otherwise check: ls -ld <path>  and the owner/permissions"},
+  {re:/no such file or directory/i, bad:"\"No such file or directory\".",
+   why:"The name or path doesn't exist as typed. Usual causes: a typo, wrong CASE (Linux is case-sensitive), or you're in the wrong directory.",
+   fix:"pwd        # where am I?\nls         # is the name spelled/cased exactly right?"},
+  {re:/command not found/i, bad:"\"command not found\".",
+   why:"The shell can't find that command — usually a typo, or the package isn't installed.",
+   fix:"# check spelling; then:  which <cmd>   or   dnf install <package>"},
+  {re:/is a directory/i, bad:"\"Is a directory\".",
+   why:"You gave a folder where a file was expected (e.g. `cat somedir`).",
+   fix:"ls somedir     # to list it\ncat somedir/file.txt"},
+  {re:/not a directory/i, bad:"\"Not a directory\".",
+   why:"You tried to `cd` into (or treat as a folder) something that's actually a file.",
+   fix:"file <name>    # check what it is"},
+  {re:/target is busy|device is busy/i, bad:"\"Target is busy\" (on umount).",
+   why:"Something is still using the mount point — often your own shell sitting inside it.",
+   fix:"cd              # leave the directory\nfuser -vm /mnt/point   # see who else is using it"},
+  {re:/group .* does not exist|invalid group/i, bad:"\"group does not exist\".",
+   why:"You referenced a group that hasn't been created yet.",
+   fix:"groupadd mygroup    # create it first"},
+];
+function diagnose(input){
+  const s=input.trim(); const hits=[];
+  for(const r of ERRORS){ if(r.re.test(s)) hits.push(r); }
+  for(const r of MISTAKES){ if(r.re.test(s)) hits.push(r); }
+  return hits;
+}
+function botCard(hit){
+  const m=el('div','msg bot');
+  m.append(el('span','lbl bad','❌ WHAT\'S WRONG'));
+  const d1=el('div');d1.append(richText(hit.bad));m.append(d1);
+  m.append(el('span','lbl why','💡 WHY'));
+  const d2=el('div');d2.append(richText(hit.why));m.append(d2);
+  m.append(el('span','lbl fix','✅ MINIMUM FIX'));
+  const f=el('div','fixcmd');f.textContent=hit.fix;m.append(f);
+  return m;
+}
+function botText(frag){ const m=el('div','msg bot'); m.append(frag); return m; }
+let helperLog=[]; // {who:'me'|'bot', ...}
+function renderHelper(){
+  const head=el('div','card pad');head.style.marginBottom='12px';
+  head.append(el('div','eyebrow','Fix-it helper · works offline'));
+  head.append(el('div','qtext','Paste a command or an error'));
+  head.append(el('div','muted','Give me a command you typed (or the error message you got) and I\'ll tell you what\'s wrong, WHY, and the smallest fix. Great for the common beginner slip-ups.'));
+  app.append(head);
+
+  const wrap=el('div','chatwrap');
+  // quick examples
+  const chips=el('div','chips');
+  ['echo"hello"','cd..','usermod -G sales ram','cp file /Desktop','groupadd 2083','su -deep','Permission denied','No such file or directory']
+    .forEach(ex=>{const c=el('button','chip',ex);c.onclick=()=>submit(ex);chips.append(c);});
+  wrap.append(chips);
+
+  const logEl=el('div','chatlog');wrap.append(logEl);
+  const bar=el('div','chatbar');
+  const inp=el('input');inp.type='text';inp.placeholder='e.g.  usermod -G sales ram   (or paste an error)';
+  inp.autocapitalize='off';inp.autocomplete='off';inp.spellcheck=false;
+  const send=el('button','btn primary sm','Check');
+  bar.append(inp,send);wrap.append(bar);
+  app.append(wrap);
+
+  function paint(){ logEl.innerHTML='';
+    if(!helperLog.length){
+      logEl.append(botText(richText('👋 Hi! Type a command or an error above. For example try  `usermod -G sales ram`  — a classic mistake.')));
+    }
+    helperLog.forEach(item=>{
+      if(item.who==='me'){ const m=el('div','msg me');m.textContent=item.text;logEl.append(m); }
+      else if(item.hit){ logEl.append(botCard(item.hit)); }
+      else { logEl.append(botText(richText(item.text))); }
+    });
+    logEl.scrollTop=logEl.scrollHeight; window.scrollTo(0,document.body.scrollHeight);
+  }
+  function submit(text){
+    text=(text||inp.value).trim(); if(!text)return;
+    helperLog.push({who:'me',text});
+    const hits=diagnose(text);
+    if(hits.length){ hits.slice(0,2).forEach(h=>helperLog.push({who:'bot',hit:h})); }
+    else {
+      helperLog.push({who:'bot',text:"I don't have a specific rule for that one — but here's the checklist I'd run: (1) **spaces** — a space between the command, options and arguments? (2) **case** — exact capitals (Linux is case-sensitive)? (3) **spelling** of the command? (4) **path** — are you in the right place (`pwd`) and does it exist (`ls`)? (5) **permission** — do you need `sudo`? And remember `man <cmd>` or `<cmd> --help` is the ground truth."});
+    }
+    inp.value=''; paint();
+  }
+  send.onclick=()=>submit();
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});
+  paint();
+}
+
 /* ---------- STATS ---------- */
 function renderStats(){
   const c=course();const cp=courseProgress();
@@ -965,9 +1167,23 @@ function initTheme(){
   };
 }
 
+function initStudy(){
+  const btn=$('#studyBtn');
+  try{ state.studyMode = localStorage.getItem('linuxcertlab.study')==='1'; }catch(e){}
+  const paint=()=>{ btn.classList.toggle('on', !!state.studyMode); btn.setAttribute('aria-pressed', !!state.studyMode); };
+  paint();
+  btn.onclick=()=>{
+    state.studyMode=!state.studyMode;
+    try{localStorage.setItem('linuxcertlab.study', state.studyMode?'1':'0');}catch(e){}
+    paint();
+    toast(state.studyMode?'🎓 Study mode on — hints + explain-it-yourself':'Study mode off');
+    renderTab();
+  };
+}
+
 /* ---------- boot ---------- */
 async function boot(){
-  loadLocal();initTheme();
+  loadLocal();initTheme();initStudy();
   let data=null;
   try{data=JSON.parse($('#course-data').textContent);}catch(e){}
   if(!data||!data.courses||!data.courses.length){

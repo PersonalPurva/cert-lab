@@ -4,10 +4,12 @@ const dir = __dirname + '/';
 const rhAll = require('./rhcsa.json').concat(require('./adv.json')).concat(require('./adv2.json')).concat(require('./adv3.json'));
 const sec = require('./secplus.json');
 const pt = require('./pentest.json');
+const cls = require('./class.json');              // Class Track (follows the college class)
 const loadTheory = f => fs.existsSync(dir+f) ? JSON.parse(fs.readFileSync(dir+f,'utf8')) : {};
 const theory    = loadTheory('theory.json');      // RHCSA (RH124 days 1-21, RH134 days 22-40 & 51-68)
 const theorySec = loadTheory('theory_sec.json');  // Security+ days 1-30
 const theoryPt  = loadTheory('theory_pt.json');   // Pentest+ days 1-28
+const theoryCls = loadTheory('theory_class.json');// Class Track days 1-N
 
 const rh124 = rhAll.filter(d=>d.course==='RH124');
 const rh134 = rhAll.filter(d=>d.course==='RH134').concat(rhAll.filter(d=>d.course==='EX200'));
@@ -16,12 +18,14 @@ const rh134 = rhAll.filter(d=>d.course==='RH134').concat(rhAll.filter(d=>d.cours
 function attach(days, map){ days.forEach(d=>{ const t=map[String(d.day)]; if(t) d.theory=t; }); }
 attach(rh124, theory); attach(rh134, theory);
 attach(sec, theorySec); attach(pt, theoryPt);
+attach(cls, theoryCls);
 
 // renumber each course from 1
 rh124.forEach((d,i)=>d.day=i+1);
 rh134.forEach((d,i)=>d.day=i+1);
 
 const data = { courses: [
+  { id:'classtrack', name:'Class Track (my college class)', exam:'Follows exactly what the RSCOE Linux class has taught — grows as the class does', short:'Class', days:cls },
   { id:'rh124', name:'RH124 — RHCSA I', exam:'Red Hat System Administration I · RHEL 10 (foundation for EX200)', short:'RH124', days:rh124 },
   { id:'rh134', name:'RH134 — RHCSA II', exam:'Red Hat System Administration II · RHEL 10 · storage, SELinux, containers, networking + EX200 review', short:'RH134', days:rh134 },
   { id:'secplus', name:'CompTIA Security+ (SY0-701)', exam:'CompTIA Security+ · SY0-701', short:'Security+', days:sec },

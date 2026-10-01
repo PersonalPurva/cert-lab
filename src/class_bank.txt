@@ -1,0 +1,631 @@
+#D 1|Class|First commands & files|The very first commands: check the system, make files and folders, and move around.
+Q Which command shows which Red Hat version your machine is running?
++ cat /etc/redhat-release
+- whoami
+- ls /etc
+- version
+E `/etc/redhat-release` is a small text file holding the OS version; `cat` prints it.
+Q What does `whoami` print?
++ The username you are currently logged in as
+- The hostname
+- The current directory
+- The date
+E It answers "who am I right now" — useful when you switch users later.
+Q What does `touch linux{1..50}.txt` create?
++ 50 files named linux1.txt through linux50.txt in one command
+- One file literally named linux{1..50}.txt
+- A folder called linux
+- 50 folders
+E `{1..50}` is brace expansion — bash expands it to 1 2 3 … 50 before touch runs.
+Q What is wrong with `mkdir mydata1 mydata 2 mydata3`?
++ The space in "mydata 2" makes mkdir create two folders: "mydata" and "2"
+- Nothing, it makes 3 folders correctly
+- mkdir cannot make more than one folder
+- It makes a folder called "mydata 2"
+E Spaces separate arguments, so `mydata 2` is read as two names. Write `mydata2` with no space.
+Q What does `cd ..` do?
++ Moves up one level to the parent directory
+- Goes to your home directory
+- Goes to the root directory
+- Lists files
+E `..` means "parent". `cd ~` (or just `cd`) goes home; `cd /` goes to the root.
+Q Linux is case-sensitive. Why did `cd desktop` fail but `cd Desktop` work?
++ The folder is named "Desktop" with a capital D, and Linux treats names case-sensitively
+- desktop is a reserved word
+- You must always use capitals
+- cd needs the full path
+E `Desktop` and `desktop` are different names on Linux.
+C Create an empty file called myfile.txt.
+A touch myfile.txt
+E `touch` makes a new empty file (or updates the time on an existing one).
+C Create three files at once named myfile.doc, myfile.pdf and myfile.html.
+A touch myfile.doc myfile.pdf myfile.html
+E `touch` accepts several names separated by spaces.
+C Make 50 folders named linux51 through linux100 in one command.
+A mkdir linux{51..100}
+E Brace expansion works for mkdir too.
+C Print the full path of the directory you are standing in.
+A pwd
+E "print working directory".
+C Go back to your home directory from anywhere.
+A cd
+A cd ~
+E `cd` with no argument, or `cd ~`, returns home.
+T Your first files and folders
+S Check your Red Hat version and who you are, make a folder "mydata", create files linux1.txt to linux50.txt, then make folders linux51 to linux100.
+X cat /etc/redhat-release
+X whoami
+X mkdir mydata
+X touch linux{1..50}.txt
+X mkdir linux{51..100}
+V ls
+T Navigation practice
+S From your home directory, go into Desktop, list it, come back up, go into Downloads, then return home. Watch the prompt and pwd at each step.
+X cd Desktop
+X ls
+X cd ..
+X cd Downloads
+X pwd
+X cd
+V pwd
+
+#D 2|Class|cat and echo: creating and filling files|Use cat and echo to create files, write into them, and append.
+Q What does `cat linux10.txt` do?
++ Prints the contents of linux10.txt on the screen
+- Creates linux10.txt
+- Edits linux10.txt
+- Deletes linux10.txt
+E `cat` shows a file's contents.
+Q What does `cat > linux10.txt` do?
++ Creates (or overwrites) the file and lets you type its contents; press Ctrl+D to finish
+- Prints the file
+- Appends to the file
+- Copies the file
+E `>` redirects what you type into the file, replacing anything already there.
+Q What is the difference between `cat > file` and `cat >> file`?
++ `>` overwrites the file; `>>` adds to the end (appends)
+- They are the same
+- `>>` overwrites; `>` appends
+- `>>` deletes the file
+E One arrow replaces, two arrows append — the same rule applies to `echo`.
+Q What does `echo welcome to jspm > linux1.txt` do?
++ Writes the text "welcome to jspm" into linux1.txt, overwriting it
+- Prints the text on screen only
+- Appends the text
+- Creates an empty file
+E `echo` prints text; `>` sends that text into the file instead of the screen.
+Q `echo -e "i\nam\nroot"` — what does `-e` and `\n` do?
++ -e enables escape sequences, and \n inserts a new line
+- -e means "echo everything"; \n prints literally
+- -e edits the file; \n is nothing
+- Nothing; echo ignores them
+E With `-e`, `\n` = newline, `\t` = tab, `\b` = backspace, `\v` = vertical tab.
+Q Why does `echo"hello"` fail but `echo "hello"` work?
++ A space is needed between the command "echo" and its argument
+- Quotes are not allowed
+- echo must be capitalised
+- hello is a reserved word
+E The shell needs a space to separate the command from what you give it.
+C Print the file linux1.txt to the screen.
+A cat linux1.txt
+E `cat` dumps the whole file.
+C Create the file linux10.txt and type its contents from the keyboard (overwriting it).
+A cat > linux10.txt
+A cat>linux10.txt
+E Finish typing with Ctrl+D.
+C Add more lines to the end of linux10.txt from the keyboard.
+A cat >> linux10.txt
+A cat>>linux10.txt
+E `>>` keeps the existing contents and appends.
+C Write "welcome to rscoe" to the end of linux1.txt without erasing it.
+A echo welcome to rscoe >> linux1.txt
+A echo "welcome to rscoe" >> linux1.txt
+E `>>` appends; `>` would overwrite.
+C Print three words on three separate lines using echo with escapes.
+A echo -e "one\ntwo\nthree"
+E `-e` turns on `\n` as a newline.
+T Overwrite vs append
+S Create linux1.txt with "hii i am pranjal", view it, then append "welcome to rscoe", view it again, then overwrite it with "hii i am linux user".
+X echo hii i am pranjal > linux1.txt
+X cat linux1.txt
+X echo welcome to rscoe >> linux1.txt
+X cat linux1.txt
+X echo hii i am linux user > linux1.txt
+V cat linux1.txt
+T Escape sequences
+S Use echo -e to write text with newlines into a file called linuxg.txt, then view it.
+X echo -e "i\nam\nroot for this\nlinux class only" > linuxg.txt
+X cat linuxg.txt
+V cat linuxg.txt
+
+#D 3|Class|date and cal|Read and format the date, and print calendars.
+Q What does `date` with no options print?
++ The current date and time
+- Only the year
+- A calendar
+- The uptime
+E Add a `+format` to show only the parts you want.
+Q What does `date +%B` show?
++ The full month name (e.g. October)
+- The month number
+- The day
+- The year
+E `%b` is the short month name (Oct), `%B` the full one (October).
+Q Which format code gives the 4-digit year?
++ %Y
+- %y
+- %m
+- %D
+E `%Y` = 2026, `%y` = 26 (two digits), `%m` = month number, `%d` = day of month.
+Q What does `cal 2026` display?
++ The full calendar for the whole year 2026
+- Just the current month
+- The next 2026 days
+- An error
+E `cal` alone shows this month; a year number shows all 12 months.
+Q What does `cal -j` show?
++ A calendar with Julian day numbers (day-of-year, 1–365)
+- January only
+- A joke
+- The previous month
+E `-j` numbers each day by its position in the year.
+Q How do you read the manual for the date command?
++ man date
+- date man
+- help date only
+- date -man
+E `man date` opens the manual; `cal --help` gives a quick option summary.
+C Show today's day-of-month number only.
+A date +%d
+E `%d` is the numeric day (01–31).
+C Show the full month name of today.
+A date +%B
+E `%B` = full month name.
+C Show the 4-digit year.
+A date +%Y
+E `%Y` is the four-digit year.
+C Print this month's calendar.
+A cal
+E `cal` alone shows the current month.
+C Print the calendar for the whole year 2026.
+A cal 2026
+E A year argument prints all 12 months.
+T Date formatting drill
+S Print, each on its own line: the day number, the month number, the short month name, the full month name, and the four-digit year.
+X date +%d
+X date +%m
+X date +%b
+X date +%B
+X date +%Y
+V date
+T Calendars
+S Show this month, then the whole of 2026, then a calendar with Julian (day-of-year) numbers. Read the manual for cal.
+X cal
+X cal 2026
+X cal -j
+X man cal
+V cal
+
+#D 4|Class|Exploring the filesystem|Move through the Linux directory tree and read system files.
+Q On Linux, everything lives under which single top directory?
++ / (the root)
+- C:\
+- /home
+- /root
+E There are no drive letters; `/` is the root of the whole tree.
+Q Which directory holds system configuration files like /etc/passwd?
++ /etc
+- /bin
+- /var
+- /proc
+E `/etc` = configuration. `/bin` and `/usr/bin` hold programs, `/var/log` holds logs.
+Q What does /etc/passwd contain?
++ One line per user account with fields separated by colons
+- Everyone's passwords in plain text
+- The root password
+- A list of files
+E The password itself is not here (it shows as `x`); it's the account list.
+Q What is the difference between `ls -l` and `ls -ld` on a folder?
++ `ls -l` lists what's inside the folder; `ls -ld` shows the folder's own details
+- They are the same
+- `-ld` lists hidden files
+- `-ld` deletes the folder
+E `-ld` is how you check a directory's own permissions and owner.
+Q Why does `cd..` (no space) fail while `cd ..` works?
++ A space is required between the command and its argument
+- `..` is invalid
+- cd needs a full path
+- You must use cd -
+E `cd` is the command, `..` is the argument — they must be separated by a space.
+Q Which command recalls the commands you have typed before?
++ history
+- recall
+- last
+- redo
+E `history` lists them; you can also search with Ctrl+R.
+C Go to the root of the filesystem.
+A cd /
+E A single `/` is the top of the tree.
+C Print the account list file.
+A cat /etc/passwd
+E Each line is one account.
+C Show the details (permissions, owner) of the folder mydata itself, not its contents.
+A ls -ld mydata
+E `-d` means "the directory itself".
+C Show your command history.
+A history
+E Numbers let you rerun with `!number`.
+T A tour of the tree
+S Starting from /, visit and list these directories, noticing what each holds: /etc, /bin, /var/log, /usr/bin, /tmp. Return home afterward.
+X cd /
+X cd etc && ls
+X cd /bin && ls
+X cd /var/log && ls
+X cd /usr/bin && ls
+X cd
+V pwd
+T Read system files
+S Look at the Red Hat version, the account list, and the long listing of /etc.
+X cat /etc/redhat-release
+X cat /etc/passwd
+X ls -l /etc
+V ls -ld /etc
+
+#D 5|Class|Searching text with grep|Find lines that match a pattern, and change what grep reports.
+Q What does `grep root /etc/passwd` do?
++ Prints every line of /etc/passwd that contains "root"
+- Deletes lines with root
+- Counts the files
+- Opens an editor
+E `grep PATTERN FILE` prints matching lines.
+Q What does `grep -n` add to the output?
++ The line number of each match
+- A count only
+- Colour only
+- Nothing
+E `-n` prefixes each matching line with its number.
+Q What does `grep -v pranjal passwd` show?
++ Every line that does NOT contain "pranjal"
+- Only lines with pranjal
+- A count of pranjal
+- The whole file
+E `-v` inverts the match.
+Q What does `grep -o pranjal passwd` print?
++ Only the matched word "pranjal" from each match, not the whole line
+- The whole line
+- The line number
+- Nothing
+E `-o` shows only the matching part.
+Q What does `grep -e prasanna -e pranjal passwd` do?
++ Finds lines containing either "prasanna" or "pranjal"
+- Finds lines with both words
+- Only "prasanna"
+- An error
+E Each `-e` adds another pattern to search for.
+Q How do you see all the options grep supports quickly?
++ grep --help
+- grep -options
+- man grep only
+- grep -h
+E `grep --help` prints a summary; `man grep` is the full manual.
+C Show the lines of /etc/passwd that contain "root".
+A grep root /etc/passwd
+E Classic way to find the root account's line.
+C Show matching lines with their line numbers for the word "passwd" in the file tmp.
+A grep -n passwd tmp
+E `-n` adds line numbers.
+C Show the lines of tmp that do NOT contain "pranjal".
+A grep -v pranjal tmp
+E `-v` inverts the match.
+C Print only the matched word (with line numbers) for "pranjal" in tmp.
+A grep -on pranjal tmp
+A grep -no pranjal tmp
+E `-o` only the match, `-n` line numbers — options can be combined.
+T grep on the account file
+S Copy /etc/passwd to a file called tmp, then: find lines with "root", find lines with numbers, show lines without "nologin", and print only the word "bash" where it appears.
+X cp /etc/passwd tmp
+X grep root tmp
+X grep -n bash tmp
+X grep -v nologin tmp
+X grep -o bash tmp
+V grep -c bash tmp
+T Two patterns at once
+S In tmp, find any line containing either "root" or "bash", with line numbers.
+X grep -n -e root -e bash tmp
+V grep -n -e root -e bash tmp
+
+#D 6|Class|sed, cut, sort and counting|Transform and summarise text: substitute, extract columns, sort, and count.
+Q What does `sed "s/pranjal/pranju/" tmp` do?
++ Prints tmp with the first "pranjal" on each line replaced by "pranju" (file unchanged)
+- Permanently edits the file
+- Deletes pranjal
+- Counts pranjal
+E `s/old/new/` substitutes; add `g` to replace every match on a line.
+Q What makes sed change the file itself?
++ The -i option (in place): sed -i "s/old/new/" file
+- -e
+- -f
+- Nothing; sed always edits the file
+E Without `-i`, sed only prints the result and leaves the file as it was.
+Q What does `sed '5,7s/purva/pranjal/g' file` do?
++ On lines 5 to 7 only, replaces every "purva" with "pranjal"
+- Replaces on all lines
+- Replaces on line 57
+- Deletes lines 5 to 7
+E `5,7` is a line range; `$` means the last line (e.g. `7,$`).
+Q What does `cut -d: -f1 tmp` print?
++ The first field of each line, using ":" as the separator
+- The first line
+- The first character
+- The first word
+E `-d` sets the delimiter, `-f` picks the field number. `/etc/passwd` uses `:`.
+Q What does `sort -n` do that plain `sort` does not?
++ Sorts numerically instead of alphabetically
+- Sorts in reverse
+- Removes duplicates
+- Numbers the lines
+E `-r` reverses, `-t:` sets a field separator, `-k4` sorts by the 4th field.
+Q Which counts the number of LINES in a file?
++ wc -l
+- wc -w
+- wc -c
+- wc -n
+E `-l` lines, `-w` words, `-c` characters/bytes.
+C Replace "bin" with "bbin" throughout the file tmp, changing the file itself.
+A sed -i "s/bin/bbin/" tmp
+A sed -i 's/bin/bbin/' tmp
+E `-i` edits in place; add `g` to catch more than one per line.
+C Print only the first colon-separated field of tmp.
+A cut -d: -f1 tmp
+E The username field in /etc/passwd.
+C Sort the file tmp in reverse order.
+A sort -r tmp
+E `-r` = reverse.
+C Count how many lines are in tmp.
+A wc -l tmp
+E One line per account, so this also counts accounts.
+C Show the first 2 lines of tmp.
+A head -n2 tmp
+A head -n 2 tmp
+E `head` shows the top; `tail` shows the bottom (`tail -6` = last 6).
+T Transform the account file
+S Using your tmp copy of /etc/passwd: substitute "nologin" with "lllog" (preview only), then pull out the username column, then sort it, and finally count the lines.
+X sed "s/nologin/lllog/" tmp
+X cut -d: -f1 tmp
+X cut -d: -f1 tmp | sort
+X wc -l tmp
+V wc -l tmp
+T Sorting by a field
+S Sort tmp by the 3rd field (the UID) numerically, using ":" as the separator.
+X sort -t: -k3 -n tmp
+V sort -t: -k3 -n tmp
+T head, tail and wc
+S Show the first 7 lines, the last 6 lines, and the line, word and character counts of tmp.
+X head -n7 tmp
+X tail -6 tmp
+X wc -l tmp
+X wc -w tmp
+X wc -c tmp
+V wc -l tmp
+
+#D 7|Class|Users and groups|Create and modify user accounts and groups.
+Q Which command creates a new group called linux?
++ groupadd linux
+- useradd linux
+- addgroup linux
+- group linux
+E `groupadd` makes a group; `useradd` makes a user.
+Q After `useradd myuser1`, how do you set its password?
++ passwd myuser1
+- useradd -p myuser1
+- password myuser1
+- setpass myuser1
+E `passwd NAME` (as root) sets another user's password.
+Q What does `id user2` show?
++ The user's UID, primary group (GID) and supplementary groups
+- The user's password
+- The user's files
+- The login time
+E `id` is how you check an account's identity and group memberships.
+Q What is the key difference between `usermod -G` and `usermod -aG`?
++ -G replaces all supplementary groups; -aG appends without removing the others
+- They are the same
+- -aG replaces; -G appends
+- -aG deletes the user
+E Always use `-aG` to add a group safely — `-G` alone wipes the existing list.
+Q What does `usermod -g class user2` change?
++ The user's PRIMARY group to "class"
+- A supplementary group
+- The username
+- The shell
+E Lowercase `-g` = primary group; uppercase `-G` = supplementary groups.
+Q What does a shell of /sbin/nologin do for an account?
++ Prevents that account from logging in interactively (used for service accounts)
+- Gives extra privileges
+- Deletes the account
+- Sets no password
+E Set it with `usermod -s /sbin/nologin name` or `useradd -s /sbin/nologin name`.
+C Create a group named linux.
+A groupadd linux
+E Verify with `cat /etc/group`.
+C Create a user called ram with UID 1089.
+A useradd -u 1089 ram
+E `-u` sets the UID; check with `id ram`.
+C Add the user ram to the group kkk WITHOUT removing his other groups.
+A usermod -aG kkk ram
+E `-aG` appends; forgetting `-a` would replace all his supplementary groups.
+C Set ram's primary group to class.
+A usermod -g class ram
+E Lowercase `-g` for the primary group.
+C Create a user varsha with UID 1095, primary group 2076, and a no-login shell.
+A useradd -u 1095 -g 2076 -s /sbin/nologin varsha
+E Combine options in one useradd command.
+C Set a comment (full name) of "developer2" on the user john_toddler.
+A usermod -c developer2 john_toddler
+A usermod -c "developer2" john_toddler
+E `-c` sets the comment/GECOS field; see it in /etc/passwd.
+T Create users and groups
+S Create group "linux". Create users prann and user1, both in group linux. Create user2, then change its primary group to a new group "class". Check each with id.
+X groupadd linux
+X useradd -G linux prann
+X useradd -G linux user1
+X useradd user2
+X groupadd class
+X usermod -g class user2
+V id prann; id user2
+T Append vs replace groups (the -aG lesson)
+S Create user ram. Add him to group kkk, then also to class, then also to linux — all without losing the earlier groups. Then check his groups.
+X useradd ram
+X groupadd kkk; groupadd class
+X usermod -aG kkk ram
+X usermod -aG class ram
+X usermod -aG linux ram
+V id ram
+T One-line account spec
+S Create user varsha with UID 1095, primary group 2076 (create the group first), and shell /sbin/nologin. Confirm.
+X groupadd -g 2076 devs
+X useradd -u 1095 -g 2076 -s /sbin/nologin varsha
+V id varsha; cat /etc/passwd | grep varsha
+
+#D 8|Class|Permissions and ownership|Change who owns files and what each class of user may do.
+Q In `ls -ld` output like `drwxr-x---`, what are the three groups of rwx for?
++ Owner (u), group (g), and others (o)
+- Read, write, run only
+- Three different users
+- The three timestamps
+E Each group is read(r) write(w) execute(x) for that class of user.
+Q What does `chmod o+w /mydata` do?
++ Adds write permission for "others" on /mydata
+- Removes write for others
+- Sets owner write
+- Makes it executable
+E Symbolic mode: who (u/g/o/a), operator (+/-/=), permission (r/w/x).
+Q What is the difference between `chmod o=rwx` and `chmod o+rwx`?
++ `=` sets others to exactly rwx; `+` adds rwx to whatever others already have
+- They are identical
+- `=` removes permissions
+- `+` sets exactly
+E `=` is absolute, `+`/`-` are relative.
+Q What does `chmod 771` mean in numbers?
++ rwx for owner (7), rwx for group (7), execute-only for others (1)
+- 771 files
+- Read-only for all
+- Full access for all
+E r=4, w=2, x=1: 7=rwx, 1=--x.
+Q What does `chmod g+s` on a directory do (the SGID bit)?
++ New files created inside inherit the directory's group — good for shared folders
+- Makes it owner-only
+- Deletes the group
+- Sets a password
+E You saw this on /data/impdata so a team shares the group automatically.
+Q `ls -l /usr/bin/passwd` shows an `s` where owner-execute should be. What is that?
++ The SUID bit: passwd runs with its owner's (root's) privileges so you can change your password
+- A symbolic link
+- A syntax error
+- A sticky bit
+E SUID lets a normal user update /etc/shadow safely through passwd.
+C Make myuser the owner of the folder /unnati.
+A chown myuser /unnati
+A chown myuser /unnati/
+E `chown USER path` changes the owner (root only).
+C Change the group of /unnati to sales.
+A chgrp sales /unnati
+A chgrp sales /unnati/
+E `chgrp` changes just the group (or `chown :sales /unnati`).
+C Give others exactly read, write and execute on /unnati.
+A chmod o=rwx /unnati
+A chmod o=rwx /unnati/
+E `=` sets exactly those permissions for "others".
+C Set /test/impdata to rwx for owner and group, execute-only for others, using numbers.
+A chmod 771 /test/impdata
+E 7=rwx, 7=rwx, 1=--x.
+C Turn on the SGID bit on /data/impdata so new files inherit its group.
+A chmod g+s /data/impdata
+E Or `chmod 2771` (the leading 2 is SGID).
+T Owner, group and permissions
+S Create /unnati. Make "myuser" the owner and "sales" the group. Give the owner read+execute, the group rwx, and others nothing. Check with ls -ld after each change.
+X mkdir /unnati
+X chown myuser /unnati
+X chgrp sales /unnati
+X chmod u=rx /unnati
+X chmod g=rwx /unnati
+X chmod o=--- /unnati
+V ls -ld /unnati
+T A shared team directory (SGID)
+S Create /data/impdata. Make "amit" the owner and "redhat" the group, set mode 771, then add the SGID bit so files made inside belong to the redhat group.
+X mkdir -p /data/impdata
+X chown amit /data/impdata
+X chgrp redhat /data/impdata
+X chmod 771 /data/impdata
+X chmod g+s /data/impdata
+V ls -ld /data/impdata
+T See SUID in action
+S Look at the permissions of the passwd program and explain why a normal user can change their own password.
+X ls -l /usr/bin/passwd
+X # the 's' in the owner slot = SUID: it runs as root (its owner)
+V ls -l /usr/bin/passwd
+
+#D 9|Class|Switching users and sudo|Become another user, and grant admin rights with wheel and sudo.
+Q What is the difference between `su user1` and `su - user1`?
++ `su -` loads user1's full environment and home directory (a login shell); `su` keeps your current environment
+- They are identical
+- `su -` does not ask for a password
+- `su` is only for root
+E Prefer `su -` so the environment matches the target user.
+Q When you run `su user1` as a normal user, whose password is asked?
++ user1's password
+- Your own password
+- The root password
+- No password
+E `su` asks for the target user's password; `sudo` asks for your own.
+Q On RHEL, members of which group get sudo (admin) rights by default?
++ wheel
+- admin
+- sudo
+- root
+E Add a user with `usermod -aG wheel name`. The rule is in /etc/sudoers.
+Q What is the safe way to edit the sudoers file?
++ visudo (it checks the syntax before saving)
+- nano /etc/sudoers directly
+- vi /etc/sudoers directly
+- cat > /etc/sudoers
+E A syntax error in sudoers can lock everyone out of sudo; visudo prevents that.
+Q A sudoers rule `user1 ALL=(ALL) NOPASSWD:ALL,!/usr/bin/passwd` means user1 can:
++ Run any command as root without a password, EXCEPT the passwd command (the ! excludes it)
+- Run only passwd
+- Run nothing
+- Run everything including passwd
+E The `!` negates a command, carving an exception out of "ALL".
+C Switch to the user deep with a full login shell.
+A su - deep
+E The dash gives deep's environment and home directory.
+C Add the user deep to the wheel group so he can use sudo.
+A usermod -aG wheel deep
+E `-aG` appends wheel without removing deep's other groups.
+C Safely open the sudoers file for editing.
+A visudo
+E Always use visudo, never edit /etc/sudoers directly.
+T Become another user
+S Create user vilas, give him a bash shell, then switch into his account with a full login shell and check who you are.
+X useradd vilas
+X passwd vilas
+X usermod -s /bin/bash vilas
+X su - vilas
+X whoami
+V id vilas
+T Grant sudo via wheel
+S Create user deep, add him to the wheel group, switch to him, and confirm he can run an admin command with sudo.
+X useradd deep
+X passwd deep
+X usermod -aG wheel deep
+X su - deep
+X sudo cat /etc/shadow
+V id deep
+T A custom sudo rule
+S Using visudo, let user1 run all commands as root without a password except changing passwords, then test it.
+X usermod -aG wheel user1
+X visudo
+X # add:  user1 ALL=(ALL) NOPASSWD:ALL,!/usr/bin/passwd
+X su - user1
+X sudo cat /etc/passwd
+V sudo -l -U user1
