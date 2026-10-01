@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linux Unit Test II — Question Paper</title>
+<style>
+  :root{ --ink:#111; --muted:#555; --line:#999; }
+  *{box-sizing:border-box}
+  body{font-family:"Times New Roman",Georgia,serif;color:var(--ink);background:#f2f2f2;margin:0;line-height:1.45;font-size:15px}
+  .sheet{max-width:820px;margin:18px auto;background:#fff;padding:34px 40px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+  .hdr{text-align:center;border-bottom:2px solid var(--ink);padding-bottom:10px}
+  .hdr .inst{font-size:17px;font-weight:bold}
+  .hdr .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .hdr .dept{font-size:13.5px;margin-top:6px;font-weight:bold}
+  .hdr .exam{font-size:14px;margin-top:4px}
+  .meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13.5px;margin:10px 0 2px;font-weight:bold}
+  .meta2{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13.5px;border-top:1px dashed var(--line);border-bottom:1px solid var(--ink);padding:6px 0}
+  .instr{font-size:13px;margin:12px 0;padding-left:20px}
+  .instr li{margin:2px 0}
+  table.q{width:100%;border-collapse:collapse;margin-top:6px}
+  table.q td{vertical-align:top;padding:5px 4px}
+  td.sub{width:26px;font-weight:bold}
+  td.num{width:34px;font-weight:bold}
+  td.mk{width:46px;text-align:right;white-space:nowrap;font-weight:bold}
+  td.co{width:58px;text-align:center;font-size:12px;color:var(--muted)}
+  .qhead{font-weight:bold;margin-top:14px;border-bottom:1px solid #ccc;padding-bottom:3px;display:flex;justify-content:space-between}
+  .orline{text-align:center;font-weight:bold;font-style:italic;margin:3px 0}
+  code{font-family:"Consolas","Courier New",monospace;background:#f3f3f3;padding:0 3px;border-radius:3px;font-size:13.5px}
+  .foot{text-align:center;font-weight:bold;margin-top:18px;border-top:2px solid var(--ink);padding-top:6px;font-size:13px}
+  .legend{font-size:11.5px;color:var(--muted);margin-top:8px}
+  .noprint{max-width:820px;margin:10px auto;text-align:center}
+  .noprint button{font:inherit;font-size:14px;padding:9px 18px;border:1px solid #888;border-radius:7px;background:#fff;cursor:pointer}
+  @media print{ body{background:#fff} .sheet{box-shadow:none;margin:0;max-width:none;padding:14mm 16mm} .noprint{display:none} }
+</style>
+</head>
+<body>
+<div class="noprint"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+<div class="sheet">
+
+  <div class="hdr">
+    <div class="inst">JSPM's Rajarshi Shahu College of Engineering, Tathawade, Pune–33</div>
+    <div class="sub">(An Autonomous Institute Affiliated to Savitribai Phule Pune University)</div>
+    <div class="dept">Department of Computer Engineering</div>
+    <div class="exam">Unit Test – II &nbsp;|&nbsp; Academic Year 2026–27 (Semester III)</div>
+  </div>
+
+  <div class="meta">
+    <span>Class: S.Y. B.Tech (Computer)</span>
+    <span>Subject: Linux System Administration (RHCSA)</span>
+  </div>
+  <div class="meta2">
+    <span>Date: ___ / ___ / 2026</span>
+    <span>Time: 1 Hour</span>
+    <span>Max. Marks: 30</span>
+  </div>
+
+  <ol class="instr">
+    <li>All questions are <b>compulsory</b>. Figures to the right indicate full marks.</li>
+    <li>Write the <b>exact</b> command(s); options, flags, quoting and spacing matter.</li>
+    <li>For "predict the output" questions, show the output clearly.</li>
+    <li>Assume suitable data wherever necessary.</li>
+  </ol>
+
+  <div class="qhead"><span>Q.1 &nbsp; Predict the output / answer (any FIVE).</span><span>[5]</span></div>
+  <table class="q">
+    <tr><td class="sub">a)</td><td>What is printed by &nbsp;<code>echo -e "a\nb\tc"</code> ?</td><td class="mk">1</td><td class="co">CO1 / U</td></tr>
+    <tr><td class="sub">b)</td><td>After <code>chmod 2750 /team</code>, what will the permission string in <code>ls -ld /team</code> look like?</td><td class="mk">1</td><td class="co">CO3 / Ap</td></tr>
+    <tr><td class="sub">c)</td><td>How many files does <code>touch file{1..3}{a,b}.txt</code> create? Name any two.</td><td class="mk">1</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">d)</td><td>What does <code>sort -t: -k3 -n /etc/passwd</code> sort the file by?</td><td class="mk">1</td><td class="co">CO1 / U</td></tr>
+    <tr><td class="sub">e)</td><td>What does <code>cut -d: -f1,7 /etc/passwd</code> display?</td><td class="mk">1</td><td class="co">CO1 / U</td></tr>
+    <tr><td class="sub">f)</td><td>What is the difference in result between <code>grep bash</code> and <code>grep -c bash</code> on a file?</td><td class="mk">1</td><td class="co">CO1 / U</td></tr>
+  </table>
+
+  <div class="qhead"><span>Q.2 &nbsp; Write the command / pipeline for any FIVE.</span><span>[10]</span></div>
+  <table class="q">
+    <tr><td class="sub">a)</td><td>In a <b>single pipeline</b>, display the usernames of <code>/etc/passwd</code> sorted alphabetically, showing only the first 5.</td><td class="mk">2</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">b)</td><td>Count how many accounts use <code>/bin/bash</code> as their login shell.</td><td class="mk">2</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">c)</td><td>Create user <code>shikha</code> with UID <code>1600</code>, primary group <code>devs</code> (already exists), supplementary group <code>wheel</code>, and a non-login shell — in <b>one</b> command.</td><td class="mk">2</td><td class="co">CO2 / Ap</td></tr>
+    <tr><td class="sub">d)</td><td>Set the directory <code>/proj</code> to: owner rwx, group rwx, others nothing, <b>plus the SGID bit</b> — using a <b>single octal</b> <code>chmod</code>.</td><td class="mk">2</td><td class="co">CO3 / Ap</td></tr>
+    <tr><td class="sub">e)</td><td>In the file <code>data</code>, replace every <code>prod</code> with <code>dev</code> but <b>only on lines 5 to 10</b>, editing the file in place.</td><td class="mk">2</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">f)</td><td>Display the usernames of all accounts whose line does <b>not</b> contain <code>nologin</code> (one pipeline).</td><td class="mk">2</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">g)</td><td>Change the primary group of user <code>ram</code> to <code>class</code>, and separately add him to <code>wheel</code> without losing his other groups.</td><td class="mk">2</td><td class="co">CO2 / Ap</td></tr>
+  </table>
+
+  <div class="qhead"><span>Q.3 &nbsp; Find the mistake. State what is wrong and give the correct command. (any THREE)</span><span>[6]</span></div>
+  <table class="q">
+    <tr><td class="sub">a)</td><td><code>usermod -G wheel deep</code> &nbsp;— the intention was to give <code>deep</code> sudo rights <b>while keeping</b> his existing groups.</td><td class="mk">2</td><td class="co">CO2 / An</td></tr>
+    <tr><td class="sub">b)</td><td><code>cp report.txt /Desktop</code> &nbsp;— it returns <i>"Permission denied"</i>. Why, and what was meant?</td><td class="mk">2</td><td class="co">CO1 / An</td></tr>
+    <tr><td class="sub">c)</td><td><code>groupadd 2083</code> &nbsp;— the intention was to create a group <code>sales</code> with GID <code>2083</code>.</td><td class="mk">2</td><td class="co">CO2 / An</td></tr>
+    <tr><td class="sub">d)</td><td><code>vi /etc/sudoers</code> &nbsp;— why is this risky, and what should be used instead?</td><td class="mk">2</td><td class="co">CO2 / An</td></tr>
+  </table>
+
+  <div class="qhead"><span>Q.4 &nbsp; Perform the following scenario on the machine. (Write the commands in sequence.)</span><span>[9]</span></div>
+  <table class="q">
+    <tr><td class="num">A)</td><td colspan="3">Create a group <code>project</code>. Create users <code>dev1</code> and <code>dev2</code>, both members of <code>project</code>. Set a password for <code>dev1</code>.</td></tr>
+    <tr><td></td><td></td><td class="mk">4</td><td class="co">CO2 / Ap</td></tr>
+    <tr><td class="num">B)</td><td colspan="3">Create user <code>lead</code>. Create directory <code>/srv/project</code> owned by <code>lead:project</code> with mode <code>2770</code>. Then, logged in as <code>dev1</code>, create a file inside it and use <code>ls -l</code> to show that the new file belongs to the <code>project</code> group — and state which special bit caused that.</td></tr>
+    <tr><td></td><td></td><td class="mk">5</td><td class="co">CO3 / An</td></tr>
+  </table>
+  <div class="orline">— OR —</div>
+  <table class="q">
+    <tr><td class="num">A)</td><td colspan="3">Using <code>grep</code>, <code>cut</code>, <code>sort</code> and <code>head</code> in one pipeline on <code>/etc/passwd</code>, display the <b>three accounts with the lowest UID</b>, showing each as <i>username</i> and <i>UID</i>.</td></tr>
+    <tr><td></td><td></td><td class="mk">4</td><td class="co">CO1 / An</td></tr>
+    <tr><td class="num">B)</td><td colspan="3">Using <code>visudo</code>, write a rule that lets members of the group <code>project</code> run <b>only</b> <code>/usr/sbin/useradd</code> as root <b>without</b> a password (and nothing else). Then test it as <code>dev1</code>.</td></tr>
+    <tr><td></td><td></td><td class="mk">5</td><td class="co">CO2 / Ap</td></tr>
+  </table>
+
+  <div class="foot">***** ALL THE BEST *****</div>
+  <div class="legend"><b>Legend —</b> CO: Course Outcome &nbsp;|&nbsp; BL (Bloom's Level): U = Understand, Ap = Apply, An = Analyze.
+  &nbsp; CO1: file &amp; text-processing commands · CO2: user, group &amp; privilege management · CO3: permissions &amp; special bits.</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linux Unit Test II — Answer Key</title>
+<style>
+  :root{ --ink:#111; --muted:#555; --accent:#0a5a3c; }
+  *{box-sizing:border-box}
+  body{font-family:"Times New Roman",Georgia,serif;color:var(--ink);background:#f2f2f2;margin:0;line-height:1.5;font-size:15px}
+  .sheet{max-width:820px;margin:18px auto;background:#fff;padding:34px 40px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+  .hdr{text-align:center;border-bottom:2px solid var(--ink);padding-bottom:10px}
+  .hdr .inst{font-size:17px;font-weight:bold}
+  .hdr .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .hdr .exam{font-size:14px;margin-top:6px;font-weight:bold}
+  .tag{display:inline-block;background:var(--accent);color:#fff;font-size:12px;font-weight:bold;padding:2px 10px;border-radius:4px;margin-top:6px;letter-spacing:.5px}
+  .meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13.5px;margin:10px 0;border-bottom:1px solid var(--ink);padding-bottom:6px;font-weight:bold}
+  .q{font-weight:bold;margin:16px 0 4px;color:var(--accent);border-bottom:1px solid #ddd;padding-bottom:2px}
+  .a{margin:7px 0 7px 4px}
+  code{font-family:"Consolas","Courier New",monospace;background:#f1f1f1;padding:1px 5px;border-radius:3px;font-size:13.5px}
+  pre{font-family:"Consolas","Courier New",monospace;background:#1d2b26;color:#cfe8dd;padding:10px 13px;border-radius:7px;
+      font-size:13px;overflow-x:auto;margin:5px 0;line-height:1.6;white-space:pre-wrap}
+  pre .c{color:#7fa394}
+  .mk{color:var(--muted);font-weight:normal;font-size:12.5px}
+  .note{font-size:12.5px;color:var(--muted);margin-top:4px;font-style:italic}
+  .foot{text-align:center;font-weight:bold;margin-top:18px;border-top:2px solid var(--ink);padding-top:6px;font-size:13px}
+  .noprint{max-width:820px;margin:10px auto;text-align:center}
+  .noprint button{font:inherit;font-size:14px;padding:9px 18px;border:1px solid #888;border-radius:7px;background:#fff;cursor:pointer}
+  @media print{ body{background:#fff} .sheet{box-shadow:none;margin:0;max-width:none;padding:12mm 15mm} .noprint{display:none}
+    pre{background:#f1f1f1;color:#111;border:1px solid #ccc} pre .c{color:#558} }
+</style>
+</head>
+<body>
+<div class="noprint"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+<div class="sheet">
+  <div class="hdr">
+    <div class="inst">JSPM's Rajarshi Shahu College of Engineering, Tathawade, Pune–33</div>
+    <div class="sub">Department of Computer Engineering · S.Y. B.Tech (Computer), Sem III · 2026–27</div>
+    <div class="exam">Unit Test – II · Linux System Administration (RHCSA)</div>
+    <div class="tag">ANSWER KEY &amp; MODEL SOLUTIONS</div>
+  </div>
+  <div class="meta"><span>Max. Marks: 30</span><span>Time: 1 Hour</span></div>
+
+  <div class="q">Q.1 — Predict the output <span class="mk">(1 mark each)</span></div>
+  <div class="a"><b>a)</b> <code>-e</code> enables escapes, so <code>\n</code> = newline and <code>\t</code> = tab:
+    <pre>a
+b	c</pre></div>
+  <div class="a"><b>b)</b> <code>2750</code> = SGID + rwx(owner) + r-x(group) + ---(others). The SGID turns the group's <code>x</code> into <code>s</code>:
+    <pre>drwxr-s---</pre></div>
+  <div class="a"><b>c)</b> <b>6 files</b> (3 numbers × 2 letters): <code>file1a.txt file1b.txt file2a.txt file2b.txt file3a.txt file3b.txt</code>.</div>
+  <div class="a"><b>d)</b> By the <b>3rd field (UID)</b>, numerically (<code>-t:</code> sets <code>:</code> as separator, <code>-k3</code> the field, <code>-n</code> numeric).</div>
+  <div class="a"><b>e)</b> Fields 1 and 7 — the <b>username and the login shell</b> of each account.</div>
+  <div class="a"><b>f)</b> <code>grep bash</code> prints the <b>matching lines</b>; <code>grep -c bash</code> prints only the <b>count</b> (a number) of matching lines.</div>
+
+  <div class="q">Q.2 — Write the command / pipeline <span class="mk">(2 marks each)</span></div>
+  <div class="a"><b>a)</b> <pre>cut -d: -f1 /etc/passwd | sort | head -n 5</pre></div>
+  <div class="a"><b>b)</b> <pre>grep -c '/bin/bash$' /etc/passwd</pre><span class="note">or: <code>cut -d: -f7 /etc/passwd | grep -c /bin/bash</code></span></div>
+  <div class="a"><b>c)</b> <pre>useradd -u 1600 -g devs -G wheel -s /sbin/nologin shikha</pre></div>
+  <div class="a"><b>d)</b> <pre>chmod 2770 /proj</pre><span class="note">2 = SGID, 7 = rwx owner, 7 = rwx group, 0 = nothing for others.</span></div>
+  <div class="a"><b>e)</b> <pre>sed -i '5,10s/prod/dev/g' data</pre></div>
+  <div class="a"><b>f)</b> <pre>grep -v nologin /etc/passwd | cut -d: -f1</pre></div>
+  <div class="a"><b>g)</b> <pre>usermod -g class ram
+usermod -aG wheel ram</pre><span class="note">-g changes the primary group; -aG appends a supplementary group.</span></div>
+
+  <div class="q">Q.3 — Find the mistake <span class="mk">(2 marks each)</span></div>
+  <div class="a"><b>a)</b> <b>Wrong:</b> <code>-G</code> alone <i>replaces</i> all supplementary groups, so <code>deep</code> loses his existing ones. <b>Fix:</b> <pre>usermod -aG wheel deep</pre></div>
+  <div class="a"><b>b)</b> <b>Wrong:</b> the leading <code>/</code> in <code>/Desktop</code> points to the <i>root</i> of the filesystem, where you don't have write permission → "Permission denied". <b>Fix</b> (the Desktop in your home): <pre>cp report.txt Desktop      <span class="c"># or:  cp report.txt ~/Desktop</span></pre></div>
+  <div class="a"><b>c)</b> <b>Wrong:</b> <code>groupadd 2083</code> creates a group literally <i>named</i> "2083". <b>Fix</b> (set the GID with <code>-g</code>): <pre>groupadd -g 2083 sales</pre></div>
+  <div class="a"><b>d)</b> <b>Wrong:</b> a syntax error in a hand-edited <code>/etc/sudoers</code> can lock <i>everyone</i> out of sudo. <b>Use</b> <code>visudo</code>, which checks the syntax before saving.</div>
+
+  <div class="q">Q.4 — Scenario <span class="mk">(9 marks)</span></div>
+  <div class="a"><b>A) <span class="mk">(4)</span></b>
+    <pre>groupadd project
+useradd -G project dev1
+useradd -G project dev2
+passwd dev1</pre></div>
+  <div class="a"><b>B) <span class="mk">(5)</span></b>
+    <pre>useradd lead
+mkdir -p /srv/project
+chown lead:project /srv/project
+chmod 2770 /srv/project
+su - dev1
+touch /srv/project/file1
+ls -l /srv/project
+<span class="c"># file1's group is "project" — caused by the SGID bit</span>
+<span class="c"># (the 2 in 2770; shown as the 's' in drwxrws---).</span></pre></div>
+
+  <div class="a" style="margin-top:12px"><b>— OR —</b></div>
+  <div class="a"><b>A) <span class="mk">(4)</span></b>
+    <pre>sort -t: -k3 -n /etc/passwd | head -n 3 | cut -d: -f1,3</pre>
+    <span class="note">sorts by UID (field 3) numerically, takes the first 3, then shows username:UID.</span></div>
+  <div class="a"><b>B) <span class="mk">(5)</span></b>
+    <pre>visudo
+<span class="c"># add this single line:</span>
+%project ALL=(root) NOPASSWD: /usr/sbin/useradd
+
+<span class="c"># test as dev1:</span>
+su - dev1
+sudo useradd testuser      <span class="c"># works, no password</span>
+sudo cat /etc/shadow       <span class="c"># denied — only useradd is allowed</span></pre>
+    <span class="note">The <code>%project</code> means the group; <code>NOPASSWD:</code> limits it to exactly the <code>useradd</code> command.</span></div>
+
+  <div class="foot">— End of Answer Key —</div>
+</div>
+</body>
+</html>
