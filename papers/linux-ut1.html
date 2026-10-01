@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linux Unit Test I — Question Paper</title>
+<style>
+  :root{ --ink:#111; --muted:#555; --line:#999; --bg:#fff; }
+  *{box-sizing:border-box}
+  body{font-family:"Times New Roman",Georgia,serif;color:var(--ink);background:#f2f2f2;margin:0;line-height:1.45;font-size:15px}
+  .sheet{max-width:820px;margin:18px auto;background:var(--bg);padding:34px 40px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+  .hdr{text-align:center;border-bottom:2px solid var(--ink);padding-bottom:10px}
+  .hdr .inst{font-size:17px;font-weight:bold;letter-spacing:.2px}
+  .hdr .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .hdr .dept{font-size:13.5px;margin-top:6px;font-weight:bold}
+  .hdr .exam{font-size:14px;margin-top:4px}
+  .meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13.5px;margin:10px 0 2px;font-weight:bold}
+  .meta2{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13.5px;border-top:1px dashed var(--line);border-bottom:1px solid var(--ink);padding:6px 0}
+  .instr{font-size:13px;margin:12px 0;padding-left:20px}
+  .instr li{margin:2px 0}
+  table.q{width:100%;border-collapse:collapse;margin-top:6px}
+  table.q td{vertical-align:top;padding:5px 4px}
+  td.num{width:34px;font-weight:bold}
+  td.sub{width:26px;font-weight:bold}
+  td.mk{width:46px;text-align:right;white-space:nowrap;font-weight:bold}
+  td.co{width:54px;text-align:center;font-size:12px;color:var(--muted)}
+  .qhead{font-weight:bold;margin-top:14px;border-bottom:1px solid #ccc;padding-bottom:3px;display:flex;justify-content:space-between}
+  .orline{text-align:center;font-weight:bold;font-style:italic;margin:3px 0}
+  code{font-family:"Consolas","Courier New",monospace;background:#f3f3f3;padding:0 3px;border-radius:3px;font-size:13.5px}
+  .foot{text-align:center;font-weight:bold;margin-top:18px;border-top:2px solid var(--ink);padding-top:6px;font-size:13px}
+  .legend{font-size:11.5px;color:var(--muted);margin-top:8px}
+  .noprint{max-width:820px;margin:10px auto;text-align:center}
+  .noprint button{font:inherit;font-size:14px;padding:9px 18px;border:1px solid #888;border-radius:7px;background:#fff;cursor:pointer}
+  @media print{ body{background:#fff} .sheet{box-shadow:none;margin:0;max-width:none;padding:14mm 16mm} .noprint{display:none} }
+</style>
+</head>
+<body>
+<div class="noprint"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+<div class="sheet">
+
+  <div class="hdr">
+    <div class="inst">JSPM's Rajarshi Shahu College of Engineering, Tathawade, Pune–33</div>
+    <div class="sub">(An Autonomous Institute Affiliated to Savitribai Phule Pune University)</div>
+    <div class="dept">Department of Computer Engineering</div>
+    <div class="exam">Unit Test – I &nbsp;|&nbsp; Academic Year 2026–27 (Semester III)</div>
+  </div>
+
+  <div class="meta">
+    <span>Class: S.Y. B.Tech (Computer)</span>
+    <span>Subject: Linux System Administration (RHCSA)</span>
+  </div>
+  <div class="meta2">
+    <span>Date: ___ / ___ / 2026</span>
+    <span>Time: 1 Hour</span>
+    <span>Max. Marks: 30</span>
+  </div>
+
+  <ol class="instr">
+    <li>All questions are <b>compulsory</b>.</li>
+    <li>Figures to the <b>right</b> indicate full marks.</li>
+    <li>For command questions, write the <b>exact</b> command(s); options/flags matter.</li>
+    <li>Assume suitable data wherever necessary.</li>
+  </ol>
+
+  <div class="qhead"><span>Q.1 &nbsp; Answer any FIVE of the following (one line / one command each).</span><span>[5]</span></div>
+  <table class="q">
+    <tr><td class="sub">a)</td><td>Write the command to display the installed Red Hat version.</td><td class="mk">1</td><td class="co">CO1 / R</td></tr>
+    <tr><td class="sub">b)</td><td>What is the difference between <code>&gt;</code> and <code>&gt;&gt;</code> ?</td><td class="mk">1</td><td class="co">CO1 / U</td></tr>
+    <tr><td class="sub">c)</td><td>Give the <code>date</code> format specifier that prints the <i>full month name</i>.</td><td class="mk">1</td><td class="co">CO1 / R</td></tr>
+    <tr><td class="sub">d)</td><td>Which <code>usermod</code> option adds a user to a supplementary group <i>without</i> removing the existing ones?</td><td class="mk">1</td><td class="co">CO2 / U</td></tr>
+    <tr><td class="sub">e)</td><td>On RHEL, membership of which group grants <code>sudo</code> (admin) rights by default?</td><td class="mk">1</td><td class="co">CO2 / R</td></tr>
+    <tr><td class="sub">f)</td><td>What does the <code>s</code> in <code>-rwsr-xr-x</code> on <code>/usr/bin/passwd</code> signify?</td><td class="mk">1</td><td class="co">CO3 / U</td></tr>
+  </table>
+
+  <div class="qhead"><span>Q.2 &nbsp; Write the command(s) for any FIVE of the following.</span><span>[10]</span></div>
+  <table class="q">
+    <tr><td class="sub">a)</td><td>Create 50 empty files named <code>linux1.txt</code> to <code>linux50.txt</code> in a single command.</td><td class="mk">2</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">b)</td><td>Append the text <i>"welcome to rscoe"</i> to the file <code>linux1.txt</code> without erasing its contents.</td><td class="mk">2</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">c)</td><td>Display all lines of <code>/etc/passwd</code> that contain the word <code>root</code>, along with their line numbers.</td><td class="mk">2</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">d)</td><td>In the file <code>tmp</code>, replace every occurrence of <code>bin</code> with <code>bbin</code>, changing the file itself.</td><td class="mk">2</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">e)</td><td>Extract and display only the first (username) field of <code>/etc/passwd</code>.</td><td class="mk">2</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="sub">f)</td><td>Add the existing user <code>ram</code> to the group <code>kkk</code> without removing his other groups.</td><td class="mk">2</td><td class="co">CO2 / Ap</td></tr>
+    <tr><td class="sub">g)</td><td>Make <code>myuser</code> the owner and <code>sales</code> the group of the directory <code>/unnati</code>.</td><td class="mk">2</td><td class="co">CO2 / Ap</td></tr>
+  </table>
+
+  <div class="qhead"><span>Q.3 &nbsp; Answer any TWO of the following (short notes).</span><span>[6]</span></div>
+  <table class="q">
+    <tr><td class="sub">a)</td><td>Differentiate between <code>su user1</code> and <code>su - user1</code>. Which password does each ask for?</td><td class="mk">3</td><td class="co">CO2 / U</td></tr>
+    <tr><td class="sub">b)</td><td>Explain the seven colon-separated fields of a line in <code>/etc/passwd</code> with an example.</td><td class="mk">3</td><td class="co">CO2 / U</td></tr>
+    <tr><td class="sub">c)</td><td>Explain the <b>SGID</b> bit on a directory and why it is useful for a shared team folder. Give the command to set it.</td><td class="mk">3</td><td class="co">CO3 / U</td></tr>
+  </table>
+
+  <div class="qhead"><span>Q.4 &nbsp; Perform the following practical task on the machine. (Write the commands in sequence.)</span><span>[9]</span></div>
+  <table class="q">
+    <tr><td class="num">A)</td><td colspan="3">Create a group <code>redhat</code>. Create users <code>amit</code> and <code>un1</code>, both as members of the <code>redhat</code> group. Set a password for <code>amit</code>.</td></tr>
+    <tr><td></td><td></td><td class="mk">4</td><td class="co">CO2 / Ap</td></tr>
+    <tr><td class="num">B)</td><td colspan="3">Create a directory <code>/data/impdata</code>. Make <code>amit</code> its owner and <code>redhat</code> its group. Set permissions to <code>771</code>, then turn on the <b>SGID</b> bit so that files created inside it automatically belong to the <code>redhat</code> group. Verify with <code>ls -ld</code>.</td></tr>
+    <tr><td></td><td></td><td class="mk">5</td><td class="co">CO3 / Ap</td></tr>
+  </table>
+  <div class="orline">— OR —</div>
+  <table class="q">
+    <tr><td class="num">A)</td><td colspan="3">Using <code>sed</code> and <code>cut</code> on a copy of <code>/etc/passwd</code> named <code>tmp</code>: (i) replace <code>nologin</code> with <code>lllog</code> on screen, and (ii) display only the username and UID columns.</td></tr>
+    <tr><td></td><td></td><td class="mk">4</td><td class="co">CO1 / Ap</td></tr>
+    <tr><td class="num">B)</td><td colspan="3">Grant the user <code>deep</code> full <code>sudo</code> rights by adding him to the <code>wheel</code> group, switch to his account, and run one command as root to verify. State why <code>visudo</code> is used instead of editing <code>/etc/sudoers</code> directly.</td></tr>
+    <tr><td></td><td></td><td class="mk">5</td><td class="co">CO2 / Ap</td></tr>
+  </table>
+
+  <div class="foot">***** ALL THE BEST *****</div>
+  <div class="legend"><b>Legend —</b> CO: Course Outcome &nbsp;|&nbsp; BL (Bloom's Level): R = Remember, U = Understand, Ap = Apply.
+  &nbsp; CO1: file &amp; text-processing commands · CO2: user, group &amp; privilege management · CO3: permissions &amp; special bits.</div>
+
+</div>
+</body>
+</html>

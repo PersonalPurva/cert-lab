@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linux Unit Test I — Answer Key</title>
+<style>
+  :root{ --ink:#111; --muted:#555; --accent:#0a5a3c; }
+  *{box-sizing:border-box}
+  body{font-family:"Times New Roman",Georgia,serif;color:var(--ink);background:#f2f2f2;margin:0;line-height:1.5;font-size:15px}
+  .sheet{max-width:820px;margin:18px auto;background:#fff;padding:34px 40px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+  .hdr{text-align:center;border-bottom:2px solid var(--ink);padding-bottom:10px}
+  .hdr .inst{font-size:17px;font-weight:bold}
+  .hdr .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .hdr .exam{font-size:14px;margin-top:6px;font-weight:bold}
+  .tag{display:inline-block;background:var(--accent);color:#fff;font-size:12px;font-weight:bold;padding:2px 10px;border-radius:4px;margin-top:6px;letter-spacing:.5px}
+  .meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13.5px;margin:10px 0;border-bottom:1px solid var(--ink);padding-bottom:6px;font-weight:bold}
+  .q{font-weight:bold;margin:16px 0 4px;color:var(--accent);border-bottom:1px solid #ddd;padding-bottom:2px}
+  .a{margin:7px 0 7px 4px}
+  .a b{color:#000}
+  code{font-family:"Consolas","Courier New",monospace;background:#f1f1f1;padding:1px 5px;border-radius:3px;font-size:13.5px}
+  pre{font-family:"Consolas","Courier New",monospace;background:#1d2b26;color:#cfe8dd;padding:10px 13px;border-radius:7px;
+      font-size:13px;overflow-x:auto;margin:5px 0;line-height:1.6;white-space:pre-wrap}
+  pre .c{color:#7fa394}
+  .mk{color:var(--muted);font-weight:normal;font-size:12.5px}
+  .note{font-size:12.5px;color:var(--muted);margin-top:4px;font-style:italic}
+  .foot{text-align:center;font-weight:bold;margin-top:18px;border-top:2px solid var(--ink);padding-top:6px;font-size:13px}
+  .noprint{max-width:820px;margin:10px auto;text-align:center}
+  .noprint button{font:inherit;font-size:14px;padding:9px 18px;border:1px solid #888;border-radius:7px;background:#fff;cursor:pointer}
+  @media print{ body{background:#fff} .sheet{box-shadow:none;margin:0;max-width:none;padding:12mm 15mm} .noprint{display:none}
+    pre{background:#f1f1f1;color:#111;border:1px solid #ccc} pre .c{color:#558} }
+</style>
+</head>
+<body>
+<div class="noprint"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+<div class="sheet">
+  <div class="hdr">
+    <div class="inst">JSPM's Rajarshi Shahu College of Engineering, Tathawade, Pune–33</div>
+    <div class="sub">Department of Computer Engineering · S.Y. B.Tech (Computer), Sem III · 2026–27</div>
+    <div class="exam">Unit Test – I · Linux System Administration (RHCSA)</div>
+    <div class="tag">ANSWER KEY &amp; MODEL SOLUTIONS</div>
+  </div>
+  <div class="meta"><span>Max. Marks: 30</span><span>Time: 1 Hour</span></div>
+
+  <div class="q">Q.1 — One-liners <span class="mk">(1 mark each)</span></div>
+  <div class="a"><b>a)</b> <code>cat /etc/redhat-release</code></div>
+  <div class="a"><b>b)</b> <code>&gt;</code> <b>overwrites</b> the file (replaces its contents); <code>&gt;&gt;</code> <b>appends</b> to the end.</div>
+  <div class="a"><b>c)</b> <code>%B</code> &nbsp;(e.g. <code>date +%B</code> → October). <span class="note">%b gives the short name "Oct".</span></div>
+  <div class="a"><b>d)</b> <code>-aG</code> &nbsp;(the <code>-a</code> appends; <code>-G</code> alone would replace all supplementary groups).</div>
+  <div class="a"><b>e)</b> The <b>wheel</b> group.</div>
+  <div class="a"><b>f)</b> It is the <b>SUID</b> bit — <code>passwd</code> runs with its <b>owner's (root's)</b> privileges, so a normal user can update <code>/etc/shadow</code> to change their own password.</div>
+
+  <div class="q">Q.2 — Write the command <span class="mk">(2 marks each)</span></div>
+  <div class="a"><b>a)</b> <pre>touch linux{1..50}.txt</pre></div>
+  <div class="a"><b>b)</b> <pre>echo "welcome to rscoe" &gt;&gt; linux1.txt</pre></div>
+  <div class="a"><b>c)</b> <pre>grep -n root /etc/passwd</pre></div>
+  <div class="a"><b>d)</b> <pre>sed -i "s/bin/bbin/" tmp</pre><span class="note">add <code>g</code> (<code>s/bin/bbin/g</code>) to replace every match on a line.</span></div>
+  <div class="a"><b>e)</b> <pre>cut -d: -f1 /etc/passwd</pre></div>
+  <div class="a"><b>f)</b> <pre>usermod -aG kkk ram</pre></div>
+  <div class="a"><b>g)</b> <pre>chown myuser:sales /unnati
+<span class="c"># or:  chown myuser /unnati  ;  chgrp sales /unnati</span></pre></div>
+
+  <div class="q">Q.3 — Short notes <span class="mk">(3 marks each)</span></div>
+  <div class="a"><b>a) su user1 vs su - user1:</b> <code>su user1</code> switches to user1 but <b>keeps your current environment</b> (same PATH, same directory). <code>su - user1</code> starts a <b>login shell</b>: it loads user1's full environment and moves to their home directory. <b>Both ask for user1's (the target user's) password</b> — only <code>sudo</code> asks for your own.</div>
+  <div class="a"><b>b) /etc/passwd fields</b> — seven colon-separated fields:
+    <pre>name : x : UID : GID : comment : home : shell
+root : x :  0  :  0  :  root   : /root : /bin/bash</pre>
+    username, password placeholder (<code>x</code> — real hash is in /etc/shadow), User ID, primary Group ID, comment/full-name, home directory, and login shell.</div>
+  <div class="a"><b>c) SGID bit on a directory:</b> with SGID set, any <b>new file created inside inherits the directory's group</b> (instead of the creator's primary group). This is ideal for a <b>shared team folder</b> so every member's new files automatically belong to the common group. Set it with:
+    <pre>chmod g+s /data/impdata
+<span class="c"># or in octal:  chmod 2771 /data/impdata</span></pre>
+    It shows as an <code>s</code> in the group slot: <code>drwxrws---</code>.</div>
+
+  <div class="q">Q.4 — Practical task <span class="mk">(9 marks)</span></div>
+  <div class="a"><b>A) <span class="mk">(4)</span></b>
+    <pre>groupadd redhat
+useradd -G redhat amit
+useradd -G redhat un1
+passwd amit</pre></div>
+  <div class="a"><b>B) <span class="mk">(5)</span></b>
+    <pre>mkdir -p /data/impdata
+chown amit /data/impdata
+chgrp redhat /data/impdata
+chmod 771 /data/impdata
+chmod g+s /data/impdata
+ls -ld /data/impdata
+<span class="c"># verify:  drwxrws--x. amit redhat ... /data/impdata</span></pre></div>
+
+  <div class="a" style="margin-top:12px"><b>— OR —</b></div>
+  <div class="a"><b>A) <span class="mk">(4)</span></b>
+    <pre>cp /etc/passwd tmp
+sed "s/nologin/lllog/" tmp          <span class="c"># (i) on screen only</span>
+cut -d: -f1,3 tmp                   <span class="c"># (ii) username + UID columns</span></pre></div>
+  <div class="a"><b>B) <span class="mk">(5)</span></b>
+    <pre>usermod -aG wheel deep
+su - deep
+sudo cat /etc/shadow               <span class="c"># runs as root with deep's own password</span></pre>
+    <b>Why visudo:</b> it checks the syntax before saving, so a mistake can't leave a broken <code>/etc/sudoers</code> that locks <i>everyone</i> out of sudo.</div>
+
+  <div class="foot">— End of Answer Key —</div>
+</div>
+</body>
+</html>
