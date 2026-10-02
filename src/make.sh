@@ -15,6 +15,8 @@ node parse.js _sec.txt secplus.json
 cat pt1.txt pt2.txt pt3.txt > _pt.txt
 node parse.js _pt.txt pentest.json
 node parse.js class_bank.txt class.json
+cat osint1.txt osint2.txt > _osint.txt
+node parse.js _osint.txt osint.json
 
 echo "2/5  parsing theory notes..."
 node parse_theory.js theory.json     theory1.txt theory2.txt theory3.txt \
@@ -23,6 +25,7 @@ node parse_theory.js theory.json     theory1.txt theory2.txt theory3.txt \
 node parse_theory.js theory_sec.json theory_sec1.txt theory_sec2.txt theory_sec3.txt theory_sec4.txt
 node parse_theory.js theory_pt.json  theory_pt1.txt theory_pt2.txt theory_pt3.txt theory_pt4.txt
 node parse_theory.js theory_class.json theory_class1.txt
+node parse_theory.js theory_osint.json theory_osint1.txt theory_osint2.txt
 
 echo "3/5  assembling data.json (split RHCSA, attach theory, shuffle answers)..."
 node builddata.js
@@ -41,5 +44,5 @@ const out=`<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<m
 fs.writeFileSync("../index.html",out);
 console.log("wrote ../index.html", (out.length/1024).toFixed(0)+"KB");
 '
-rm -f _rhcsa.txt _sec.txt _pt.txt
+rm -f _rhcsa.txt _sec.txt _pt.txt _osint.txt
 echo "done."

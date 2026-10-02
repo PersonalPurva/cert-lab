@@ -5,11 +5,13 @@ const rhAll = require('./rhcsa.json').concat(require('./adv.json')).concat(requi
 const sec = require('./secplus.json');
 const pt = require('./pentest.json');
 const cls = require('./class.json');              // Class Track (follows the college class)
+const osint = require('./osint.json');            // OSINT & Digital Forensics side track (self-paced modules)
 const loadTheory = f => fs.existsSync(dir+f) ? JSON.parse(fs.readFileSync(dir+f,'utf8')) : {};
 const theory    = loadTheory('theory.json');      // RHCSA (RH124 days 1-21, RH134 days 22-40 & 51-68)
 const theorySec = loadTheory('theory_sec.json');  // Security+ days 1-30
 const theoryPt  = loadTheory('theory_pt.json');   // Pentest+ days 1-28
 const theoryCls = loadTheory('theory_class.json');// Class Track days 1-N
+const theoryOsint = loadTheory('theory_osint.json');// OSINT & Forensics modules 1-10
 
 const rh124 = rhAll.filter(d=>d.course==='RH124');
 const rh134 = rhAll.filter(d=>d.course==='RH134').concat(rhAll.filter(d=>d.course==='EX200'));
@@ -19,6 +21,7 @@ function attach(days, map){ days.forEach(d=>{ const t=map[String(d.day)]; if(t) 
 attach(rh124, theory); attach(rh134, theory);
 attach(sec, theorySec); attach(pt, theoryPt);
 attach(cls, theoryCls);
+attach(osint, theoryOsint);
 
 // renumber each course from 1
 rh124.forEach((d,i)=>d.day=i+1);
@@ -30,6 +33,8 @@ const data = { courses: [
   { id:'rh134', name:'RH134 — RHCSA II', exam:'Red Hat System Administration II · RHEL 10 · storage, SELinux, containers, networking + EX200 review', short:'RH134', days:rh134 },
   { id:'secplus', name:'CompTIA Security+ (SY0-701)', exam:'CompTIA Security+ · SY0-701', short:'Security+', days:sec },
   { id:'pentest', name:'CompTIA Pentest+ (PT0-003)', exam:'CompTIA PenTest+ · PT0-003 · authorized testing only', short:'Pentest+', days:pt },
+  // side track: no day schedule — `unit` renames "Day" to "Module" in the app, `pace` replaces the plan blurb
+  { id:'osintdf', name:'OSINT & Digital Forensics (side track)', exam:'Self-paced side track · lawful, public-source and own-data practice only · OSINT is also red-team recon', short:'OSINT+DF', unit:'Module', pace:'No schedule here. This is a side track next to your red-team path: take about one module a month and finish in a year. Each module has theory, questions, command drills and hands-on labs you do on yourself or on practice files.', days:osint },
 ]};
 
 // --- Spread the correct answer across A/B/C/D ---

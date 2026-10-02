@@ -1,5 +1,5 @@
 <title>Linux Cert Lab</title>
-<meta name="description" content="Practice hub for RHCSA, Pentest+ and Security+ — daily questions, quizzes and hands-on labs.">
+<meta name="description" content="Practice hub for RHCSA, Pentest+, Security+ and an OSINT &amp; forensics side track — questions, quizzes and hands-on labs.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
@@ -353,6 +353,7 @@ function setSync(mode){
 /* ---------- helpers ---------- */
 function course(){ return state.data.courses.find(c=>c.id===state.courseId); }
 function isRedHat(){ return ['rhcsa','rh124','rh134'].includes(state.courseId); } // practical, reboot-graded exam
+function unit(){ const c=course(); return (c&&c.unit)||'Day'; } // a course may call its steps "Module" (self-paced) instead of "Day"
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function itemKey(dayNum,q,i){ return state.courseId+':'+dayNum+':'+q.type+':'+i; }
 function labKey(dayNum,i){ return state.courseId+':'+dayNum+':L'+i; }
@@ -447,7 +448,7 @@ function questionCard(day,q,idx,onAnswered){
   const meta=el('div','qmeta');
   meta.append(pillFor(day.course));
   meta.append(el('span','pill',q.type==='cmd'?'⌨ command':'◉ multiple choice'));
-  meta.append(el('span','eyebrow','Day '+day.day));
+  meta.append(el('span','eyebrow',unit()+' '+day.day));
   card.append(meta);
   card.append(el('div','qtext',q.q));
 
@@ -545,7 +546,7 @@ const TABS=[['today','Today'],['days','Days'],['quiz','Quiz'],['labs','Labs'],['
 function renderTabs(){
   const nav=$('#tabs'); nav.innerHTML='';
   TABS.forEach(([id,label])=>{
-    const b=el('button','tab'+(state.tab===id?' active':''),label);
+    const b=el('button','tab'+(state.tab===id?' active':''),id==='days'?unit()+'s':label);
     b.onclick=()=>{state.tab=id;renderTabs();renderTab();window.scrollTo(0,0);};
     nav.append(b);
   });
@@ -627,7 +628,7 @@ function dayCardEl(d){
   const ring=el('div','ring');ring.style.setProperty('--p',p.pct);
   const rs=el('span',null,p.pct+'%');ring.append(rs);
   const txt=el('div');txt.style.minWidth='0';
-  txt.append(el('div','dn','DAY '+String(d.day).padStart(2,'0')));
+  txt.append(el('div','dn',unit().toUpperCase()+' '+String(d.day).padStart(2,'0')));
   txt.append(el('div','dt',d.title));
   b.append(ring,txt);
   b.onclick=()=>openDay(d.day);
@@ -637,8 +638,8 @@ function renderDays(){
   const c=course();
   const intro=el('div','card pad');
   intro.append(el('div','eyebrow',c.name));
-  intro.append(el('div','qtext',c.days.length+'-day plan'));
-  intro.append(el('div','muted','Work one day at a time. Each day has multiple-choice questions, type-the-command drills, and hands-on labs mapped to a real exam objective.'));
+  intro.append(el('div','qtext',c.unit?c.days.length+' self-paced '+c.unit.toLowerCase()+'s':c.days.length+'-day plan'));
+  intro.append(el('div','muted',c.pace||'Work one day at a time. Each day has multiple-choice questions, type-the-command drills, and hands-on labs mapped to a real exam objective.'));
   intro.style.marginBottom='16px';
   app.append(intro);
   const grid=el('div','daygrid');
@@ -648,9 +649,9 @@ function renderDays(){
 function openDay(dayNum){
   const c=course(); const d=c.days.find(x=>x.day===dayNum);
   state.tab='days';renderTabs();app.innerHTML='';
-  const back=el('button','btn sm','← All days');back.onclick=renderDays;app.append(back);
+  const back=el('button','btn sm','← All '+unit().toLowerCase()+'s');back.onclick=renderDays;app.append(back);
   const head=el('div','card pad');head.style.margin='14px 0';
-  const mt=el('div','qmeta');mt.append(pillFor(d.course));mt.append(el('span','eyebrow','Day '+d.day+' of '+c.days.length));head.append(mt);
+  const mt=el('div','qmeta');mt.append(pillFor(d.course));mt.append(el('span','eyebrow',unit()+' '+d.day+' of '+c.days.length));head.append(mt);
   head.append(el('h2',null,d.title));head.style.marginBottom='4px';
   const ob=el('div','muted');ob.style.marginTop='6px';ob.append(el('span','faint','Exam objective — '));ob.append(document.createTextNode(d.objective));head.append(ob);
   const p=dayProgress(d);const pb=el('div','progbar');pb.style.marginTop='12px';const pbi=el('i');pbi.style.width=p.pct+'%';pb.append(pbi);head.append(pb);
@@ -675,9 +676,9 @@ function openDay(dayNum){
     st.append(el('span','faint mono',d.labs.length+''));app.append(st);
     d.labs.forEach((l,i)=>app.append(labCard(d,l,i)));
   }
-  const done=el('button','btn primary','✓ Mark day complete');done.style.marginTop='20px';
+  const done=el('button','btn primary','✓ Mark '+unit().toLowerCase()+' complete');done.style.marginTop='20px';
   done.onclick=()=>{ d.questions.forEach((q,i)=>{const k=itemKey(d.day,q,i);if(!state.progress.items[k])state.progress.items[k]={status:'seen',ts:Date.now()};});
-    d.labs.forEach((l,i)=>state.progress.labs[labKey(d.day,i)]=true); bumpStreak(); markDirty(); toast('Day '+d.day+' marked complete'); openDay(dayNum); };
+    d.labs.forEach((l,i)=>state.progress.labs[labKey(d.day,i)]=true); bumpStreak(); markDirty(); toast(unit()+' '+d.day+' marked complete'); openDay(dayNum); };
   app.append(done);
   window.scrollTo(0,0);
 }
@@ -715,7 +716,7 @@ function theoryCard(d){
 function labCard(d,l,i){
   const key=labKey(d.day,i);
   const card=el('div','card pad lab');card.style.marginBottom='12px';
-  const mt=el('div','qmeta');mt.append(el('span','pill','🧪 lab'));mt.append(el('span','eyebrow','Day '+d.day));
+  const mt=el('div','qmeta');mt.append(el('span','pill','🧪 lab'));mt.append(el('span','eyebrow',unit()+' '+d.day));
   if(state.progress.labs[key])mt.append(el('span','pill ex200','✓ done'));
   card.append(mt);
   card.append(el('div','qtext',l.title));
@@ -764,7 +765,7 @@ function renderLabs(randomOne){
   c.days.forEach(d=>{
     if(!d.labs.length)return;
     const st=el('div','section-title');
-    const h=el('h2',null,'Day '+d.day+' · '+d.title);h.style.fontSize='13px';st.append(h);
+    const h=el('h2',null,unit()+' '+d.day+' · '+d.title);h.style.fontSize='13px';st.append(h);
     st.append(el('span','faint mono',d.labs.length+''));app.append(st);
     d.labs.forEach((l,i)=>app.append(labCard(d,l,i)));
   });
@@ -912,7 +913,7 @@ function renderExamRun(){
   ex.items.forEach(([d,l,i],n)=>{
     const key=d.day+':'+i;
     const card=el('div','card pad');card.style.marginBottom='12px';
-    const mt=el('div','qmeta');mt.append(el('span','pill','Task '+(n+1)));mt.append(pillFor(d.course));mt.append(el('span','eyebrow','Day '+d.day));card.append(mt);
+    const mt=el('div','qmeta');mt.append(el('span','pill','Task '+(n+1)));mt.append(pillFor(d.course));mt.append(el('span','eyebrow',unit()+' '+d.day));card.append(mt);
     card.append(el('div','qtext',l.title));
     const scn=el('div','scenario');scn.style.marginTop='8px';scn.append(richText(l.scenario));card.append(scn);
     const ds=el('details','disc');const sm=el('summary');sm.append(el('span',null,'⌨ Reveal solution (costs you exam realism!)'));sm.append(el('span','chev','›'));ds.append(sm);
@@ -1119,13 +1120,13 @@ function renderStats(){
   app.append(stats2);
 
   // per-day heat list
-  const st=el('div','section-title');st.append(el('h2',null,'By day'));app.append(st);
+  const st=el('div','section-title');st.append(el('h2',null,'By '+unit().toLowerCase()));app.append(st);
   c.days.forEach(d=>{
     const p=dayProgress(d);
     const rowc=el('button','daycard');rowc.style.width='100%';
     const ring=el('div','ring');ring.style.setProperty('--p',p.pct);ring.append(el('span',null,p.pct+'%'));
     const t=el('div');t.style.minWidth='0';t.style.flex='1';
-    t.append(el('div','dn','DAY '+String(d.day).padStart(2,'0')+' · '+d.course));
+    t.append(el('div','dn',unit().toUpperCase()+' '+String(d.day).padStart(2,'0')+' · '+d.course));
     t.append(el('div','dt',d.title));
     rowc.append(ring,t);rowc.onclick=()=>openDay(d.day);
     rowc.style.marginBottom='8px';app.append(rowc);

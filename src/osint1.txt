@@ -1,0 +1,438 @@
+#D 1|1 OSINT|What OSINT is, and where the legal line sits|Explain OSINT, passive collection and the legal limits of an investigator.
+Q What does OSINT stand for?
++ Open-Source Intelligence — intelligence built from publicly available information
+- Online Security and Intrusion Testing
+- Operating System Internals
+- Open Server Interception Tool
+E "Open source" here means open to the public (websites, social media, public records), not open-source software.
+Q Which of these is PASSIVE collection?
++ Reading a public social-media profile without logging in to anyone's account
+- Guessing the password of the subject's email
+- Sending the subject a fake friend request to see private posts
+- Port-scanning the subject's home router
+E Passive means you only look at what is already public and never touch or trick the target.
+Q You find the login page of a suspect's private account. What may an OSINT investigator do?
++ Record that the account exists and stop there
+- Try a few common passwords
+- Use a leaked password found in a breach dump
+- Reset the password using the "forgot password" link
+E Entering an account without permission is unauthorised access, a crime, even if your intention is good.
+Q In India, accessing a computer, account or camera without permission is an offence under:
++ The Information Technology Act, 2000 (Sections 43 and 66)
+- The Motor Vehicles Act
+- The Right to Information Act
+- No law, if the intention is good
+E Section 43 covers unauthorised access and Section 66 makes it a punishable offence when done dishonestly; good intent is not a defence.
+Q A crime-branch officer needs CCTV footage from a shop near where a girl was last seen. The correct way is:
++ Request it from the owner, backed by a legal notice if needed
+- Hack the shop's DVR over the internet
+- Guess the camera's default password
+- Ask a friend who "knows hacking"
+E Police obtain footage through consent or legal notice so that it is lawful and usable in court.
+Q What is the difference between information and intelligence?
++ Intelligence is information that has been verified and analysed to answer a specific question
+- Intelligence is always secret
+- Information is always false
+- There is no difference
+E A pile of screenshots is information; "she was last seen at this bus stand at 6 pm, confirmed by two sources" is intelligence.
+Q The intelligence cycle runs in which order?
++ Planning, Collection, Processing, Analysis, Reporting
+- Collection, Reporting, Planning
+- Analysis, Collection, Planning
+- Reporting, Planning, Collection
+E You decide the question first, then collect, clean up, analyse and finally report.
+Q Why do investigators use a separate research browser profile and account instead of their personal one?
++ So their identity is not exposed and they do not tip off the subject by an accidental like or view
+- To get faster internet
+- Because personal accounts cannot search
+- To hide from their own employer
+E This is operational security (OPSEC); one accidental "like" from your real account can alert the subject.
+Q In a red-team engagement, OSINT belongs to which phase?
++ Reconnaissance, done under written authorisation
+- Exploitation
+- Reporting
+- Privilege escalation
+E Red teams use the same OSINT skills to map a client's people and systems before any attack, always inside an agreed scope.
+C Print the current date and time in UTC, to timestamp a line in your case notes.
+A date -u
+A date --utc
+A date --universal
+E Investigators log in UTC so that times from different sources and time zones can be compared.
+C Save the page https://example.com to a file named page.html for your evidence folder.
+A curl -o page.html https://example.com
+A curl https://example.com -o page.html
+A wget -O page.html https://example.com
+E Pages change or get deleted, so you save a copy at the moment you see it.
+T Write your own ground rules
+S Before any practice, write a short rules page for yourself: what you will do, what you will never do, and who gets your findings in a real case.
+X # I only use information that is public
+X # I never log in to, guess or reset another person's account
+X # I never contact the subject, their family or friends
+X # I never publish what I find; findings in a real case go to the police
+X # I practise on myself, on consenting friends, or in organised events
+V every rule keeps you passive and inside the law
+T Set up a case folder and log
+S Create a tidy workspace for a practice case, with an evidence folder, a notes folder and a log that records the UTC time of everything you do.
+H Brace expansion makes both folders in one command.
+X mkdir -p ~/cases/practice-01/{evidence,notes}
+X cd ~/cases/practice-01
+X echo "$(date -u) case opened" >> notes/log.txt
+X cat notes/log.txt
+V the log shows a UTC timestamp and both folders exist
+T OSINT yourself
+S You are the safest legal target. Search your own full name, usernames, phone number and email, and list everything a stranger could learn about you.
+H Use a private window so results are not personalised.
+X # search "your full name" in quotes, then with your city and college
+X # search each username you have ever used
+X # note every result: photo, address, phone, school, relatives
+X # tighten privacy settings or delete what you do not want public
+V you have a written list of what is exposed and what you fixed
+
+#D 2|1 OSINT|Search operators, archives and checking viral claims|Use advanced search operators and verify a claim before trusting it.
+Q What does the operator site:example.com do?
++ Limits results to pages on example.com
+- Opens example.com directly
+- Blocks example.com from results
+- Searches inside your own computer
+E site: narrows a search to one website or domain, which removes most of the noise.
+Q Putting a phrase in "double quotes" makes the search engine:
++ Match that exact phrase in that exact order
+- Ignore the phrase
+- Translate the phrase
+- Search images only
+E Exact-phrase search is the quickest way to find a specific name or sentence.
+Q A minus sign before a word, as in jaguar -car, does what?
++ Removes results containing that word
+- Makes that word more important
+- Searches for the opposite meaning
+- Sorts results by date
+E Excluding words removes a whole unwanted meaning from the results.
+Q What does filetype:pdf (or ext:pdf) do?
++ Returns only PDF files
+- Converts pages to PDF
+- Downloads every PDF automatically
+- Finds pages that mention the word pdf
+E Documents often carry more detail than web pages, including author names and dates.
+Q A post you need was deleted yesterday. Where do you look first?
++ The Wayback Machine (web.archive.org) and other web archives
+- Nowhere; deleted means gone forever
+- The dark web
+- The owner's password-reset page
+E Archives store old snapshots of pages, so deleted or edited content can often still be seen.
+Q A reel claims "123 girls were kidnapped in this city in 22 hours". What is the correct first step?
++ Look for the original source and an official statement before believing or forwarding it
+- Forward it to every group to warn people
+- Assume it is true because it has many views
+- Add a bigger number and repost
+E Verification means finding who first said it and whether official records support it; view counts prove nothing.
+Q A photo is shared as "taken today at the incident". The fastest way to test that is:
++ Reverse image search to see whether the photo appeared online earlier
+- Count the likes
+- Ask the person who forwarded it
+- Zoom in until it looks real
+E Old photos are constantly reused for new events; an earlier copy online disproves "taken today".
+Q Two news sites report the same claim, but both quote the same single viral audio clip. How many independent sources do you have?
++ One
+- Two
+- Three
+- None, news is never a source
+E Sources are independent only if they got the information separately; copies of one clip count once.
+C Write a search that returns only PDF files from the site example.com.
+A site:example.com filetype:pdf
+A filetype:pdf site:example.com
+A site:example.com ext:pdf
+A ext:pdf site:example.com
+E Combining operators narrows results sharply; each one removes more noise.
+C Write a search for the exact phrase missing person, only on the site example.com.
+A site:example.com "missing person"
+A "missing person" site:example.com
+E Quotes fix the phrase and site: fixes the place.
+C Write a search for pages on example.com that have the word login in their URL.
+A site:example.com inurl:login
+A inurl:login site:example.com
+E inurl: matches text in the address itself; red teams use it in recon to find login portals of an authorised target.
+T Find public documents with operators
+S Using only search operators, list the public PDF notices on your own college's website and note what each reveals (names, dates, phone numbers).
+H Public documents only; do not try to open anything that asks for a login.
+X # site:<college-domain> filetype:pdf
+X # site:<college-domain> filetype:pdf "notice"
+X # site:<college-domain> intitle:"time table"
+X # for each result, note what personal details are visible
+V you found documents without touching any login page
+T Fact-check a viral claim
+S Pick one alarming forward you received recently. Trace it back and decide whether it is true, false or unproven. Write your reasoning in five lines.
+X # 1 write the claim as one exact sentence
+X # 2 search the sentence in quotes to find the earliest post
+X # 3 reverse-search any photo or video frame
+X # 4 look for an official statement or a named, accountable source
+X # 5 count independent sources and state your confidence
+V your conclusion names the earliest source and the evidence for it
+T See an older version of a page
+S Open the Wayback Machine, look up a site you know well, and compare a snapshot from a few years ago with today's page.
+X # open web.archive.org and enter the address
+X # pick a year, then a highlighted date on the calendar
+X # note three things that changed
+X # copy the archive link: it is a stable reference for a report
+V you have an archive link showing the older content
+
+#D 3|1 OSINT|Finding people and the missing-person workflow|Pivot between identifiers and follow the rules for missing-person OSINT.
+Q What is "pivoting" in OSINT?
++ Using one found identifier, such as a username, to discover the next one
+- Rotating the screen
+- Attacking a second server
+- Deleting old notes
+E A username leads to a profile, the profile to a photo, the photo to a location; each find is a step to the next.
+Q Why is username reuse so useful to an investigator?
++ People often use the same handle on many sites, linking their accounts together
+- Usernames are always real names
+- Usernames reveal passwords
+- Sites share usernames with police automatically
+E One distinctive handle can connect accounts the person never meant to link.
+Q You search a common name and get 40 profiles. How do you decide which is your subject?
++ Confirm with at least two independent identifiers, such as city, college, photo or friends
+- Pick the first result
+- Pick the one with most followers
+- Message each one and ask
+E Common names cause false matches, and a false match can harm an innocent person.
+Q A breach-check site such as Have I Been Pwned tells you:
++ Whether an email address appears in known data breaches
+- The current password of the account
+- The person's live location
+- Their private messages
+E It shows exposure, not passwords; and logging in with any leaked password would be a crime.
+Q In a Trace Labs missing-person event, contacting the missing person's family or friends is:
++ Forbidden; collection must be passive with zero contact
+- Encouraged, to get faster answers
+- Allowed only at night
+- Required before starting
+E Contact can frighten the family, alert a kidnapper or damage the police investigation.
+Q Who should receive what you find about a real missing person?
++ The police or the organisers who pass it to police
+- Your social-media followers
+- The family directly
+- Nobody; keep it to yourself
+E Posting findings publicly can endanger the person and spread mistakes; police can verify and act.
+Q Which finding helps a missing-person case most?
++ Recent activity that shows where the person was after they were reported missing
+- Their school marks from five years ago
+- Their favourite film
+- The number of followers they have
+E Fresh, location-related information is what moves a search forward.
+Q Someone close to you has actually gone missing. What should happen first?
++ Report to the police immediately (dial 112; 1098 for a child)
+- Wait 24 hours before reporting
+- Start your own online investigation first
+- Post their photo in every group and wait
+E There is no 24-hour waiting rule; the first hours matter most, and OSINT only supports the police.
+Q Publishing a private person's address and phone number online is called:
++ Doxxing, and it is harmful and can be illegal
+- Pivoting
+- Archiving
+- Hashing
+E OSINT findings go to those with authority to act, never to the public.
+C Check which websites have an account named demo_user123, using Sherlock.
+A sherlock demo_user123
+A python3 sherlock.py demo_user123
+E Sherlock only checks whether a public profile page exists for that name on each site; it does not log in.
+C Compute the SHA-256 hash of screenshot.png so you can later prove it was not altered.
+A sha256sum screenshot.png
+E The hash is a fingerprint of the file; if even one pixel changes later, the hash will be different.
+T Pivot from your own username
+S Start from one username you use. Without logging in anywhere, see how many of your own accounts a stranger could link together.
+H Practise only on your own handle or a friend who agreed.
+X sherlock <your-username>
+X # open each hit and confirm it is really you (photo, bio, city)
+X # note every new identifier it exposes: email, other handles, links
+X # repeat once from one newly found identifier
+V you drew a small map: username -> accounts -> new identifiers
+T Fill a subject profile sheet
+S Make a one-page template for a missing-person case and fill it for a fictional person: basic details, online accounts, friends, last-seen day, and the source of every line.
+X # Subject: name, age, city, physical description
+X # Accounts: platform, handle, link, last activity date
+X # Last seen: date, time, place, who reported it
+X # Every line: source link + UTC time you captured it
+X # Confidence for each line: confirmed / probable / unverified
+V no line in the sheet is missing a source
+T Read the rules of a real event
+S Open the Trace Labs website and read the rules and scoring categories for their Search Party events. Summarise in your notes what is allowed and what is not.
+X # note the "no contact" rule in your own words
+X # list the categories of information that earn points
+X # note which categories score highest and why
+X # write down who receives the findings afterwards
+V you can explain why contact with the subject is banned
+
+#D 4|1 OSINT|Photos, metadata and working out a location|Extract image metadata and geolocate a photo from visual clues.
+Q What is EXIF data?
++ Hidden details stored inside a photo file, such as camera model, date, time and sometimes GPS position
+- A type of image compression
+- A virus that infects photos
+- The caption written under a post
+E The camera writes this metadata automatically; most people never know it is there.
+Q You download a photo from Instagram or WhatsApp and it has no GPS data. The most likely reason is:
++ Most social platforms remove metadata when a photo is uploaded
+- The phone has no GPS chip
+- GPS data expires after a week
+- The photo is fake
+E Platforms strip EXIF on upload, so original files (email, cloud, a seized phone) are far richer than reposts.
+Q What is reverse image search used for?
++ Finding where else, and how early, the same image appears online
+- Flipping an image left to right
+- Improving image quality
+- Reading EXIF data
+E It finds the original source and earlier copies, which exposes reused or stolen photos.
+Q A photo has no metadata. Which clue helps most to work out where it was taken?
++ Text on signs and shopfronts, such as language, phone codes and shop names
+- The colour of the person's shirt
+- The file name
+- The number of likes
+E Readable text narrows a location quickly: script gives the region, a phone code gives the city.
+Q What can shadows in an outdoor photo tell you?
++ The rough direction of the sun, and so the approximate time of day
+- The camera brand
+- The person's age
+- The exact street address
+E Working out time from shadows is called chronolocation; a photo with long shadows was not taken at noon.
+Q You think a photo was taken at a certain junction. How do you confirm it?
++ Match fixed features such as buildings, poles and signboards against satellite or street-level imagery
+- Trust your first impression
+- Ask in a public group
+- Check if the weather looks similar
+E Confirmation needs several fixed features lining up, not one similar-looking object.
+Q Why should you strip metadata from your own photos before posting them publicly?
++ It can reveal your home location and device to strangers
+- It makes the file bigger
+- It lowers the image quality
+- It is required by law
+E What helps an investigator also helps a stalker; this is the defensive side of the same skill.
+Q GPS coordinates inside a photo's EXIF data should be treated as:
++ A strong lead that still needs confirming, because metadata can be edited
+- Absolute proof
+- Always fake
+- Useless
+E Metadata is easy to change, so it is corroborated with visual clues or other evidence.
+C Show all metadata stored in the file photo.jpg.
+A exiftool photo.jpg
+E With no options, exiftool prints every tag it can read from the file.
+C Show only the GPS tags of photo.jpg.
+A exiftool -gps:all photo.jpg
+A exiftool -GPS:all photo.jpg
+A exiftool -GPSLatitude -GPSLongitude photo.jpg
+A exiftool photo.jpg | grep -i gps
+E Asking for one tag group saves reading through a hundred lines of camera settings.
+C Remove all metadata from photo.jpg before you share it.
+A exiftool -all= photo.jpg
+E Setting every tag to "nothing" clears them; exiftool keeps the original as photo.jpg_original.
+T Read your own photo's metadata
+S Copy a photo straight from your phone (by cable or email, not WhatsApp) and find out what it reveals about you.
+H Send the same photo to yourself on WhatsApp and compare.
+X exiftool myphoto.jpg
+X exiftool -gps:all myphoto.jpg
+X exiftool -CreateDate -Model myphoto.jpg
+X exiftool whatsapp_copy.jpg | wc -l
+V you can state the device, the time and whether location was stored
+T Strip and compare
+S Remove the metadata from a copy of your photo and prove that it is gone.
+X cp myphoto.jpg share.jpg
+X exiftool -all= share.jpg
+X exiftool share.jpg
+X sha256sum myphoto.jpg share.jpg
+V the GPS and camera tags are gone and the two hashes differ
+T Geolocate one of your old photos
+S Pick an old outdoor photo of your own with the location turned off. Using only what is visible, find the exact spot on a map and write down each clue you used.
+H Start wide (country, city) and narrow down.
+X # list readable text: signs, shop names, number plates, phone codes
+X # list fixed features: buildings, towers, hills, road layout
+X # search the text, then open the area in a map's satellite view
+X # match at least three fixed features before you call it confirmed
+V you can point to the spot and name three matching features
+
+#D 5|1 OSINT|Domains, IP addresses and email headers|Map an organisation's public internet footprint using passive lookups.
+Q What does a WHOIS lookup show?
++ Registration details of a domain: registrar, dates and sometimes the owner
+- The website's password
+- Every visitor to the site
+- The site's source code
+E WHOIS is the public registration record; privacy services often hide the owner's name.
+Q Which DNS record type lists the mail servers of a domain?
++ MX
+- A
+- NS
+- PTR
+E MX means mail exchanger; A maps a name to an IP, NS lists name servers, PTR maps an IP back to a name.
+Q Certificate transparency logs (searched through crt.sh) are useful in recon because they:
++ Reveal subdomains that have been issued TLS certificates
+- Reveal user passwords
+- Let you issue certificates for the target
+- Show the server's files
+E Every public certificate is logged, so names like vpn.example.com appear without touching the target at all.
+Q An IP address geolocates to "Pune". What does that actually tell you?
++ Roughly where the internet provider's equipment is, not a house address
+- The exact flat of the user
+- The user's name
+- The phone model
+E Only the internet provider can link an IP and time to a subscriber, and it does so on a legal request from police.
+Q In an email's full headers, the "Received:" lines are read:
++ From the bottom upward, because each server adds its line on top
+- From the top downward only
+- In random order
+- They cannot be read
+E The lowest Received line is closest to the sender, so the trail starts at the bottom.
+Q SPF, DKIM and DMARC results in an email header tell you:
++ Whether the message really came from a server allowed to send for that domain
+- Whether the email has been read
+- The sender's phone number
+- The size of the attachment
+E A "fail" here is a strong sign that the sender address was forged.
+Q Shodan shows an internet-exposed camera at an address. Which action is legal for you?
++ Noting that it is exposed and reporting it
+- Logging in with the default password to "check"
+- Watching the live feed
+- Changing its settings to secure it
+E Seeing that a device is listed is passive; logging in to it is unauthorised access under the IT Act.
+Q Which of these is ACTIVE and therefore needs written authorisation?
++ Running an nmap scan against the organisation's servers
+- A WHOIS lookup
+- Searching crt.sh
+- Reading the company's public job adverts
+E Active recon sends traffic to the target; red teams do it only inside an agreed scope.
+C Look up the registration record of example.com.
+A whois example.com
+E WHOIS queries a public registry database, not the target's own servers.
+C List the mail servers of example.com.
+A dig example.com MX
+A dig MX example.com
+A dig +short example.com MX
+A dig +short MX example.com
+A host -t MX example.com
+A nslookup -type=MX example.com
+E DNS is a public directory; mail servers hint at which email provider the organisation uses.
+C Find the hostname that the IP address 8.8.8.8 points back to (a reverse lookup).
+A dig -x 8.8.8.8
+A dig +short -x 8.8.8.8
+A host 8.8.8.8
+A nslookup 8.8.8.8
+E A reverse lookup asks for the PTR record, which often names the owner or provider.
+T Passive footprint of a domain
+S Using passive lookups only, build a one-page footprint of example.com (or a domain you own): registration, name servers, mail servers and IP address.
+H Nothing here sends traffic to the target's own servers except normal DNS.
+X whois example.com | grep -iE 'registrar|creation|expiry'
+X dig +short example.com
+X dig +short example.com NS
+X dig +short example.com MX
+X dig +short example.com TXT
+V you can say who registered it, where it is hosted and who handles its mail
+T Subdomains from certificate logs
+S List subdomains of example.com from public certificate transparency logs, without sending anything to the target.
+H jq pulls one field out of JSON; sort -u removes duplicates.
+X curl -s "https://crt.sh/?q=%25.example.com&output=json" -o crt.json
+X jq -r '.[].name_value' crt.json | sort -u
+X jq -r '.[].name_value' crt.json | sort -u | wc -l
+V you have a de-duplicated list of names from the logs
+T Trace an email you received
+S Open the full headers ("Show original") of an email in your own inbox, ideally a spam message, and work out where it really came from.
+X # copy the headers into headers.txt
+X grep -i '^Received:' headers.txt
+X grep -i 'Authentication-Results' -A3 headers.txt
+X # read the Received lines bottom to top; note the first outside IP
+X whois <that-ip> | grep -iE 'orgname|netname|country'
+V you can state the sending network and whether SPF and DKIM passed

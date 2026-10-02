@@ -1,0 +1,150 @@
+#D 6
+## Why forensics is about trust, not just finding
+Anyone can open a seized laptop and look around. A forensic examiner must be able to **prove in court** that what they found is exactly what was on the device and that nobody changed it. Every rule in this module exists for that one reason.
+
+The starting idea is **Locard's exchange principle**: every contact leaves a trace. A person who uses a device leaves logs, timestamps and files behind.
+
+## How evidence stays trustworthy
+- **Never work on the original.** Even opening a file changes its timestamps. The original is sealed, and you analyse a verified copy.
+- A **write blocker** sits between the disk and your computer, so you can read but cannot write.
+- A **hash** is a fingerprint of data. The same data always gives the same hash, and changing a single bit changes the whole hash. You hash the evidence when you collect it and again whenever you need to prove it is unchanged.
+- The **chain of custody** is a written record of who held the evidence, when, and why. A gap in it lets the defence argue tampering.
+
+## Hashing commands
+- `sha256sum evidence.img` — compute the fingerprint.
+- `sha256sum evidence.img > evidence.img.sha256` — save it beside the image.
+- `sha256sum -c evidence.img.sha256` — recompute and compare; prints OK or FAILED.
+
+## Order of volatility
+Some evidence disappears sooner than other evidence, so you collect the most short-lived first:
+- **Memory (RAM)**, running processes and network connections — lost at power-off.
+- **Temporary files**.
+- **Disk** — survives power-off.
+- **Backups and remote logs** — change slowly.
+
+So on a running machine you capture memory **before** you shut down and image the disk.
+
+## The legal side in India
+An electronic record is admitted in court with a certificate under **Section 63 of the Bharatiya Sakshya Adhiniyam, 2023** (this replaced Section 65B of the Indian Evidence Act). The certificate says how the record was produced and that the device was working properly. Without proper procedure, good evidence can be rejected.
+
+#D 7
+## Why a normal copy is not enough
+Copying files with a file manager copies only the files the system can currently see. Deleted files, and the unused space where their content still sits, are left behind. A **forensic image** copies **every bit** of the disk, used or not, so nothing is lost.
+
+## How deletion really works
+A file system keeps a **table of entries** (name, size, location) and, separately, the **content**. A normal delete only marks the entry as free. The content stays on the disk until something overwrites it. That is why deleted files can often be recovered, and why a suspect's disk must not be used after seizure.
+
+## Making and opening an image
+- `lsblk` — list the disks, to be sure which one is the evidence.
+- `dd if=/dev/sdb of=evidence.img bs=4M conv=noerror,sync status=progress` — image it. `if=` is the input and `of=` is the output; swapping them would destroy the evidence. `conv=noerror,sync` carries on past unreadable sectors and pads them so everything after stays in the right place.
+- Hash the source and the image; **matching hashes** prove the copy is exact.
+- `mount -o ro,loop evidence.img /mnt/evidence` — open the image **read-only**, so browsing cannot alter it.
+
+## Names lie, signatures do not
+The extension in a file name is only a label that anyone can change. The first bytes of the content, the **file signature** or magic number, show the real type:
+- JPEG starts with `FF D8 FF`
+- PNG starts with `89 50 4E 47`
+- PDF starts with `25 50 44 46` (the text %PDF)
+- ZIP (and .docx) starts with `50 4B 03 04` (the text PK)
+
+`file mystery.dat` reads the signature for you, and `xxd mystery.dat | head` shows the raw bytes.
+
+## Recovering deleted files
+- **With the file system** (Sleuth Kit): `fls -rd disk.img` lists deleted entries, each with a number; `icat disk.img <number> > recovered.jpg` extracts that file.
+- **Without the file system** (**carving**): `foremost -i disk.img -o carved` searches the raw data for file signatures. It works even on a damaged disk, but the original names are lost.
+
+#D 8
+## Why time is the backbone of a case
+An investigation answers "what happened, and in what order?". The answer is a **timeline** built from timestamps in files and logs. Because devices use different clocks and time zones, investigators convert everything to **UTC**.
+
+## How file timestamps work
+Every file on Linux carries several times:
+- **mtime** (Modify) — the content last changed.
+- **atime** (Access) — the file was last read.
+- **ctime** (Change) — the **metadata** last changed: permissions, owner, name. It is not the creation time.
+- **Birth** — when the file was created, where the file system records it.
+
+`stat report.pdf` shows all of them.
+
+A user can backdate mtime with `touch -d`, but an ordinary user cannot set **ctime**. An old Modify time with a very recent Change time is a sign of tampering (**timestomping**).
+
+## How Linux records logins
+You already know these files from your RHCSA work; here you read them as evidence:
+- `last` — successful logins, from /var/log/wtmp.
+- `lastb` — **failed** logins, from /var/log/btmp (needs root).
+- `/var/log/secure` — SSH and sudo events on RHEL (Debian and Ubuntu use /var/log/auth.log).
+- `journalctl -u sshd --since today` — the same events from the journal.
+
+## Reading the pattern
+- `grep "Failed password" /var/log/secure` — every failed SSH password.
+- Count per source IP: `grep "Failed password" /var/log/secure | awk '{print $(NF-3)}' | sort | uniq -c | sort -nr`
+- Hundreds of failures followed by one "Accepted password" from the same IP is a **brute-force attack that worked**.
+
+## Where intruders hide a way back in
+After getting in, an attacker leaves **persistence**: a cron job, a new user account, or a key added to `~/.ssh/authorized_keys`. `find /home -mtime -1` shows files changed in the last day. `~/.bash_history` is a lead, but the user can edit or clear it, so support it with logs.
+
+**Red-team link:** these are exactly the traces your own actions leave during an engagement. Knowing them is how you advise a client on detection.
+
+#D 9
+## Why memory is evidence
+When a computer is switched off, everything in **RAM** is lost: running programs, open network connections, encryption keys, unsaved chats. Some malware lives only in memory and never touches the disk. So on a running machine, memory is captured first, with tools such as WinPmem, FTK Imager or LiME.
+
+## How a memory image is read
+A memory image is a raw copy of RAM. **Volatility** understands the operating system's own structures inside it and rebuilds what was happening. A first look goes in this order:
+- `vol -f memory.raw windows.info` — which system is this?
+- `vol -f memory.raw windows.pslist` — what was running?
+- `vol -f memory.raw windows.pstree` — which process started which?
+- `vol -f memory.raw windows.cmdline` — with what command line?
+- `vol -f memory.raw windows.netscan` — what was it connected to?
+
+You look for things that do not fit: a trusted name running from the wrong folder (svchost.exe in Downloads), an office program that started a command shell, or a connection to an unknown address.
+
+## Why network traffic is evidence
+Every action online crosses the network. A **PCAP** file is a recording of those packets. It shows who talked to whom, when, and how much.
+
+- `tcpdump -i eth0 -w capture.pcap` — record (only on a network you own or are authorised to monitor).
+- `tcpdump -r capture.pcap` — read it back.
+- `tshark -r capture.pcap -Y dns` — show only DNS, which reveals the sites a machine looked up.
+- In Wireshark, a display filter such as `ip.addr == 10.0.0.5` hides everything else.
+
+With **HTTPS** the content is encrypted, but addresses, times, sizes and usually the site name are still visible. With plain **HTTP**, everything, including a submitted password, can be read.
+
+## What police get from telecom companies
+- A **CDR** (call detail record) lists numbers, times, durations and the towers used. It is not a recording of the call.
+- An **IPDR** is the equivalent record for internet sessions.
+
+Both come from the provider on a **legal request**. They show contacts and movement, and they are central to tracing a missing person.
+
+#D 10
+## Why Windows keeps so many records
+Windows records a great deal for its own convenience and reliability, and the same records serve as evidence. You do not need to memorise all of them; know the main ones and what each proves.
+
+## The key Windows artefacts
+- **Security event log** — 4624 is a successful logon, 4625 a failed logon, 4720 a new user account, 1102 the log being cleared.
+- **Registry** — the USBSTOR key under `HKLM\SYSTEM\CurrentControlSet\Enum` lists every USB storage device that was plugged in, with its serial number.
+- **Prefetch** (`C:\Windows\Prefetch`) — evidence that a program was run, and when.
+- **Recycle Bin** — keeps the deleted file plus a small record of its original path and deletion time.
+- **Browser history** — stored in **SQLite** database files, which you read with `sqlite3 History .tables` and ordinary SQL.
+
+To hash a file on Windows: `Get-FileHash evidence.img` in PowerShell.
+
+## Phones
+A phone holds chats, call logs, photos and location history, and most apps also store them in SQLite files.
+- **Isolate it first**: airplane mode or a Faraday bag, so it cannot be wiped remotely and no new data changes it.
+- Extraction ranges from simply photographing the screen to a full copy of storage, depending on the device and the legal authority.
+- `adb devices` lists Android devices connected for examination. It is used only with consent or legal authority.
+
+## CCTV done properly
+- Footage is obtained by the **owner's consent or a legal notice**, never by breaking into the recorder.
+- Export in the recorder's original format, **hash** the export, and fill in the custody form.
+- **Check the recorder's clock** against real time and write down the difference. A 12-minute offset left uncorrected can place a person at the wrong time.
+
+## The report
+The report is the product. It must let another examiner **repeat your steps and reach the same findings**.
+- State the question you were asked.
+- List each item of evidence with its hash.
+- Give the tools, versions and steps.
+- Separate **facts** from **opinion**, and say what remains unknown.
+
+## How this helps your red-team goal
+A red teamer who understands forensics knows what traces each action leaves, where defenders will look, and how to explain in the final report what the client's team should have detected. The skills in this track make you better at both attack and advice.

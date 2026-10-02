@@ -1,0 +1,130 @@
+#D 1
+## Why OSINT exists
+Most of what an investigator needs is already public: profiles, photos, news, public records, company websites. **OSINT** (open-source intelligence) is the skill of finding that public information, checking it, and turning it into an answer to a specific question, such as "where was this person last seen?". "Open source" here means open to the public, not open-source software.
+
+**Red-team link:** this is the same skill as the **reconnaissance** phase you already met in Pentest+. A red team maps a client's staff, email format and exposed systems with OSINT before it attacks anything, always under written authorisation.
+
+## How it works: the intelligence cycle
+An investigation is a loop, not a random search:
+- **Planning** — write the exact question you are answering.
+- **Collection** — gather public information.
+- **Processing** — save, sort and timestamp what you found.
+- **Analysis** — check it against other sources and decide what it means.
+- **Reporting** — hand a clear answer to whoever can act on it.
+
+Raw screenshots are **information**. Information that has been verified and analysed is **intelligence**.
+
+## The line you never cross
+OSINT is **passive**: you look at what is already public and never touch or trick the target. The moment you guess a password, reset an account, send a fake friend request or log in to a camera, it stops being OSINT and becomes **unauthorised access**, which is an offence under Sections 43 and 66 of the **IT Act, 2000**. Good intentions are not a defence.
+
+Police themselves do not "hack cameras". They ask the owner, or serve a legal notice, so the footage is lawful and a court will accept it. Evidence taken illegally can be thrown out and can get the investigator prosecuted.
+
+## Working safely and tidily
+- Use a **separate browser profile** for research, so your personal accounts never touch a case. One accidental "like" can tip off a subject. This is **OPSEC** (operational security).
+- **Log everything with a time in UTC**: `date -u` prints it.
+- **Save a copy** of what you see, because pages get edited or deleted: `curl -o page.html https://example.com`.
+- Practise on **yourself** first. You are the one target you always have permission for.
+
+#D 2
+## Why search operators matter
+A normal search returns millions of loose matches. An investigator needs the ten pages that matter. **Search operators** are small instructions that tell the search engine exactly where and how to look.
+
+## How each operator narrows the search
+- `"exact phrase"` — match these words in this order.
+- `site:example.com` — only pages on this site.
+- `filetype:pdf` (or `ext:pdf`) — only this kind of file. Documents often hold names, dates and phone numbers.
+- `intitle:word` — the word must be in the page title.
+- `inurl:word` — the word must be in the address.
+- `-word` — remove results containing this word.
+
+They **combine**: `site:example.com filetype:pdf "notice"` means PDFs on that site that contain the word notice. Each operator you add removes more noise.
+
+**Red-team link:** the same operators find an authorised target's login portals and forgotten documents during recon. Searching is passive; opening something behind a login without permission is not.
+
+## When the page is gone: archives
+Posts get deleted and pages get edited. The **Wayback Machine** (web.archive.org) keeps dated snapshots of pages. An archive link is also a stable reference for a report, because it will not change.
+
+## Verifying a claim before you trust it
+Rumours spread faster than facts, and a false alarm can cause real panic. Before believing or forwarding anything:
+- Write the claim as **one exact sentence**.
+- Find the **earliest source**: who said it first, and how do they know?
+- **Reverse-search** any photo or video frame. Old pictures are constantly reused for new events.
+- Look for an **official or accountable source**, such as a police statement.
+- Count **independent** sources. Ten pages quoting the same one audio clip are one source, not ten.
+
+Then state your confidence honestly: confirmed, probable or unproven.
+
+#D 3
+## Why identifiers link together
+People reuse the same **username**, email, phone number and profile photo across many sites. Each one you find can lead to the next. This step-by-step movement is called **pivoting**: username → profile → photo → city → another account.
+
+## How to pivot without making mistakes
+- Start from the **most distinctive** identifier. A rare username is better than a common name.
+- A tool such as **Sherlock** checks whether a public profile page exists for a username on hundreds of sites: `sherlock demo_user123`. It does not log in to anything.
+- A common name gives many false matches. **Confirm with at least two independent identifiers** (city, college, photo, friends) before you say a profile belongs to your subject. A wrong match can harm an innocent person.
+- A breach-check site such as **Have I Been Pwned** tells you only that an email appears in a known breach. Using any leaked password to log in is a crime.
+
+## The missing-person workflow
+Trace Labs runs events where volunteers collect public information about real missing persons and hand it to the police. Their rules show what responsible practice looks like:
+- **Zero contact.** Never message the missing person, their family or friends. It can frighten them, alert a kidnapper or disturb the police investigation.
+- **Recent, location-related information matters most**, such as activity after the person was reported missing.
+- **Findings go to the police**, never to the public. Publishing someone's private details is **doxxing**.
+
+## If it is real
+If someone you know is missing, **report to the police immediately**. Dial **112**, or **1098** for a child. There is no 24-hour waiting rule, and the first hours matter most. OSINT supports the police; it never replaces them.
+
+## Capturing what you find
+Every finding needs a **source link**, the **UTC time** you captured it, and a **hash** of the saved file so you can prove later that it was not altered: `sha256sum screenshot.png`.
+
+#D 4
+## Why a photo is more than a picture
+A photo file carries two kinds of clues: hidden **metadata** written by the camera, and the **visible content** of the scene. Either can tell you where and when it was taken.
+
+## Metadata (EXIF): what it is and when it survives
+The camera stores **EXIF** data inside the file: device model, date and time, camera settings, and sometimes **GPS coordinates**. Most social platforms **remove** this when a photo is uploaded, so a picture saved from Instagram or WhatsApp usually has none. Original files, from email, cloud storage or a lawfully seized phone, keep it.
+
+Metadata can be edited, so treat it as a **strong lead to confirm**, not as proof.
+
+## Reading and removing metadata
+- `exiftool photo.jpg` — show everything.
+- `exiftool -gps:all photo.jpg` — show only the GPS tags.
+- `exiftool -all= photo.jpg` — remove all metadata (the original is kept as `photo.jpg_original`).
+
+The last command is the **defensive** side: strip your own photos before posting, so they do not reveal your home.
+
+## Geolocation from what is visible
+With no metadata, you read the scene. Work from wide to narrow:
+- **Text**: language and script, shop names, phone codes, number plates.
+- **Fixed features**: buildings, towers, hills, road layout, bridges.
+- **Shadows**: their direction and length give the rough time of day (**chronolocation**).
+
+Then **confirm**: match at least three fixed features against satellite or street-level imagery. One similar-looking building is a guess; three matching features are a location.
+
+## Reverse image search
+Uploading an image to a reverse search shows where else it appears, and how early. It exposes reused photos, finds the original source and often leads to the uploader's other accounts.
+
+#D 5
+## Why infrastructure leaves a public trail
+Every website needs a registered **domain**, **DNS** records and usually a **TLS certificate**. All three are recorded in public databases. You can map much of an organisation's internet presence without sending a single packet to its servers.
+
+**Red-team link:** this module is the technical half of recon. Everything here is passive. The moment you scan the target itself (for example with nmap), it is **active** and needs written authorisation.
+
+## How the public records fit together
+- **WHOIS** — who registered the domain, with which registrar, and when. `whois example.com`
+- **DNS** — the directory that maps names to servers. Record types: **A** (name to IP address), **MX** (mail servers), **NS** (name servers), **TXT** (notes, including email rules), **PTR** (IP address back to a name).
+- **Certificate transparency** — every public TLS certificate is logged. Searching the logs at crt.sh reveals subdomains such as `vpn.example.com`.
+
+## The lookups
+- `dig +short example.com` — the IP address.
+- `dig example.com MX` — the mail servers.
+- `dig example.com NS` — the name servers.
+- `dig -x 8.8.8.8` — reverse lookup: which name does this IP point to?
+
+## What an IP address really tells you
+IP geolocation shows roughly where the **internet provider's equipment** is, not a house. Only the provider can link an IP address and a time to a subscriber, and it does that for police on a **legal request**. This is why real investigations run on paperwork, not hacking.
+
+## Reading an email's headers
+Each mail server adds a `Received:` line **on top**, so you read them **from the bottom up** to follow the message from sender to you. The `Authentication-Results` line shows **SPF**, **DKIM** and **DMARC** results; a "fail" suggests the sender address was forged.
+
+## Exposed devices
+Search engines such as Shodan list devices that are open to the internet, including cameras. **Seeing** that a device is listed is passive. **Logging in** to it, even with a default password and even "just to check", is unauthorised access. Note it and report it.

@@ -1,0 +1,487 @@
+#D 6|2 Forensics|Evidence, hashing and chain of custody|Explain how digital evidence is kept trustworthy from seizure to court.
+Q What is the main goal of digital forensics?
++ To recover and present digital evidence in a way a court can trust
+- To delete evidence quickly
+- To break into devices
+- To speed up a slow computer
+E Finding the data is half the job; proving that nobody changed it is the other half.
+Q Locard's exchange principle says:
++ Every contact leaves a trace
+- Every file has a backup
+- Every password can be cracked
+- Every disk eventually fails
+E A person who uses a device leaves logs, timestamps and files behind, and that is what you look for.
+Q What is a chain of custody?
++ A written record of who held the evidence, when, and what they did with it
+- A cable connecting two disks
+- A type of encryption
+- A list of suspects
+E If there is a gap in the record, the defence can argue that the evidence was tampered with.
+Q Why is a hash taken as soon as evidence is collected?
++ To prove later that the evidence has not changed since then
+- To compress the file
+- To encrypt the file
+- To make the copy faster
+E The same data always gives the same hash, so a matching hash later proves the data is unchanged.
+Q One bit of a 500 GB disk image is changed. Its SHA-256 hash will:
++ Be completely different
+- Change in its last digit only
+- Stay the same
+- Become shorter
+E A tiny change in the input changes the whole hash, which is why any tampering shows.
+Q Why do examiners work on a copy and never on the original device?
++ Any use of the original can change it and damage its value as evidence
+- Copies are faster
+- Originals are always encrypted
+- It is cheaper
+E Even opening a file updates timestamps; the original is sealed and analysis happens on verified copies.
+Q What does a write blocker do?
++ Lets the examiner read a disk while preventing any change to it
+- Stops the suspect from typing
+- Blocks internet access
+- Encrypts the disk
+E Simply connecting a disk to a normal computer can alter it; the write blocker makes that impossible.
+Q "Order of volatility" means you collect which evidence first?
++ The data that disappears soonest, such as memory, before disk
+- The largest files
+- The oldest files
+- Whatever is easiest
+E RAM is lost at power-off while a disk keeps its data, so memory is captured first on a running machine.
+Q In Indian courts, an electronic record is admitted with a certificate under:
++ Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 (earlier Section 65B of the Evidence Act)
+- Section 420 of the IPC
+- The Motor Vehicles Act
+- No certificate is ever needed
+E The certificate states how the record was produced and that the device was working properly.
+C Compute the SHA-256 hash of evidence.img.
+A sha256sum evidence.img
+E This is the fingerprint you write on the custody form.
+C Save the SHA-256 hash of evidence.img into a file named evidence.img.sha256.
+A sha256sum evidence.img > evidence.img.sha256
+E Storing the hash beside the image lets anyone re-check it later.
+C Check evidence.img against the hash saved in evidence.img.sha256.
+A sha256sum -c evidence.img.sha256
+A sha256sum --check evidence.img.sha256
+E The -c option recomputes the hash and prints OK or FAILED.
+T Prove tampering with a hash
+S Create a small "evidence" file, hash it, change a single character, and show that the hash exposes the change.
+X echo "Meeting at 6 pm near the bus stand" > note.txt
+X sha256sum note.txt > note.sha256
+X sha256sum -c note.sha256
+X sed -i 's/6 pm/7 pm/' note.txt
+X sha256sum -c note.sha256
+V the first check prints OK and the second prints FAILED
+T Fill a chain-of-custody form
+S Design a simple custody form and fill it in for a pen drive that you "seize" from your own desk.
+X # item: description, make, serial number, capacity
+X # collected: date, UTC time, place, by whom
+X # hash: algorithm and value of the image
+X # transfers: from, to, date, time, purpose, signature
+X # storage: where it is kept and who has access
+V every moment of the item's life is covered by one line
+T Plan for a running laptop
+S You arrive and find a suspect's laptop switched on and unlocked. Write the order in which you would collect evidence and why.
+H Think about what vanishes at power-off.
+X # 1 photograph the screen and note the time
+X # 2 capture memory (RAM) to an external drive
+X # 3 record running processes and network connections
+X # 4 only then power down and image the disk through a write blocker
+X # 5 hash everything and start the custody form
+V memory is collected before the disk, and every step is documented
+
+#D 7|2 Forensics|Disk imaging and recovering deleted files|Create a forensic image and recover deleted files from it.
+Q How is a forensic image different from copying files with a file manager?
++ It copies every bit of the disk, including deleted and unused areas
+- It copies only documents
+- It is always smaller
+- It skips hidden files
+E Deleted files live in space that a normal copy ignores, so only a bit-for-bit image preserves them.
+Q When a file is deleted normally, what usually happens?
++ Its entry is marked free but the content stays on disk until overwritten
+- Its content is wiped at once
+- It moves to the cloud
+- The disk is reformatted
+E Deleting removes the pointer, not the data, which is why recovery is often possible.
+Q Why is an evidence image mounted read-only?
++ So that looking at it cannot change it
+- To make it faster
+- Because images cannot be written
+- To hide it from other users
+E A normal mount can update timestamps and journals, which would change the hash.
+Q A file named holiday.txt begins with the bytes FF D8 FF. What is it really?
++ A JPEG image with a changed extension
+- A text file
+- A ZIP archive
+- A PDF
+E The first bytes (the signature or "magic number") identify the real type; the extension is only a label.
+Q What is file carving?
++ Recovering files from raw data by searching for their signatures, without using the file system
+- Splitting a large file into parts
+- Encrypting a file
+- Renaming files in bulk
+E Carving works even when the file system is damaged or the file's entry is gone.
+Q In the dd option conv=noerror,sync, the purpose is to:
++ Keep going past unreadable sectors and pad them, so the image keeps its correct layout
+- Compress the image
+- Encrypt the image
+- Delete the source afterwards
+E A failing disk should not stop the whole acquisition, and padding keeps every later byte in the right place.
+Q In Sleuth Kit, the command fls is used to:
++ List file and directory names in an image, including deleted ones
+- Format the image
+- Hash the image
+- Capture memory
+E Deleted entries are marked with an asterisk, and each has a number you pass to icat to extract it.
+Q After imaging, the hash of the image is compared with the hash of the source disk in order to:
++ Prove that the image is an exact copy
+- Make the image smaller
+- Unlock the disk
+- Find deleted files
+E Matching hashes are what let a court accept the copy in place of the original.
+C Make a bit-for-bit image of the disk /dev/sdb in a file named evidence.img.
+A dd if=/dev/sdb of=evidence.img
+A sudo dd if=/dev/sdb of=evidence.img
+A dd if=/dev/sdb of=evidence.img bs=4M conv=noerror,sync status=progress
+A sudo dd if=/dev/sdb of=evidence.img bs=4M conv=noerror,sync status=progress
+A dd if=/dev/sdb of=evidence.img bs=4M status=progress
+A sudo dd if=/dev/sdb of=evidence.img bs=4M status=progress
+E if= is the input (source) and of= is the output; swapping them would overwrite the evidence.
+C Mount evidence.img read-only on the directory /mnt/evidence.
+A mount -o ro,loop evidence.img /mnt/evidence
+A sudo mount -o ro,loop evidence.img /mnt/evidence
+A mount -o loop,ro evidence.img /mnt/evidence
+A sudo mount -o loop,ro evidence.img /mnt/evidence
+A mount -o ro,loop,noexec evidence.img /mnt/evidence
+A sudo mount -o ro,loop,noexec evidence.img /mnt/evidence
+E loop treats the file as a disk and ro makes it read-only.
+C Identify the real type of mystery.dat from its content, not its name.
+A file mystery.dat
+E The file command reads the signature at the start of the file.
+C List only the deleted entries in disk.img, going through all folders, with Sleuth Kit.
+A fls -rd disk.img
+A fls -r -d disk.img
+A fls -d -r disk.img
+E -r recurses into folders and -d shows deleted entries only.
+T Delete a file and recover it
+S Build a small practice disk image, put a picture on it, delete the picture, then recover it from the image. Kali has these tools preinstalled.
+H FAT is used because deleted files are easy to recover from it.
+X dd if=/dev/zero of=practice.img bs=1M count=50
+X mkfs.vfat practice.img
+X sudo mkdir -p /mnt/practice && sudo mount -o loop practice.img /mnt/practice
+X sudo cp test.jpg /mnt/practice/ && sudo rm /mnt/practice/test.jpg && sudo umount /mnt/practice
+X fls -rd practice.img
+X icat practice.img <number-from-fls> > recovered.jpg
+X sha256sum test.jpg recovered.jpg
+V the two hashes match, proving the deleted file was fully recovered
+T Unmask a disguised file
+S Rename a JPEG to notes.txt, then prove what it really is in two different ways.
+X cp test.jpg notes.txt
+X file notes.txt
+X xxd notes.txt | head -n 2
+X # the first bytes ff d8 ff are the JPEG signature
+V both file and the hex dump show it is a JPEG
+T Carve files from an image
+S Use a carving tool to pull pictures out of practice.img without relying on the file system.
+H Carving finds files by signature, so the names will be lost.
+X foremost -t jpg -i practice.img -o carved
+X ls -R carved
+X cat carved/audit.txt
+V at least one JPEG is recovered in the carved folder
+
+#D 8|2 Forensics|Timestamps, timelines and Linux logs|Reconstruct what happened on a Linux system from timestamps and logs.
+Q In file timestamps, what does "mtime" record?
++ When the file's content was last modified
+- When the file was created
+- When the file was last read
+- When the file was deleted
+E mtime follows the content; atime is the last read and ctime is the last change to the file's metadata.
+Q On Linux, "ctime" means:
++ The last change to the file's metadata, such as permissions, owner or name
+- The creation time
+- The time in the C locale
+- The time the file was copied
+E ctime is often mistaken for creation time; the birth time is a separate field.
+Q Why are investigation timelines written in UTC?
++ Evidence from different devices and time zones can then be compared directly
+- UTC is the Indian time zone
+- Computers cannot store local time
+- It hides the real time
+E A phone, a server and a CCTV recorder may each use a different clock setting; UTC is the common reference.
+Q On a RHEL system, where are SSH login successes and failures logged?
++ /var/log/secure
+- /var/log/boot.log
+- /etc/passwd
+- /home/user/.bashrc
+E RHEL uses /var/log/secure; Debian and Ubuntu use /var/log/auth.log; journalctl shows the same events.
+Q Which command shows FAILED login attempts?
++ lastb
+- last
+- who
+- uptime
+E lastb reads /var/log/btmp (failed logins); last reads /var/log/wtmp (successful ones).
+Q A log shows 400 "Failed password" lines from one IP and then one "Accepted password". What happened?
++ A brute-force attack that finally succeeded
+- A normal user who forgot the password once
+- A scheduled backup
+- A system update
+E Many failures followed by a success from the same source is the typical pattern of password guessing.
+Q Why is ~/.bash_history weak evidence on its own?
++ The user can edit or clear it, and it normally has no timestamps
+- It is encrypted
+- It records only root
+- It is deleted at every boot
+E It is a useful lead, but it must be supported by logs that the user cannot easily change.
+Q Someone used touch to backdate a file's mtime to last year. What often gives it away?
++ The ctime, which shows the moment the metadata was actually changed
+- The file size
+- The file name
+- The owner
+E An ordinary user cannot set ctime, so an old mtime with a very recent ctime is suspicious.
+Q After a break-in, which place should be checked for a hidden way back in?
++ Cron jobs, new user accounts and ~/.ssh/authorized_keys
+- The wallpaper folder
+- The trash only
+- The font directory
+E Attackers leave persistence; red teams plant the same things, so knowing where defenders look helps both sides.
+C Show all timestamps of the file report.pdf.
+A stat report.pdf
+E stat prints the access, modify, change and birth times together.
+C Show the history of successful logins on this system.
+A last
+A sudo last
+E last reads /var/log/wtmp, newest first.
+C Print every failed SSH password attempt recorded in /var/log/secure.
+A grep "Failed password" /var/log/secure
+A sudo grep "Failed password" /var/log/secure
+A grep 'Failed password' /var/log/secure
+A sudo grep 'Failed password' /var/log/secure
+E Each matching line contains the user name tried and the source IP.
+C Show today's log entries for the sshd service using journalctl.
+A journalctl -u sshd --since today
+A sudo journalctl -u sshd --since today
+A journalctl -u sshd -S today
+A journalctl -u sshd --since "today"
+E -u selects one service and --since limits the time window.
+C Find files under /home that were modified in the last 24 hours.
+A find /home -mtime -1
+A sudo find /home -mtime -1
+A find /home -type f -mtime -1
+A sudo find /home -type f -mtime -1
+E -mtime -1 means "less than one day ago"; recently changed files show what the intruder touched.
+T Audit logins on your own VM
+S Treat your own RHEL VM as the scene. List who logged in, who failed, and from where.
+H Generate some data first: type a wrong password once over SSH.
+X last -n 10
+X sudo lastb -n 10
+X sudo journalctl -u sshd --since today | tail -n 20
+X sudo grep -c "Failed password" /var/log/secure
+V you can say when the failed attempt happened and from which address
+T Rank attackers by failed logins
+S Build a one-line pipeline that counts failed SSH logins per source IP, highest first.
+H In a "Failed password" line the IP is the fourth field from the end.
+X sudo grep "Failed password" /var/log/secure | awk '{print $(NF-3)}' | sort | uniq -c | sort -nr | head
+X # read it as: count, then IP address
+V the output is a ranked list of IPs with counts
+T Catch a backdated file
+S Backdate a file with touch and show that one timestamp still tells the truth.
+X echo test > old.txt
+X stat old.txt
+X touch -d "2025-01-01 10:00" old.txt
+X stat old.txt
+X # compare Modify (now 2025) with Change (still today)
+V Modify shows the fake date while Change shows the real moment of tampering
+
+#D 9|2 Forensics|Memory and network forensics|Triage a memory image and a packet capture for evidence of activity.
+Q Why is RAM captured before a running computer is shut down?
++ It holds running processes, network connections and keys that vanish at power-off
+- It is bigger than the disk
+- It is easier to read than a disk
+- Shutting down is illegal
+E Some evidence never touches the disk at all, such as unsaved chats and malware that runs only in memory.
+Q Which tool is used to analyse a memory image?
++ Volatility
+- dd
+- whois
+- exiftool
+E Volatility reads the operating system's own structures inside the dump to list processes, connections and more.
+Q In Volatility 3, windows.pslist shows:
++ The processes that were running when memory was captured
+- The files on disk
+- The browser history
+- The partition table
+E The process list is the usual first look: what was running, and when it started.
+Q A process called svchost.exe is running from a user's Downloads folder. This is suspicious because:
++ The real svchost.exe runs from the Windows system folder
+- svchost.exe never runs at all
+- Downloads folders cannot hold programs
+- It has a short name
+E Malware often borrows a trusted name; the wrong location or parent process gives it away.
+Q What is a PCAP file?
++ A recording of network packets
+- A memory image
+- A compressed disk image
+- A password list
+E Tools such as tcpdump and Wireshark save captured traffic in this format for later analysis.
+Q The traffic in a capture is HTTPS. What can an analyst still see?
++ Who talked to whom, when, and how much, but not the content
+- Every password in plain text
+- Nothing at all
+- The full web pages
+E Encryption hides content, but addresses, times, sizes and usually the site name remain visible.
+Q A CDR (call detail record) contains:
++ Numbers, times, durations and tower locations of calls, not the conversation
+- A recording of each call
+- The text of each message
+- The phone's photos
+E Police obtain CDRs from the telecom company by legal request; they show contacts and movement, not content.
+Q Which is a Wireshark display filter for traffic to or from the address 10.0.0.5?
++ ip.addr == 10.0.0.5
+- host = 10.0.0.5
+- find 10.0.0.5
+- address:10.0.0.5
+E Display filters use field names and ==; they hide packets on screen without deleting them from the capture.
+C List the processes in the Windows memory image memory.raw with Volatility 3.
+A vol -f memory.raw windows.pslist
+A vol.py -f memory.raw windows.pslist
+A python3 vol.py -f memory.raw windows.pslist
+A volatility3 -f memory.raw windows.pslist
+E -f names the image and the plugin name says what to extract.
+C Show the network connections recorded in memory.raw with Volatility 3.
+A vol -f memory.raw windows.netscan
+A vol.py -f memory.raw windows.netscan
+A python3 vol.py -f memory.raw windows.netscan
+A volatility3 -f memory.raw windows.netscan
+E netscan links each connection to the process that owned it.
+C Capture traffic on the interface eth0 into the file capture.pcap.
+A tcpdump -i eth0 -w capture.pcap
+A sudo tcpdump -i eth0 -w capture.pcap
+E -i picks the interface and -w writes raw packets to a file. Capture only on networks you own or are authorised to monitor.
+C Read the packets stored in capture.pcap.
+A tcpdump -r capture.pcap
+A tcpdump -nn -r capture.pcap
+A tshark -r capture.pcap
+E -r reads from a file instead of a live interface.
+C Show only the DNS packets in capture.pcap using tshark.
+A tshark -r capture.pcap -Y dns
+A tshark -r capture.pcap -Y "dns"
+A tshark -r capture.pcap -Y 'dns'
+E -Y applies a display filter; DNS queries reveal which sites a machine tried to reach.
+T Record and read your own traffic
+S On your own VM, capture a minute of your own traffic while you open one website, then find the DNS lookup for it.
+H Stop the capture with Ctrl+C.
+X sudo tcpdump -i any -w mine.pcap
+X # in another terminal: curl -s https://example.com > /dev/null
+X tcpdump -nn -r mine.pcap port 53
+X tshark -r mine.pcap -Y dns | head
+V you can point to the DNS query for example.com and the reply
+T First look at a memory image
+S Download a public practice memory image (for example from the MemLabs challenges) and answer: what system is it, what was running, and what was it talking to?
+H Run the plugins in this order; each one narrows the next.
+X vol -f memory.raw windows.info
+X vol -f memory.raw windows.pslist
+X vol -f memory.raw windows.pstree
+X vol -f memory.raw windows.cmdline
+X vol -f memory.raw windows.netscan
+V you can name one process worth a closer look and say why
+T Find a login sent in clear text
+S In a practice capture that contains plain HTTP, find the request in which a form was submitted and see why HTTP is unsafe.
+H Public practice captures are available on the Wireshark sample captures page.
+X tshark -r practice.pcap -Y "http.request"
+X tshark -r practice.pcap -Y 'http.request.method == "POST"'
+X # in Wireshark: right-click the packet -> Follow -> TCP Stream
+V you can show the submitted form fields in the stream
+
+#D 10|2 Forensics|Windows, phones, CCTV and the final report|Identify key artefacts on Windows and mobile devices and write up a case.
+Q Windows Security event ID 4625 means:
++ A failed logon
+- A successful logon
+- A new user account was created
+- The system was shut down
+E 4625 is a failed logon and 4624 a successful one; many 4625s then a 4624 is the Windows brute-force pattern.
+Q Windows event ID 1102 in the Security log means:
++ The audit log was cleared
+- A printer was added
+- A file was copied
+- A logon succeeded
+E Clearing the log is itself logged, so an attempt to hide tracks leaves its own trace.
+Q Which registry location records USB storage devices that were plugged in?
++ HKLM\SYSTEM\CurrentControlSet\Enum\USBSTOR
+- HKCU\Control Panel\Desktop
+- HKLM\SOFTWARE\Fonts
+- HKCU\Environment
+E It stores the make, model and serial number of each device, which can tie a specific pen drive to a computer.
+Q Files in C:\Windows\Prefetch are evidence of:
++ Programs that were run, and when
+- Deleted emails
+- Wi-Fi passwords
+- Screen brightness
+E Windows creates a prefetch file to speed up launches, so it also records that a program was executed.
+Q A phone is seized as evidence. Why is it put in airplane mode or a Faraday bag?
++ To stop a remote wipe and stop new data from changing it
+- To charge it faster
+- To unlock it
+- To back it up to the cloud
+E A connected phone can be erased remotely and keeps changing as new messages arrive.
+Q A CCTV recorder's clock shows 10:42 when the real time is 10:30. The investigator must:
++ Record the 12-minute offset and correct every time taken from that footage
+- Ignore it
+- Change the recorder's clock and say nothing
+- Discard the footage
+E Recorder clocks drift; an unrecorded offset can place a person at the wrong time.
+Q Police obtain CCTV footage from a private owner by:
++ Consent or a legal notice to produce it, then hashing and documenting the export
+- Hacking the recorder remotely
+- Guessing the admin password
+- Taking a phone video of the screen only
+E A lawful request and a hashed, documented export make the footage usable in court.
+Q A good forensic report must be written so that:
++ Another examiner can repeat the steps and reach the same findings
+- Only the author can understand it
+- It contains opinions and no facts
+- It hides the tools used
+E Repeatability is what separates evidence from a personal claim.
+Q A red teamer benefits from knowing forensics because:
++ They learn what traces their actions leave and how defenders find them
+- It replaces the need for authorisation
+- It lets them skip the report
+- It makes scanning faster
+E Knowing the defender's view makes you a better tester and gives clients better advice on detection.
+C In PowerShell, compute the SHA-256 hash of evidence.img.
+A Get-FileHash evidence.img
+A Get-FileHash evidence.img -Algorithm SHA256
+A Get-FileHash -Algorithm SHA256 evidence.img
+A certutil -hashfile evidence.img SHA256
+E SHA256 is the default algorithm of Get-FileHash; certutil is the older built-in tool.
+C List the Android devices connected to your computer over USB debugging.
+A adb devices
+E adb is the Android Debug Bridge; examiners use it only on devices they have authority or consent to examine.
+C List the tables inside the SQLite database file named History.
+A sqlite3 History .tables
+A sqlite3 History ".tables"
+A sqlite3 History '.tables'
+E Browsers and chat apps store their data in SQLite files, so reading tables is a core skill.
+T Audit logons on your own Windows PC
+S On your own Windows machine, open PowerShell as administrator and list recent failed and successful logons.
+H Lock the PC and type a wrong password once to create a 4625 event.
+X Get-WinEvent -FilterHashtable @{LogName='Security';Id=4625} -MaxEvents 10
+X Get-WinEvent -FilterHashtable @{LogName='Security';Id=4624} -MaxEvents 10
+X Get-WinEvent -FilterHashtable @{LogName='Security';Id=4625} -MaxEvents 1 | Format-List
+V you can find your own wrong-password attempt and its time
+T Read your own browser history as a database
+S Copy your own Chrome history file and read it with sqlite3, the way an examiner would on a seized image.
+H Work on a copy; the live file is locked while the browser is open.
+X cp ~/.config/google-chrome/Default/History ./History
+X sqlite3 History .tables
+X sqlite3 History "SELECT url, title FROM urls ORDER BY last_visit_time DESC LIMIT 10;"
+X sha256sum History
+V the last ten sites you visited are listed from the copy
+T Capstone: a missing-person case on paper
+S A 16-year-old (fictional) is reported missing at 7 pm. Plan the digital side of the investigation from start to report, marking each step as OSINT, legal request or forensics.
+H No step should involve breaking into anything.
+X # OSINT: public profiles, last public activity, usernames, photos
+X # Legal request: phone location and CDR from the telecom company
+X # Legal request: CCTV from the bus stand and shops, hashed on export
+X # Forensics: her laptop imaged through a write blocker; chats and history read from the copy
+X # Timeline: all times in UTC, CCTV clock offsets corrected
+X # Report: facts, sources, hashes, confidence, and what is still unknown
+V every step is lawful and every fact in the report has a source

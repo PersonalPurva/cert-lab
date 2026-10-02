@@ -6,6 +6,7 @@ A self-contained study app for three certifications, live at
 - **RH124 — RHCSA I** · **RH134 — RHCSA II** (Red Hat, RHEL 10)
 - **CompTIA Security+ (SY0-701)**
 - **CompTIA Pentest+ (PT0-003)** — authorized / lab testing only
+- **OSINT & Digital Forensics** — a self-paced side track of 10 modules (no day schedule); lawful, public-source and own-data practice only
 
 ## What's inside
 
@@ -67,4 +68,6 @@ V verify command
 Paragraph text (blank line separates paragraphs). Inline **bold** and `code`.
 - bullet point
 ```
-Theory is keyed per course by day number (`theory.json` = RHCSA, `theory_sec.json` = Security+, `theory_pt.json` = Pentest+).
+Theory is keyed per course by day number (`theory.json` = RHCSA, `theory_sec.json` = Security+, `theory_pt.json` = Pentest+, `theory_osint.json` = OSINT & Forensics).
+
+A course object in `builddata.js` may set `unit:'Module'` to rename "Day" to "Module" throughout the app for that course, and `pace` to replace the plan blurb (used by the self-paced OSINT & Forensics track; bank `osint*.txt`, theory `theory_osint*.txt`).
